@@ -1,117 +1,99 @@
-# IntelliJ Platform Plugin Template
+# TI-Basic IDEA Plugin
 
-[![Twitter Follow](https://img.shields.io/badge/follow-%40JBPlatform-1DA1F2?logo=twitter)](https://twitter.com/JBPlatform)
-[![Developers Forum](https://img.shields.io/badge/JetBrains%20Platform-Join-blue)][jb:forum]
+An IntelliJ IDEA plugin that adds language support for **TI-Basic** and **TI Extended Basic** —
+the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 
-## Plugin template structure
+## Features
 
-A generated project contains the following content structure:
+- Syntax highlighting for TI-Basic source files (`.ti-basic`, `.tibasic`, `.ti.bas`)
+- Line-based parser: each valid line consists of a line number (1–32767) followed by a `PRINT` statement
+- Lines that do not match the grammar are treated as comment lines
+- Leading and trailing whitespace on valid lines is recognised and ignored
+- Code completion for TI-Basic keywords
+- Custom file icon for TI-Basic source files
+
+## Project structure
 
 ```
-.
-├── .run/                   Predefined Run/Debug Configurations
-├── build/                  Output build directory
-├── gradle
-│   ├── wrapper/            Gradle Wrapper
-├── src                     Plugin sources
-│   ├── main
-│   │   ├── kotlin/         Kotlin production sources
-│   │   └── resources/      Resources - plugin.xml, icons, messages
-├── .gitignore              Git ignoring rules
-├── build.gradle.kts        Gradle build configuration
-├── gradle.properties       Gradle configuration properties
-├── gradlew                 *nix Gradle Wrapper script
-├── gradlew.bat             Windows Gradle Wrapper script
-├── README.md               README
-└── settings.gradle.kts     Gradle project settings
+src/
+├── main/
+│   ├── kotlin/com/github/mmrsic/idea/plugins/tibasic/
+│   │   ├── TiBasicLanguage.kt              Language singleton
+│   │   ├── TiBasicFileType.kt              LanguageFileType object
+│   │   ├── TiBasicLexer.kt                 Line-based lexer
+│   │   ├── TiBasicParser.kt                PsiParser implementation
+│   │   ├── TiBasicParserDefinition.kt      ParserDefinition
+│   │   ├── TiBasicTokenTypes.kt            Token and node element types
+│   │   ├── TiBasicSyntaxHighlighter.kt     Syntax highlighter
+│   │   ├── TiBasicSyntaxHighlighterFactory.kt
+│   │   ├── TiBasicCompletionContributor.kt Keyword completion
+│   │   ├── TiBasicKeywords.kt              Keyword list
+│   │   ├── TiBasicFileIconProvider.kt      File icon
+│   │   └── psi/
+│   │       ├── TiBasicFile.kt              PSI file element
+│   │       └── TiBasicPsiElements.kt       PSI node elements (Line, PrintStatement, CommentLine)
+│   └── resources/META-INF/plugin.xml       Plugin descriptor
+└── test/
+    └── kotlin/com/github/mmrsic/idea/plugins/tibasic/
+        ├── TiBasicParserTest.kt            Parser happy-path and error tests
+        ├── TiBasicSyntaxHighlightingTest.kt Lexer / highlighter tests
+        ├── TiBasicCompletionTest.kt        Keyword completion tests
+        └── IconLoadTest.kt                 Icon loading tests
 ```
 
-In addition to the configuration files, the most crucial part is the `src` directory, which contains our implementation
-and the manifest for our plugin – [plugin.xml][file:plugin.xml].
+## Prerequisites
 
-> [!NOTE]
-> To use Java in your plugin, create the `/src/main/java` directory.
+| Tool | Minimum version |
+|------|----------------|
+| JDK  | 21             |
+| Gradle | 8.x (via wrapper) |
+| IntelliJ IDEA | 2025.2 (target platform) |
 
-## Plugin configuration file
+## Building
 
-The plugin configuration file is a [plugin.xml][file:plugin.xml] file located in the `src/main/resources/META-INF`
-directory.
-It provides general information about the plugin, its dependencies, extensions, and listeners.
+```bash
+# Compile and run all tests
+./gradlew build
 
-You can read more about this file in the [Plugin Configuration File][docs:plugin.xml] section of our documentation.
+# Run tests only
+./gradlew test
 
-If you're still not quite sure what this is all about, read our
-introduction: [What is the IntelliJ Platform?][docs:intro]
+# Launch a sandbox IDE instance with the plugin installed
+./gradlew runIde
 
-$H$H Predefined Run/Debug configurations
+# Verify plugin compatibility against recommended IDE versions
+./gradlew verifyPlugin
+```
 
-Within the default project structure, there is a `.run` directory provided containing predefined *Run/Debug
-configurations* that expose corresponding Gradle tasks:
+## Grammar specification
 
-| Configuration name | Description                                                                                                                                                                         |
-|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Run Plugin         | Runs [`:runIde`][gh:intellij-platform-gradle-plugin-runIde] IntelliJ Platform Gradle Plugin task. Use the *Debug* icon for plugin debugging.                                        |
-| Run Tests          | Runs [`:test`][gradle:lifecycle-tasks] Gradle task.                                                                                                                                 |
-| Run Verifications  | Runs [`:verifyPlugin`][gh:intellij-platform-gradle-plugin-verifyPlugin] IntelliJ Platform Gradle Plugin task to check the plugin compatibility against the specified IntelliJ IDEs. |
+A **valid line** matches:
 
-> [!NOTE]
-> You can find the logs from the running task in the `idea.log` tab.
+```
+[whitespace] <lineNumber> <whitespace> PRINT [whitespace] [argument] [whitespace]
+```
 
-## Publishing the plugin
+- `lineNumber` — integer in the range **1–32767** (case-insensitive `PRINT` keyword)
+- Leading and trailing whitespace on a valid line is tokenised as `WHITE_SPACE` and ignored by the parser
+- Every other line is tokenised as a single `COMMENT` token and wrapped in a `CommentLine` PSI node
 
-> [!TIP]
-> Make sure to follow all guidelines listed in [Publishing a Plugin][docs:publishing] to follow all recommended and
-> required steps.
+## Running tests
 
-Releasing a plugin to [JetBrains Marketplace](https://plugins.jetbrains.com) is a straightforward operation that uses
-the `publishPlugin` Gradle task provided by
-the [intellij-platform-gradle-plugin][gh:intellij-platform-gradle-plugin-docs].
+```bash
+./gradlew test
+```
 
-You can also upload the plugin to the [JetBrains Plugin Repository](https://plugins.jetbrains.com/plugin/upload)
-manually via UI.
+Test reports are written to `build/reports/tests/test/index.html`.
 
-## Useful links
+## Contributing
 
-- [IntelliJ Platform SDK Plugin SDK][docs]
-- [IntelliJ Platform Gradle Plugin Documentation][gh:intellij-platform-gradle-plugin-docs]
-- [IntelliJ Platform Explorer][jb:ipe]
-- [JetBrains Marketplace Quality Guidelines][jb:quality-guidelines]
-- [IntelliJ Platform UI Guidelines][jb:ui-guidelines]
-- [JetBrains Marketplace Paid Plugins][jb:paid-plugins]
-- [IntelliJ SDK Code Samples][gh:code-samples]
+1. Fork the repository and create a feature branch.
+2. Follow the coding conventions in [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
+3. Add or update tests for every non-trivial change.
+4. Ensure `./gradlew build` and `./gradlew verifyPlugin` pass before opening a pull request.
+5. Keep commits small and focused; prefix messages with `feat:`, `fix:`, `chore:`, etc.
 
-[docs]: https://plugins.jetbrains.com/docs/intellij
+## License
 
-[docs:intro]: https://plugins.jetbrains.com/docs/intellij/intellij-platform.html?from=IJPluginTemplate
-
-[docs:plugin.xml]: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html?from=IJPluginTemplate
-
-[docs:publishing]: https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginTemplate
-
-[file:plugin.xml]: ./src/main/resources/META-INF/plugin.xml
-
-[gh:code-samples]: https://github.com/JetBrains/intellij-sdk-code-samples
-
-[gh:intellij-platform-gradle-plugin]: https://github.com/JetBrains/intellij-platform-gradle-plugin
-
-[gh:intellij-platform-gradle-plugin-docs]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
-
-[gh:intellij-platform-gradle-plugin-runIde]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html#runIde
-
-[gh:intellij-platform-gradle-plugin-verifyPlugin]: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html#verifyPlugin
-
-[gradle:lifecycle-tasks]: https://docs.gradle.org/current/userguide/java_plugin.html#lifecycle_tasks
-
-[jb:github]: https://github.com/JetBrains/.github/blob/main/profile/README.md
-
-[jb:forum]: https://platform.jetbrains.com/
-
-[jb:quality-guidelines]: https://plugins.jetbrains.com/docs/marketplace/quality-guidelines.html
-
-[jb:paid-plugins]: https://plugins.jetbrains.com/docs/marketplace/paid-plugins-marketplace.html
-
-[jb:quality-guidelines]: https://plugins.jetbrains.com/docs/marketplace/quality-guidelines.html
-
-[jb:ipe]: https://jb.gg/ipe
-
-[jb:ui-guidelines]: https://jetbrains.github.io/ui
+This project is licensed under the **GNU General Public License v3.0**.
+See the [LICENSE](LICENSE) file for details.

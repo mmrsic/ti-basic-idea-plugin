@@ -2,41 +2,41 @@
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN, cannot be changed between the plugin versions. -->
     <id>com.github.mmrsic.idea.plugins.ti-basic</id>
-
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
     <name>TI-Basic</name>
-
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
     <vendor url="https://www.github.com/mmrsic">MMRSIC</vendor>
-
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description>Texas Instruments' TI-Basic and Extended Basic syntax highlighting for TI 99 4 and TI 99/4a
         computers.
     </description>
-
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
-
     <!-- Extensions defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
         <fileType
                 name="TI-Basic File"
+                language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicFileType"
                 fieldName="INSTANCE"
-                language="TI-Basic"
-                extensions="ti-basic;tibasic"
+                extensions="ti-basic;tibasic;ti.bas"
         />
+        <fileIconProvider implementation="com.github.mmrsic.idea.plugins.tibasic.TiBasicFileIconProvider"/>
         <lang.syntaxHighlighterFactory
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicSyntaxHighlighterFactory"
                 language="TI-Basic"
         />
         <completion.contributor
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicCompletionContributor"
                 language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicCompletionContributor"
+        />
+        <lang.parserDefinition
+                language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicParserDefinition"
         />
     </extensions>
 </idea-plugin>

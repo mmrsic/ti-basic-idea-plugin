@@ -1,59 +1,130 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
 import com.intellij.lexer.LexerBase
-import com.intellij.psi.tree.IElementType
 import com.intellij.psi.TokenType
+import com.intellij.psi.tree.IElementType
 
+/**
+ * Lexer for TI-Basic source files.
+ *
+ * A valid line has the form: ```[ws] <lineNumber> [ws] PRINT [ws] [argument] [ws]```
+ * where `lineNumber` is an integer in 1..32767. All other lines are treated as COMMENT tokens.
+ * Leading and trailing whitespace on valid lines is emitted as WHITE_SPACE tokens.
+ *
+ * Within a valid line the lexer produces:
+ *  - WHITE_SPACE  – optional leading spaces/tabs
+ *  - LINE_NUMBER  – the leading integer
+ *  - WHITE_SPACE  – spaces/tabs between tokens
+ *  - PRINT_KEYWORD – the PRINT keyword
+ *  - WHITE_SPACE  – optional spaces/tabs after PRINT
+ *  - PRINT_ARGUMENT – everything after whitespace up to trailing whitespace
+ *  - WHITE_SPACE  – optional trailing spaces/tabs
+ *
+ * For invalid lines the entire line content (without the newline) is a single COMMENT token.
+ * Newlines themselves are emitted as WHITE_SPACE so the parser can use them as line separators.
+ */
 class TiBasicLexer : LexerBase() {
+
+    private companion object {
+        val VALID_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)(PRINT)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
+        val TRAILING_WS = Regex("""([ \t]*)$""")
+        const val MAX_LINE_NUMBER = 32767
+    }
+
+    private enum class LineKind { VALID, COMMENT }
+
+    private data class LineToken(val start: Int, val end: Int, val type: IElementType)
+
     private var buffer: CharSequence = ""
-    private var startOffset = 0
     private var endOffset = 0
-    private var tokenStart = 0
-    private var tokenEnd = 0
-    private var tokenType: IElementType? = null
+    private var tokens: List<LineToken> = emptyList()
+    private var tokenIndex = 0
 
     override fun start(buffer: CharSequence, startOffset: Int, endOffset: Int, initialState: Int) {
         this.buffer = buffer
-        this.startOffset = startOffset
         this.endOffset = endOffset
-        this.tokenStart = startOffset
-        this.tokenEnd = startOffset
-        this.tokenType = null
-        advance()
+        tokens = tokenize(buffer, startOffset, endOffset)
+        tokenIndex = 0
     }
 
     override fun getState(): Int = 0
 
-    override fun getTokenType(): IElementType? = tokenType
+    override fun getTokenType(): IElementType? = tokens.getOrNull(tokenIndex)?.type
 
-    override fun getTokenStart(): Int = tokenStart
+    override fun getTokenStart(): Int = tokens.getOrNull(tokenIndex)?.start ?: endOffset
 
-    override fun getTokenEnd(): Int = tokenEnd
+    override fun getTokenEnd(): Int = tokens.getOrNull(tokenIndex)?.end ?: endOffset
 
     override fun advance() {
-        tokenStart = tokenEnd
-        if (tokenStart >= endOffset) {
-            tokenType = null
-            return
-        }
-        val text = buffer.subSequence(tokenStart, endOffset).toString()
-        val wsMatch = Regex("\\s+").find(text)
-        if (wsMatch != null && wsMatch.range.first == 0) {
-            tokenEnd = tokenStart + wsMatch.value.length
-            tokenType = TokenType.WHITE_SPACE
-            return
-        }
-        val wordMatch = Regex("[A-Za-z]+|\\d+").find(text)
-        if (wordMatch != null && wordMatch.range.first == 0) {
-            tokenEnd = tokenStart + wordMatch.value.length
-            tokenType = if (wordMatch.value.equals("PRINT", ignoreCase = true)) TiBasicTokenTypes.KEYWORD else TiBasicTokenTypes.IDENTIFIER
-            return
-        }
-        tokenEnd = tokenStart + 1
-        tokenType = TokenType.BAD_CHARACTER
+        tokenIndex++
     }
 
     override fun getBufferSequence(): CharSequence = buffer
 
     override fun getBufferEnd(): Int = endOffset
+
+    private fun tokenize(buffer: CharSequence, startOffset: Int, endOffset: Int): List<LineToken> {
+        val result = mutableListOf<LineToken>()
+        var pos = startOffset
+        while (pos < endOffset) {
+            val lineEnd = findLineEnd(buffer, pos, endOffset)
+            val lineText = buffer.subSequence(pos, lineEnd).toString()
+            val kind = classifyLine(lineText)
+            when (kind) {
+                LineKind.VALID -> result.addAll(tokenizeValidLine(pos, VALID_LINE.find(lineText)!!))
+                LineKind.COMMENT -> if (lineEnd > pos) result.add(LineToken(pos, lineEnd, TiBasicTokenTypes.COMMENT))
+            }
+            pos = lineEnd
+            if (pos < endOffset && buffer[pos] == '\r') pos++
+            if (pos < endOffset && buffer[pos] == '\n') {
+                result.add(LineToken(pos, pos + 1, TokenType.WHITE_SPACE))
+                pos++
+            }
+        }
+        return result
+    }
+
+    private fun findLineEnd(buffer: CharSequence, from: Int, limit: Int): Int {
+        var i = from
+        while (i < limit && buffer[i] != '\n' && buffer[i] != '\r') i++
+        return i
+    }
+
+    private fun classifyLine(lineText: String): LineKind {
+        val match = VALID_LINE.find(lineText) ?: return LineKind.COMMENT
+        val lineNumber = match.groupValues[2].toIntOrNull() ?: return LineKind.COMMENT
+        return if (lineNumber in 1..MAX_LINE_NUMBER) LineKind.VALID else LineKind.COMMENT
+    }
+
+    private fun tokenizeValidLine(lineStart: Int, match: MatchResult): List<LineToken> {
+        val result = mutableListOf<LineToken>()
+        var offset = lineStart
+        val (leadingWs, numStr, ws1, printStr, ws2, afterPrint) = match.destructured
+        val trailingWsLength = TRAILING_WS.find(afterPrint)!!.value.length
+        val argStr = afterPrint.dropLast(trailingWsLength)
+        if (leadingWs.isNotEmpty()) {
+            result.add(LineToken(offset, offset + leadingWs.length, TokenType.WHITE_SPACE))
+            offset += leadingWs.length
+        }
+        result.add(LineToken(offset, offset + numStr.length, TiBasicTokenTypes.LINE_NUMBER))
+        offset += numStr.length
+        if (ws1.isNotEmpty()) {
+            result.add(LineToken(offset, offset + ws1.length, TokenType.WHITE_SPACE))
+            offset += ws1.length
+        }
+        result.add(LineToken(offset, offset + printStr.length, TiBasicTokenTypes.PRINT_KEYWORD))
+        offset += printStr.length
+        if (ws2.isNotEmpty()) {
+            result.add(LineToken(offset, offset + ws2.length, TokenType.WHITE_SPACE))
+            offset += ws2.length
+        }
+        if (argStr.isNotEmpty()) {
+            result.add(LineToken(offset, offset + argStr.length, TiBasicTokenTypes.PRINT_ARGUMENT))
+            offset += argStr.length
+        }
+        if (trailingWsLength > 0) {
+            result.add(LineToken(offset, offset + trailingWsLength, TokenType.WHITE_SPACE))
+        }
+        return result
+    }
 }

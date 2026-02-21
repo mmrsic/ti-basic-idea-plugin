@@ -1,0 +1,13 @@
+package com.github.mmrsic.idea.plugins.tibasic.psi
+
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicFileType
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicLanguage
+import com.intellij.extapi.psi.PsiFileBase
+import com.intellij.openapi.fileTypes.FileType
+import com.intellij.psi.FileViewProvider
+
+class TiBasicFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, TiBasicLanguage) {
+    override fun getFileType(): FileType = TiBasicFileType
+    override fun toString(): String = "TI-Basic File"
+}
+
