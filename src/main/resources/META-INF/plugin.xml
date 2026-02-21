@@ -38,5 +38,9 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicParserDefinition"
         />
+        <annotator
+                language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicAnnotator"
+        />
     </extensions>
 </idea-plugin>
