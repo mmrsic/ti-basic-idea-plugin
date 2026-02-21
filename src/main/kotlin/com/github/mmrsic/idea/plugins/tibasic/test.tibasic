@@ -1,0 +1,4 @@
+PRINT 123
+REM This is a comment
+PRINT "Hello World"
+X = 42

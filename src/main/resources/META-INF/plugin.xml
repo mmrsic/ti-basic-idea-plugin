@@ -23,7 +23,20 @@
     <!-- Extensions defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <fileType name="TI-Basic" extensions="tibas,tibasic,ti-basic.txt"/>
-
+        <fileType
+                name="TI-Basic File"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicFileType"
+                fieldName="INSTANCE"
+                language="TI-Basic"
+                extensions="ti-basic;tibasic"
+        />
+        <lang.syntaxHighlighterFactory
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicSyntaxHighlighterFactory"
+                language="TI-Basic"
+        />
+        <completion.contributor
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicCompletionContributor"
+                language="TI-Basic"
+        />
     </extensions>
 </idea-plugin>
