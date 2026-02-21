@@ -76,6 +76,8 @@ Security & licensing
 
 Code style / commit conventions
 
+- Use comma after last argument on multi-line function calls and declarations (trailing commas) for cleaner diffs.
+- Prefer newlines before dot in chained calls for better readability, but exclude one-liners.
 - Keep the existing Java/Kotlin formatting style. Use `ktlint` or the IDEA inspector if configured project-wide.
 - Commit messages: short prefix (e.g., `feat:`, `fix:`, `chore:`), followed by a concise description and an optional
   body.

@@ -12,9 +12,9 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testWarningForEqualLineNumber() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT \"A\"\n<warning descr=\"Line number 100 does not follow ascending order (previous: 100)\">100 PRINT \"B\"</warning>"
+            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
         )
-        myFixture.checkHighlighting(false, false, true)
+        myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForDescendingLineNumber() {
@@ -36,6 +36,30 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testNoWarningForSingleLine() {
         myFixture.configureByText("test.tibasic", "100 PRINT \"A\"")
         myFixture.checkHighlighting(false, false, true)
+    }
+
+    fun testErrorForDuplicateLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForTriplicateLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>\n<error descr=\"Duplicate line number 100\">100 PRINT \"C\"</error>"
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorAndWarningForDuplicateNonAscendingLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "200 PRINT \"A\"\n<error descr=\"Duplicate line number 200\">200 PRINT \"B\"</error>"
+        )
+        myFixture.checkHighlighting(true, false, true)
     }
 }
 
