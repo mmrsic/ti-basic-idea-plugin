@@ -51,5 +51,11 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
+        <action
+                id="TiBasic.FormatCode"
+                class="com.github.mmrsic.idea.plugins.tibasic.FormatAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="CodeMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

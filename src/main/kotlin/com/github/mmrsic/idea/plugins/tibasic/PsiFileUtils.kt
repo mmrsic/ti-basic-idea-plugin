@@ -14,3 +14,12 @@ fun replaceFileText(project: Project, file: PsiFile, newText: String) {
     }
 }
 
+fun replaceRange(project: Project, file: PsiFile, startOffset: Int, endOffset: Int, newText: String) {
+    val documentManager = PsiDocumentManager.getInstance(project)
+    val document = documentManager.getDocument(file) ?: return
+    WriteCommandAction.runWriteCommandAction(project) {
+        document.replaceString(startOffset, endOffset, newText)
+        documentManager.commitDocument(document)
+    }
+}
+
