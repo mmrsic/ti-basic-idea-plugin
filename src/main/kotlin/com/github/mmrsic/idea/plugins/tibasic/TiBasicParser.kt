@@ -4,12 +4,21 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.COMMENT_LINE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.LINE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.PRINT_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.VARIABLE_ACCESS
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.CONCAT_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.DIV_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LPAREN
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.MINUS_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.MUL_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_VARIABLE
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PLUS_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.POW_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PRINT_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.RPAREN
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_VARIABLE
 import com.intellij.lang.ASTNode
@@ -28,13 +37,22 @@ import com.intellij.psi.tree.IElementType
  * line              ::= numberedLine | commentLine
  * numberedLine      ::= LINE_NUMBER WHITE_SPACE? printStatement
  * printStatement    ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
- * expression        ::= stringExpression | numericExpression
- * stringExpression  ::= stringOperand (CONCAT_OP stringOperand)*
- * stringOperand     ::= STRING_LITERAL | STRING_VARIABLE
- * numericExpression ::= NUMERIC_LITERAL | NUMERIC_VARIABLE
+ * expression        ::= stringExpr | numericExpr
+ * stringExpr        ::= stringOperand (CONCAT_OP stringOperand)*
+ * stringOperand     ::= STRING_LITERAL | variableAccess(STRING_VARIABLE)
+ * numericExpr       ::= numericAdd
+ * numericAdd        ::= numericMul ( ('+' | '-') numericMul )*
+ * numericMul        ::= numericPow ( ('*' | '/') numericPow )*
+ * numericPow        ::= numericUnary ('^' numericUnary)*        -- right-associative
+ * numericUnary      ::= ('+' | '-') numericUnary | numericPrimary
+ * numericPrimary    ::= NUMERIC_LITERAL
+ *                     | variableAccess
+ *                     | STRING_LITERAL | variableAccess(STRING_VARIABLE)   -- mismatch, parsed for error reporting
+ *                     | '(' numericAdd ')'
+ * variableAccess    ::= (NUMERIC_VARIABLE | STRING_VARIABLE) ( '(' subscriptList ')' )?
+ * subscriptList     ::= numericExpr (',' numericExpr)*           -- 1-3 validated by annotator
  * commentLine       ::= COMMENT
  * ```
- * Newlines (WHITE_SPACE containing '\n') serve as line separators and are consumed between lines.
  */
 class TiBasicParser : PsiParser, LightPsiParser {
 
@@ -67,58 +85,179 @@ class TiBasicParser : PsiParser, LightPsiParser {
 
     private fun parsePrintStatement(builder: PsiBuilder) {
         val stmtMarker = builder.mark()
-        if (builder.tokenType == PRINT_KEYWORD) {
-            builder.advanceLexer()
-        }
-        if (builder.tokenType == TokenType.WHITE_SPACE) {
-            builder.advanceLexer()
-        }
-        // Consume any invalid tokens that precede the first string operand.
-        while (!isLineEnd(builder) && !isExpressionStart(builder)) {
-            builder.advanceLexer()
-        }
-        if (isExpressionStart(builder)) {
-            parseExpression(builder)
-        }
-        // Consume any remaining intra-line tokens (invalid content left after expression parsing).
-        while (!isLineEnd(builder)) {
-            builder.advanceLexer()
-        }
+        if (builder.tokenType == PRINT_KEYWORD) builder.advanceLexer()
+        skipWhitespace(builder)
+        while (!isLineEnd(builder) && !isExpressionStart(builder)) builder.advanceLexer()
+        if (isExpressionStart(builder)) parseExpression(builder)
+        while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(PRINT_STATEMENT)
     }
 
     private fun parseExpression(builder: PsiBuilder) {
         val exprMarker = builder.mark()
-        if (builder.tokenType == NUMERIC_LITERAL || builder.tokenType == NUMERIC_VARIABLE) {
-            builder.advanceLexer()
-            exprMarker.done(EXPRESSION)
-            return
-        }
-        builder.advanceLexer() // consume first string operand
-        while (true) {
-            val checkpoint = builder.mark()
-            skipIntraLineWhitespace(builder)
-            if (builder.tokenType != CONCAT_OP) {
-                checkpoint.rollbackTo()
-                break
-            }
-            builder.advanceLexer() // consume CONCAT_OP
-            skipIntraLineWhitespace(builder)
-            if (!isStringOperand(builder)) {
-                checkpoint.rollbackTo()
-                break
-            }
-            checkpoint.drop()
-            builder.advanceLexer() // consume string operand
-        }
+        if (isStringOperand(builder)) parseStringExpr(builder) else parseNumericAdd(builder)
         exprMarker.done(EXPRESSION)
     }
 
-    private fun isExpressionStart(builder: PsiBuilder) =
-        isStringOperand(builder) || builder.tokenType == NUMERIC_LITERAL || builder.tokenType == NUMERIC_VARIABLE
+    // --- String expression ---
 
-    private fun isStringOperand(builder: PsiBuilder) =
+    private fun parseStringExpr(builder: PsiBuilder) {
+        parseStringOperand(builder)
+        while (true) {
+            val cp = builder.mark()
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType != CONCAT_OP) {
+                cp.rollbackTo(); break
+            }
+            builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (!isStringOperand(builder)) {
+                cp.rollbackTo(); break
+            }
+            cp.drop()
+            parseStringOperand(builder)
+        }
+    }
+
+    private fun parseStringOperand(builder: PsiBuilder) {
+        if (builder.tokenType == STRING_VARIABLE) parseVariableAccess(builder)
+        else builder.advanceLexer() // STRING_LITERAL
+    }
+
+    // --- Numeric expression (with semi-permissive mismatch handling) ---
+
+    private fun parseNumericAdd(builder: PsiBuilder) {
+        parseNumericMul(builder)
+        while (true) {
+            val cp = builder.mark()
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType != PLUS_OP && builder.tokenType != MINUS_OP) {
+                cp.rollbackTo(); break
+            }
+            builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (!isNumericPrimaryStart(builder)) {
+                cp.rollbackTo(); break
+            }
+            cp.drop()
+            parseNumericMul(builder)
+        }
+    }
+
+    private fun parseNumericMul(builder: PsiBuilder) {
+        parseNumericPow(builder)
+        while (true) {
+            val cp = builder.mark()
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType != MUL_OP && builder.tokenType != DIV_OP) {
+                cp.rollbackTo(); break
+            }
+            builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (!isNumericPrimaryStart(builder)) {
+                cp.rollbackTo(); break
+            }
+            cp.drop()
+            parseNumericPow(builder)
+        }
+    }
+
+    private fun parseNumericPow(builder: PsiBuilder) {
+        parseNumericUnary(builder)
+        val cp = builder.mark()
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType != POW_OP) {
+            cp.rollbackTo(); return
+        }
+        builder.advanceLexer()
+        skipIntraLineWhitespace(builder)
+        if (!isNumericPrimaryStart(builder)) {
+            cp.rollbackTo(); return
+        }
+        cp.drop()
+        parseNumericPow(builder) // right-associative
+    }
+
+    private fun parseNumericUnary(builder: PsiBuilder) {
+        if (builder.tokenType == PLUS_OP || builder.tokenType == MINUS_OP) {
+            builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            parseNumericUnary(builder)
+            return
+        }
+        parseNumericPrimary(builder)
+    }
+
+    private fun parseNumericPrimary(builder: PsiBuilder) {
+        when (builder.tokenType) {
+            NUMERIC_LITERAL -> builder.advanceLexer()
+            NUMERIC_VARIABLE, STRING_VARIABLE -> parseVariableAccess(builder) // STRING_VARIABLE = mismatch
+            STRING_LITERAL -> builder.advanceLexer() // mismatch but consume for error reporting
+            LPAREN -> {
+                builder.advanceLexer()
+                skipIntraLineWhitespace(builder)
+                if (isNumericPrimaryStart(builder)) parseNumericAdd(builder)
+                skipIntraLineWhitespace(builder)
+                if (builder.tokenType == RPAREN) builder.advanceLexer()
+            }
+        }
+    }
+
+    // --- Variable access (shared by string and numeric paths) ---
+
+    private fun parseVariableAccess(builder: PsiBuilder) {
+        val marker = builder.mark()
+        builder.advanceLexer() // consume NUMERIC_VARIABLE or STRING_VARIABLE
+        val cp = builder.mark()
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == LPAREN) {
+            cp.drop()
+            builder.advanceLexer() // consume (
+            parseSubscriptList(builder)
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == RPAREN) builder.advanceLexer()
+        } else {
+            cp.rollbackTo()
+        }
+        marker.done(VARIABLE_ACCESS)
+    }
+
+    private fun parseSubscriptList(builder: PsiBuilder) {
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == RPAREN || isLineEnd(builder)) return
+        parseSubscriptExpr(builder)
+        while (true) {
+            val cp = builder.mark()
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType != COMMA) {
+                cp.rollbackTo(); break
+            }
+            builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (!isNumericPrimaryStart(builder)) {
+                cp.rollbackTo(); break
+            }
+            cp.drop()
+            parseSubscriptExpr(builder)
+        }
+    }
+
+    private fun parseSubscriptExpr(builder: PsiBuilder) {
+        val marker = builder.mark()
+        parseNumericAdd(builder)
+        marker.done(EXPRESSION)
+    }
+
+    // --- Helpers ---
+
+    private fun isExpressionStart(builder: PsiBuilder): Boolean =
+        isStringOperand(builder) || isNumericPrimaryStart(builder)
+
+    private fun isStringOperand(builder: PsiBuilder): Boolean =
         builder.tokenType == STRING_LITERAL || builder.tokenType == STRING_VARIABLE
+
+    private fun isNumericPrimaryStart(builder: PsiBuilder): Boolean =
+        builder.tokenType in setOf(NUMERIC_LITERAL, NUMERIC_VARIABLE, PLUS_OP, MINUS_OP, LPAREN, STRING_LITERAL, STRING_VARIABLE)
 
     private fun parseCommentLine(builder: PsiBuilder) {
         val marker = builder.mark()
@@ -127,26 +266,20 @@ class TiBasicParser : PsiParser, LightPsiParser {
     }
 
     private fun skipNewlines(builder: PsiBuilder) {
-        while (!builder.eof() && builder.tokenType == TokenType.WHITE_SPACE) {
-            builder.advanceLexer()
-        }
+        while (!builder.eof() && builder.tokenType == TokenType.WHITE_SPACE) builder.advanceLexer()
     }
 
     private fun skipWhitespace(builder: PsiBuilder) {
-        if (!builder.eof() && builder.tokenType == TokenType.WHITE_SPACE) {
-            builder.advanceLexer()
-        }
+        if (!builder.eof() && builder.tokenType == TokenType.WHITE_SPACE) builder.advanceLexer()
     }
 
     private fun skipIntraLineWhitespace(builder: PsiBuilder) {
-        if (!isLineEnd(builder) && builder.tokenType == TokenType.WHITE_SPACE) {
-            builder.advanceLexer()
-        }
+        if (!isLineEnd(builder) && builder.tokenType == TokenType.WHITE_SPACE) builder.advanceLexer()
     }
 
-    private fun isLineEnd(builder: PsiBuilder): Boolean {
-        if (builder.eof()) return true
-        return builder.tokenType == LINE_NUMBER || builder.tokenType == COMMENT
-    }
+    private fun isLineEnd(builder: PsiBuilder): Boolean =
+        builder.eof() || builder.tokenType == LINE_NUMBER || builder.tokenType == COMMENT
 }
+
+
 

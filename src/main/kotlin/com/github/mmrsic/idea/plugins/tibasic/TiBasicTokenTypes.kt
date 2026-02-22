@@ -14,8 +14,15 @@ object TiBasicTokenTypes {
     val NUMERIC_LITERAL = TiBasicElementType("NUMERIC_LITERAL")
     val NUMERIC_VARIABLE = TiBasicElementType("NUMERIC_VARIABLE")
     val INVALID_VARIABLE_NAME = TiBasicElementType("INVALID_VARIABLE_NAME")
-    val INVALID_SUBSCRIPT = TiBasicElementType("INVALID_SUBSCRIPT")
     val CONCAT_OP = TiBasicElementType("CONCAT_OP")
+    val PLUS_OP = TiBasicElementType("PLUS_OP")
+    val MINUS_OP = TiBasicElementType("MINUS_OP")
+    val MUL_OP = TiBasicElementType("MUL_OP")
+    val DIV_OP = TiBasicElementType("DIV_OP")
+    val POW_OP = TiBasicElementType("POW_OP")
+    val LPAREN = TiBasicElementType("LPAREN")
+    val RPAREN = TiBasicElementType("RPAREN")
+    val COMMA = TiBasicElementType("COMMA")
     val COMMENT = TiBasicElementType("COMMENT")
 }
 
@@ -24,6 +31,7 @@ object TiBasicNodeTypes {
     val LINE = TiBasicElementType("LINE")
     val PRINT_STATEMENT = TiBasicElementType("PRINT_STATEMENT")
     val EXPRESSION = TiBasicElementType("EXPRESSION")
+    val VARIABLE_ACCESS = TiBasicElementType("VARIABLE_ACCESS")
     val COMMENT_LINE = TiBasicElementType("COMMENT_LINE")
 }
 

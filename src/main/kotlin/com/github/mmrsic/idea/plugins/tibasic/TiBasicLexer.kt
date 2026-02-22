@@ -31,8 +31,7 @@ class TiBasicLexer : LexerBase() {
         val TRAILING_WS = Regex("""([ \t]*)$""")
         val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
         val VALID_NUMERIC_VARIABLE_NAME = Regex("""^[A-Za-z@\[\]\\_][A-Za-z0-9@_]{0,14}$""")
-        val VALID_SUBSCRIPT = Regex("""^\s*\(\s*\d+\s*(,\s*\d+\s*){0,2}\)\s*$""")
-        val NUMERIC_LITERAL = Regex("""^[+-]?\d+(\.\d+)?([Ee][+-]?\d+)?$""")
+        val NUMERIC_LITERAL = Regex("""^\d+(\.\d+)?([Ee][+-]?\d+)?$""")
     }
 
     private enum class LineKind { VALID, PARTIAL_KEYWORD, COMMENT }
@@ -173,8 +172,7 @@ class TiBasicLexer : LexerBase() {
                     result.add(LineToken(offset + start, offset + i, TokenType.WHITE_SPACE))
                 }
                 ch == '"' -> {
-                    val start = i
-                    i++
+                    val start = i++
                     var closed = false
                     while (i < argStr.length) {
                         when {
@@ -183,62 +181,93 @@ class TiBasicLexer : LexerBase() {
                             else -> i++
                         }
                     }
-                    val type = if (closed) TiBasicTokenTypes.STRING_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT
-                    result.add(LineToken(offset + start, offset + i, type))
+                    result.add(
+                        LineToken(
+                            offset + start,
+                            offset + i,
+                            if (closed) TiBasicTokenTypes.STRING_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT
+                        )
+                    )
                 }
+
                 ch == '&' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.CONCAT_OP))
-                    i++
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.CONCAT_OP)); i++
                 }
-                else -> {
+
+                ch == '+' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PLUS_OP)); i++
+                }
+
+                ch == '-' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MINUS_OP)); i++
+                }
+
+                ch == '*' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MUL_OP)); i++
+                }
+
+                ch == '/' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.DIV_OP)); i++
+                }
+
+                ch == '^' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.POW_OP)); i++
+                }
+
+                ch == '(' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LPAREN)); i++
+                }
+
+                ch == ')' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.RPAREN)); i++
+                }
+
+                ch == ',' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COMMA)); i++
+                }
+
+                ch.isDigit() -> {
                     val start = i
-                    while (i < argStr.length && !argStr[i].isWhitespace() && argStr[i] != '"' && argStr[i] != '&') i++
-                    var end = i
-                    // For potential string variable names: look ahead past whitespace for an array subscript
-                    if (argStr.substring(start, end).endsWith("$", ignoreCase = true) ||
-                        (end > start && isVariableFirstChar(argStr[start]))
-                    ) {
-                        var j = end
-                        while (j < argStr.length && argStr[j].isWhitespace()) j++
-                        if (j < argStr.length && argStr[j] == '(') {
-                            j++ // skip '('
-                            while (j < argStr.length && argStr[j] != ')') j++
-                            if (j < argStr.length) {
-                                j++ // consume ')'
-                                end = j
-                                i = j
-                            }
-                        }
+                    while (i < argStr.length && argStr[i].isDigit()) i++
+                    if (i < argStr.length && argStr[i] == '.') {
+                        i++
+                        while (i < argStr.length && argStr[i].isDigit()) i++
                     }
-                    val tokenText = argStr.substring(start, end)
-                    val type = classifyArgumentToken(tokenText)
-                    result.add(LineToken(offset + start, offset + end, type))
+                    if (i < argStr.length && (argStr[i] == 'E' || argStr[i] == 'e')) {
+                        i++
+                        if (i < argStr.length && (argStr[i] == '+' || argStr[i] == '-')) i++
+                        while (i < argStr.length && argStr[i].isDigit()) i++
+                    }
+                    val text = argStr.substring(start, i)
+                    result.add(
+                        LineToken(
+                            offset + start,
+                            offset + i,
+                            if (NUMERIC_LITERAL.matches(text)) TiBasicTokenTypes.NUMERIC_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT
+                        )
+                    )
+                }
+
+                isVariableFirstChar(ch) -> {
+                    val start = i++
+                    while (i < argStr.length && (argStr[i].isLetterOrDigit() || argStr[i] == '@' || argStr[i] == '_')) i++
+                    if (i < argStr.length && argStr[i] == '$') i++
+                    val text = argStr.substring(start, i)
+                    result.add(LineToken(offset + start, offset + i, classifyIdentifierToken(text)))
+                }
+
+                else -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PRINT_ARGUMENT)); i++
                 }
             }
         }
         return result
     }
 
-    private fun classifyArgumentToken(text: String): IElementType {
-        if (NUMERIC_LITERAL.matches(text)) return TiBasicTokenTypes.NUMERIC_LITERAL
-        val dollarIdx = text.indexOf('$')
-        if (dollarIdx < 0) {
-            val parenIdx = text.indexOf('(')
-            if (parenIdx >= 0) {
-                val namePart = text.substring(0, parenIdx).trimEnd()
-                val subscriptPart = text.substring(parenIdx)
-                if (!VALID_NUMERIC_VARIABLE_NAME.matches(namePart)) return TiBasicTokenTypes.INVALID_VARIABLE_NAME
-                if (VALID_SUBSCRIPT.matches(subscriptPart)) return TiBasicTokenTypes.NUMERIC_VARIABLE
-                return TiBasicTokenTypes.INVALID_SUBSCRIPT
-            }
-            if (VALID_NUMERIC_VARIABLE_NAME.matches(text)) return TiBasicTokenTypes.NUMERIC_VARIABLE
-            return TiBasicTokenTypes.PRINT_ARGUMENT
-        }
-        val namePart = text.substring(0, dollarIdx + 1)
-        val subscriptPart = text.substring(dollarIdx + 1)
-        if (!VALID_VARIABLE_NAME.matches(namePart)) return TiBasicTokenTypes.INVALID_VARIABLE_NAME
-        if (subscriptPart.isEmpty() || VALID_SUBSCRIPT.matches(subscriptPart)) return TiBasicTokenTypes.STRING_VARIABLE
-        return TiBasicTokenTypes.INVALID_SUBSCRIPT
+    private fun classifyIdentifierToken(text: String): IElementType {
+        if (text.endsWith('$', ignoreCase = true))
+            return if (VALID_VARIABLE_NAME.matches(text)) TiBasicTokenTypes.STRING_VARIABLE else TiBasicTokenTypes.INVALID_VARIABLE_NAME
+        return if (VALID_NUMERIC_VARIABLE_NAME.matches(text)) TiBasicTokenTypes.NUMERIC_VARIABLE else TiBasicTokenTypes.INVALID_VARIABLE_NAME
     }
 
     private fun isVariableFirstChar(c: Char): Boolean =

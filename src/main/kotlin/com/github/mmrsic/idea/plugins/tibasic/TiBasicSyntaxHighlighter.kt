@@ -20,6 +20,10 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TextAttributesKey.createTextAttributesKey("TI_BASIC_NUMERIC_VARIABLE", DefaultLanguageHighlighterColors.LOCAL_VARIABLE)
         val CONCAT_OP =
             TextAttributesKey.createTextAttributesKey("TI_BASIC_CONCAT_OP", DefaultLanguageHighlighterColors.OPERATION_SIGN)
+        val ARITH_OP =
+            TextAttributesKey.createTextAttributesKey("TI_BASIC_ARITH_OP", DefaultLanguageHighlighterColors.OPERATION_SIGN)
+        val PAREN =
+            TextAttributesKey.createTextAttributesKey("TI_BASIC_PAREN", DefaultLanguageHighlighterColors.PARENTHESES)
         val PRINT_ARGUMENT =
             TextAttributesKey.createTextAttributesKey("TI_BASIC_PRINT_ARGUMENT", DefaultLanguageHighlighterColors.STRING)
         val COMMENT =
@@ -38,6 +42,14 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.NUMERIC_LITERAL -> arrayOf(NUMERIC_LITERAL)
             TiBasicTokenTypes.NUMERIC_VARIABLE -> arrayOf(NUMERIC_VARIABLE)
             TiBasicTokenTypes.CONCAT_OP -> arrayOf(CONCAT_OP)
+            TiBasicTokenTypes.PLUS_OP,
+            TiBasicTokenTypes.MINUS_OP,
+            TiBasicTokenTypes.MUL_OP,
+            TiBasicTokenTypes.DIV_OP,
+            TiBasicTokenTypes.POW_OP -> arrayOf(ARITH_OP)
+
+            TiBasicTokenTypes.LPAREN,
+            TiBasicTokenTypes.RPAREN -> arrayOf(PAREN)
             TiBasicTokenTypes.PRINT_ARGUMENT -> arrayOf(PRINT_ARGUMENT)
             TiBasicTokenTypes.COMMENT -> arrayOf(COMMENT)
             TokenType.BAD_CHARACTER -> arrayOf(DefaultLanguageHighlighterColors.INVALID_STRING_ESCAPE)

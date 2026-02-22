@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
@@ -36,6 +37,7 @@ class TiBasicParserDefinition : ParserDefinition {
             TiBasicNodeTypes.LINE -> TiBasicLine(node)
             TiBasicNodeTypes.PRINT_STATEMENT -> TiBasicPrintStatement(node)
             TiBasicNodeTypes.EXPRESSION -> TiBasicExpression(node)
+            TiBasicNodeTypes.VARIABLE_ACCESS -> TiBasicVariableAccess(node)
             TiBasicNodeTypes.COMMENT_LINE -> TiBasicCommentLine(node)
             else -> throw IllegalArgumentException("Unknown element type: ${node.elementType}")
         }

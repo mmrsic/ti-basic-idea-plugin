@@ -127,7 +127,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
             "test.tibasic",
             "100 PRINT \"a\" " +
                     "<error descr=\"PRINT argument must be an expression\">&</error> " +
-                    "<error descr=\"PRINT argument must be an expression\">42</error>",
+                    "<error descr=\"String-Number-Mismatch\">42</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -148,9 +148,10 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     }
 
     fun testErrorForDigitAsFirstCharInVariableName() {
+        // 1 is a numeric literal, A$ is a string variable after numeric expr → String-Number-Mismatch
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"Bad variable name\">1A$</error>",
+            "100 PRINT 1<error descr=\"String-Number-Mismatch\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -329,18 +330,17 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForNumericVariableWithHyphen() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"PRINT argument must be an expression\">A-B</error>",
-        )
+    fun testNoErrorForNumericVariableWithHyphen() {
+        // A-B is valid subtraction
+        myFixture.configureByText("test.tibasic", "100 PRINT A-B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForTokenStartingWithDigitNotNumericLiteral() {
+        // 1 is a numeric literal expression; A is a trailing token
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"PRINT argument must be an expression\">1A</error>",
+            "100 PRINT 1<error descr=\"PRINT argument must be an expression\">A</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -390,7 +390,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testErrorForNumericVariableTooLong() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"PRINT argument must be an expression\">ABCDEFGHIJKLMNOP</error>",
+            "100 PRINT <error descr=\"Bad variable name\">ABCDEFGHIJKLMNOP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -472,6 +472,97 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "test.tibasic",
             "100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT(1)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    // --- Arithmetic operator tests ---
+
+    fun testNoErrorForAddition() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A+B")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForSubtraction() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A-B")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForMultiplication() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A*B")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForDivision() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A/B")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForPower() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A^B")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForUnaryMinus() {
+        myFixture.configureByText("test.tibasic", "100 PRINT -A")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForMultipleUnaryPrefixes() {
+        myFixture.configureByText("test.tibasic", "100 PRINT +-+-1")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForParenthesizedExpression() {
+        myFixture.configureByText("test.tibasic", "100 PRINT (A+B)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForComplexArithmeticExpression() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A+B*C-D/E^F")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForSubscriptWithExpression() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A(B+1)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    // --- String-Number-Mismatch tests ---
+
+    fun testStringNumberMismatchNumericVarInNumericExpressionIsNotMismatch() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A+B")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testStringNumberMismatchStringLiteralInNumericExpression() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT A+<error descr=\"String-Number-Mismatch\">\"hello\"</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testStringNumberMismatchStringVarAfterNumericExpression() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT 1<error descr=\"String-Number-Mismatch\">A$</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testStringNumberMismatchConcatOpAfterNumericExpression() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT A<error descr=\"String-Number-Mismatch\">&</error><error descr=\"PRINT argument must be an expression\">B</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testStringNumberMismatchNumericLiteralAfterStringExpression() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> <error descr=\"String-Number-Mismatch\">42</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
