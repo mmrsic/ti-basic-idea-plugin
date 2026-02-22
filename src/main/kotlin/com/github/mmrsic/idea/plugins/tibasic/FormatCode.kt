@@ -36,16 +36,29 @@ private fun formattedLine(line: TiBasicLine): String {
 
 fun uppercaseOutsideStrings(text: String): String {
     val result = StringBuilder(text.length)
+    var i = 0
     var inString = false
-    for (ch in text) {
+    while (i < text.length) {
+        val ch = text[i]
         when {
+            ch == '"' && inString && i + 1 < text.length && text[i + 1] == '"' -> {
+                result.append('"')
+                result.append('"')
+                i += 2
+            }
             ch == '"' -> {
                 inString = !inString
                 result.append(ch)
+                i++
             }
-
-            inString -> result.append(ch)
-            else -> result.append(ch.uppercaseChar())
+            inString -> {
+                result.append(ch)
+                i++
+            }
+            else -> {
+                result.append(ch.uppercaseChar())
+                i++
+            }
         }
     }
     return result.toString()
@@ -53,17 +66,30 @@ fun uppercaseOutsideStrings(text: String): String {
 
 fun removeWhitespaceOutsideStrings(text: String): String {
     val result = StringBuilder(text.length)
+    var i = 0
     var inString = false
-    for (ch in text) {
+    while (i < text.length) {
+        val ch = text[i]
         when {
+            ch == '"' && inString && i + 1 < text.length && text[i + 1] == '"' -> {
+                result.append('"')
+                result.append('"')
+                i += 2
+            }
             ch == '"' -> {
                 inString = !inString
                 result.append(ch)
+                i++
             }
-
-            inString -> result.append(ch)
-            ch.isWhitespace() -> Unit
-            else -> result.append(ch)
+            inString -> {
+                result.append(ch)
+                i++
+            }
+            ch.isWhitespace() -> i++
+            else -> {
+                result.append(ch)
+                i++
+            }
         }
     }
     return result.toString()

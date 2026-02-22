@@ -1,12 +1,14 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.COMMENT_LINE
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.LINE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.PRINT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PRINT_ARGUMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PRINT_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_LITERAL
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -19,11 +21,12 @@ import com.intellij.psi.tree.IElementType
  *
  * Grammar (one iteration per source line):
  * ```
- * file         ::= line*
- * line         ::= numberedLine | commentLine
- * numberedLine ::= LINE_NUMBER WHITE_SPACE? printStatement
- * printStatement ::= PRINT_KEYWORD (WHITE_SPACE PRINT_ARGUMENT?)?
- * commentLine  ::= COMMENT
+ * file           ::= line*
+ * line           ::= numberedLine | commentLine
+ * numberedLine   ::= LINE_NUMBER WHITE_SPACE? printStatement
+ * printStatement ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
+ * expression     ::= STRING_LITERAL
+ * commentLine    ::= COMMENT
  * ```
  * Newlines (WHITE_SPACE containing '\n') serve as line separators and are consumed between lines.
  */
@@ -64,10 +67,17 @@ class TiBasicParser : PsiParser, LightPsiParser {
         if (builder.tokenType == TokenType.WHITE_SPACE) {
             builder.advanceLexer()
         }
-        if (builder.tokenType == PRINT_ARGUMENT) {
-            builder.advanceLexer()
+        when (builder.tokenType) {
+            STRING_LITERAL -> parseExpression(builder)
+            PRINT_ARGUMENT -> builder.advanceLexer()
         }
         stmtMarker.done(PRINT_STATEMENT)
+    }
+
+    private fun parseExpression(builder: PsiBuilder) {
+        val exprMarker = builder.mark()
+        builder.advanceLexer()
+        exprMarker.done(EXPRESSION)
     }
 
     private fun parseCommentLine(builder: PsiBuilder) {

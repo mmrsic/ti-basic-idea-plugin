@@ -73,8 +73,25 @@ class FormatCodeTest : BasePlatformTestCase() {
         assertEquals("\"abc\"\"def\"", uppercaseOutsideStrings("\"abc\"\"def\""))
     }
 
+    fun testUppercaseOutsideStringsPreservesEscapedQuoteInsideString() {
+        assertEquals("\"say \"\"hi\"\"\"", uppercaseOutsideStrings("\"say \"\"hi\"\"\""))
+    }
+
+    fun testUppercaseOutsideStringsUppercasesTextAfterStringWithEscapedQuote() {
+        assertEquals("\"a\"\"b\" END", uppercaseOutsideStrings("\"a\"\"b\" end"))
+    }
+
     fun testRemoveWhitespaceOutsideStringsKeepsStringWhitespace() {
         assertEquals("\"a b\";\"c d\"", removeWhitespaceOutsideStrings("\"a b\" ; \"c d\""))
+    }
+
+    fun testRemoveWhitespaceOutsideStringsPreservesEscapedQuoteInsideString() {
+        assertEquals("\"say \"\"hi\"\"\"", removeWhitespaceOutsideStrings("\"say \"\"hi\"\"\""))
+    }
+
+    fun testPrintWithStringContainingEscapedQuoteIsFormatted() {
+        val file = configureFile("100 print \"say \"\"hi\"\"\"")
+        assertEquals("100 PRINT \"say \"\"hi\"\"\"", formattedText(file))
     }
 
     private fun configureFile(text: String): TiBasicFile {

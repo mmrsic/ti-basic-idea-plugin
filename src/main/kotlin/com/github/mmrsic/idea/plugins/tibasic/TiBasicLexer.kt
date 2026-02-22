@@ -28,6 +28,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)(PRINT)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
         val TRAILING_WS = Regex("""([ \t]*)$""")
+        val STRING_LITERAL = Regex("""^"([^"]|"")*"$""")
         const val MAX_LINE_NUMBER = 32767
     }
 
@@ -43,8 +44,9 @@ class TiBasicLexer : LexerBase() {
     override fun start(buffer: CharSequence, startOffset: Int, endOffset: Int, initialState: Int) {
         this.buffer = buffer
         this.endOffset = endOffset
-        tokens = tokenize(buffer, startOffset, endOffset)
-        tokenIndex = 0
+        val lineStart = findLineStart(buffer, startOffset)
+        tokens = tokenize(buffer, lineStart, endOffset)
+        tokenIndex = tokens.indexOfFirst { it.start >= startOffset }.coerceAtLeast(0)
     }
 
     override fun getState(): Int = 0
@@ -84,6 +86,12 @@ class TiBasicLexer : LexerBase() {
         return result
     }
 
+    private fun findLineStart(buffer: CharSequence, offset: Int): Int {
+        var i = offset
+        while (i > 0 && buffer[i - 1] != '\n') i--
+        return i
+    }
+
     private fun findLineEnd(buffer: CharSequence, from: Int, limit: Int): Int {
         var i = from
         while (i < limit && buffer[i] != '\n' && buffer[i] != '\r') i++
@@ -119,7 +127,8 @@ class TiBasicLexer : LexerBase() {
             offset += ws2.length
         }
         if (argStr.isNotEmpty()) {
-            result.add(LineToken(offset, offset + argStr.length, TiBasicTokenTypes.PRINT_ARGUMENT))
+            val argTokenType = if (STRING_LITERAL.matches(argStr)) TiBasicTokenTypes.STRING_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT
+            result.add(LineToken(offset, offset + argStr.length, argTokenType))
             offset += argStr.length
         }
         if (trailingWsLength > 0) {

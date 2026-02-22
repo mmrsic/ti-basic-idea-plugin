@@ -12,6 +12,8 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TextAttributesKey.createTextAttributesKey("TI_BASIC_KEYWORD", DefaultLanguageHighlighterColors.KEYWORD)
         val LINE_NUMBER =
             TextAttributesKey.createTextAttributesKey("TI_BASIC_LINE_NUMBER", DefaultLanguageHighlighterColors.NUMBER)
+        val STRING_LITERAL =
+            TextAttributesKey.createTextAttributesKey("TI_BASIC_STRING_LITERAL", DefaultLanguageHighlighterColors.STRING)
         val PRINT_ARGUMENT =
             TextAttributesKey.createTextAttributesKey("TI_BASIC_PRINT_ARGUMENT", DefaultLanguageHighlighterColors.STRING)
         val COMMENT =
@@ -26,6 +28,7 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.PRINT_KEYWORD -> arrayOf(KEYWORD)
             TiBasicTokenTypes.IDENTIFIER -> arrayOf(DefaultLanguageHighlighterColors.IDENTIFIER)
             TiBasicTokenTypes.LINE_NUMBER -> arrayOf(LINE_NUMBER)
+            TiBasicTokenTypes.STRING_LITERAL -> arrayOf(STRING_LITERAL)
             TiBasicTokenTypes.PRINT_ARGUMENT -> arrayOf(PRINT_ARGUMENT)
             TiBasicTokenTypes.COMMENT -> arrayOf(COMMENT)
             TokenType.BAD_CHARACTER -> arrayOf(DefaultLanguageHighlighterColors.INVALID_STRING_ESCAPE)

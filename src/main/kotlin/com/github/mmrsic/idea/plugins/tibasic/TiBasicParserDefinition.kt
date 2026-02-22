@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
@@ -28,12 +29,13 @@ class TiBasicParserDefinition : ParserDefinition {
 
     override fun getCommentTokens(): TokenSet = TokenSet.EMPTY
 
-    override fun getStringLiteralElements(): TokenSet = TokenSet.EMPTY
+    override fun getStringLiteralElements(): TokenSet = TokenSet.create(TiBasicTokenTypes.STRING_LITERAL)
 
     override fun createElement(node: ASTNode): PsiElement =
         when (node.elementType) {
             TiBasicNodeTypes.LINE -> TiBasicLine(node)
             TiBasicNodeTypes.PRINT_STATEMENT -> TiBasicPrintStatement(node)
+            TiBasicNodeTypes.EXPRESSION -> TiBasicExpression(node)
             TiBasicNodeTypes.COMMENT_LINE -> TiBasicCommentLine(node)
             else -> throw IllegalArgumentException("Unknown element type: ${node.elementType}")
         }

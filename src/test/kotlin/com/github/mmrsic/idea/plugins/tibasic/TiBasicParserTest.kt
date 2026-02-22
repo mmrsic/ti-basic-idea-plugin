@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
@@ -113,6 +114,56 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         val comments = file.children.filterIsInstance<TiBasicCommentLine>()
         assertEquals(0, lines.size)
         assertEquals(0, comments.size)
+    }
+
+    fun testPrintWithStringLiteralCreatesExpression() {
+        val file = parseCode("100 PRINT \"hello\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testExpressionContainsStringLiteralText() {
+        val file = parseCode("100 PRINT \"hello\"")
+        val expr = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+            .children.filterIsInstance<TiBasicExpression>()[0]
+        assertEquals("\"hello\"", expr.text)
+    }
+
+    fun testPrintWithNonStringArgumentProducesNoPrintExpression() {
+        val file = parseCode("100 PRINT 42")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithMultipleExpressionsProducesNoPrintExpression() {
+        val file = parseCode("100 PRINT \"a\";\"b\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithEmptyStringLiteralCreatesExpression() {
+        val file = parseCode("100 PRINT \"\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithStringContainingEscapedQuoteCreatesExpression() {
+        val file = parseCode("100 PRINT \"say \"\"hi\"\"\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithUnclosedStringIsNotExpression() {
+        val file = parseCode("100 PRINT \"unclosed")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile

@@ -61,5 +61,41 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun testNoErrorForStringLiteralPrintArgument() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"hello\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForStringWithEscapedQuote() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"say \"\"hi\"\"\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForEmptyStringLiteral() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForPrintWithoutArgument() {
+        myFixture.configureByText("test.tibasic", "100 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNonStringLiteralPrintArgument() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"PRINT argument must be a string literal expression\">42</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForMultipleExpressionsAsPrintArgument() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"PRINT argument must be a string literal expression\">\"a\";\"b\"</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
 }
 

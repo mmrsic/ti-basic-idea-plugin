@@ -9,6 +9,7 @@ object TiBasicTokenTypes {
     val LINE_NUMBER = TiBasicElementType("LINE_NUMBER")
     val PRINT_KEYWORD = TiBasicElementType("PRINT_KEYWORD")
     val PRINT_ARGUMENT = TiBasicElementType("PRINT_ARGUMENT")
+    val STRING_LITERAL = TiBasicElementType("STRING_LITERAL")
     val COMMENT = TiBasicElementType("COMMENT")
 }
 
@@ -16,6 +17,7 @@ object TiBasicNodeTypes {
     val FILE = IFileElementType(TiBasicLanguage)
     val LINE = TiBasicElementType("LINE")
     val PRINT_STATEMENT = TiBasicElementType("PRINT_STATEMENT")
+    val EXPRESSION = TiBasicElementType("EXPRESSION")
     val COMMENT_LINE = TiBasicElementType("COMMENT_LINE")
 }
 

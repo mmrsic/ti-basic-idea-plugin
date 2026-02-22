@@ -9,6 +9,8 @@ class TiBasicLine(node: ASTNode) : ASTWrapperPsiElement(node) {
 
 class TiBasicPrintStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicCommentLine(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun commentText(): String = node.firstChildNode.text
 }
