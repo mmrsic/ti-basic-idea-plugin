@@ -8,6 +8,7 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_LITERAL
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_VARIABLE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PRINT_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_VARIABLE
@@ -30,7 +31,7 @@ import com.intellij.psi.tree.IElementType
  * expression        ::= stringExpression | numericExpression
  * stringExpression  ::= stringOperand (CONCAT_OP stringOperand)*
  * stringOperand     ::= STRING_LITERAL | STRING_VARIABLE
- * numericExpression ::= NUMERIC_LITERAL
+ * numericExpression ::= NUMERIC_LITERAL | NUMERIC_VARIABLE
  * commentLine       ::= COMMENT
  * ```
  * Newlines (WHITE_SPACE containing '\n') serve as line separators and are consumed between lines.
@@ -88,7 +89,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
 
     private fun parseExpression(builder: PsiBuilder) {
         val exprMarker = builder.mark()
-        if (builder.tokenType == NUMERIC_LITERAL) {
+        if (builder.tokenType == NUMERIC_LITERAL || builder.tokenType == NUMERIC_VARIABLE) {
             builder.advanceLexer()
             exprMarker.done(EXPRESSION)
             return
@@ -114,7 +115,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
     }
 
     private fun isExpressionStart(builder: PsiBuilder) =
-        isStringOperand(builder) || builder.tokenType == NUMERIC_LITERAL
+        isStringOperand(builder) || builder.tokenType == NUMERIC_LITERAL || builder.tokenType == NUMERIC_VARIABLE
 
     private fun isStringOperand(builder: PsiBuilder) =
         builder.tokenType == STRING_LITERAL || builder.tokenType == STRING_VARIABLE

@@ -12,6 +12,7 @@ object TiBasicTokenTypes {
     val STRING_LITERAL = TiBasicElementType("STRING_LITERAL")
     val STRING_VARIABLE = TiBasicElementType("STRING_VARIABLE")
     val NUMERIC_LITERAL = TiBasicElementType("NUMERIC_LITERAL")
+    val NUMERIC_VARIABLE = TiBasicElementType("NUMERIC_VARIABLE")
     val INVALID_VARIABLE_NAME = TiBasicElementType("INVALID_VARIABLE_NAME")
     val INVALID_SUBSCRIPT = TiBasicElementType("INVALID_SUBSCRIPT")
     val CONCAT_OP = TiBasicElementType("CONCAT_OP")

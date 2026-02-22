@@ -30,6 +30,7 @@ class TiBasicLexer : LexerBase() {
         val PARTIAL_KEYWORD_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)([A-Za-z]+)([ \t]*)$""")
         val TRAILING_WS = Regex("""([ \t]*)$""")
         val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
+        val VALID_NUMERIC_VARIABLE_NAME = Regex("""^[A-Za-z@\[\]\\_][A-Za-z0-9@_]{0,14}$""")
         val VALID_SUBSCRIPT = Regex("""^\s*\(\s*\d+\s*(,\s*\d+\s*){0,2}\)\s*$""")
         val NUMERIC_LITERAL = Regex("""^[+-]?\d+(\.\d+)?([Ee][+-]?\d+)?$""")
     }
@@ -194,7 +195,9 @@ class TiBasicLexer : LexerBase() {
                     while (i < argStr.length && !argStr[i].isWhitespace() && argStr[i] != '"' && argStr[i] != '&') i++
                     var end = i
                     // For potential string variable names: look ahead past whitespace for an array subscript
-                    if (argStr.substring(start, end).endsWith("$", ignoreCase = true)) {
+                    if (argStr.substring(start, end).endsWith("$", ignoreCase = true) ||
+                        (end > start && isVariableFirstChar(argStr[start]))
+                    ) {
                         var j = end
                         while (j < argStr.length && argStr[j].isWhitespace()) j++
                         if (j < argStr.length && argStr[j] == '(') {
@@ -219,11 +222,25 @@ class TiBasicLexer : LexerBase() {
     private fun classifyArgumentToken(text: String): IElementType {
         if (NUMERIC_LITERAL.matches(text)) return TiBasicTokenTypes.NUMERIC_LITERAL
         val dollarIdx = text.indexOf('$')
-        if (dollarIdx < 0) return TiBasicTokenTypes.PRINT_ARGUMENT
+        if (dollarIdx < 0) {
+            val parenIdx = text.indexOf('(')
+            if (parenIdx >= 0) {
+                val namePart = text.substring(0, parenIdx).trimEnd()
+                val subscriptPart = text.substring(parenIdx)
+                if (!VALID_NUMERIC_VARIABLE_NAME.matches(namePart)) return TiBasicTokenTypes.INVALID_VARIABLE_NAME
+                if (VALID_SUBSCRIPT.matches(subscriptPart)) return TiBasicTokenTypes.NUMERIC_VARIABLE
+                return TiBasicTokenTypes.INVALID_SUBSCRIPT
+            }
+            if (VALID_NUMERIC_VARIABLE_NAME.matches(text)) return TiBasicTokenTypes.NUMERIC_VARIABLE
+            return TiBasicTokenTypes.PRINT_ARGUMENT
+        }
         val namePart = text.substring(0, dollarIdx + 1)
         val subscriptPart = text.substring(dollarIdx + 1)
         if (!VALID_VARIABLE_NAME.matches(namePart)) return TiBasicTokenTypes.INVALID_VARIABLE_NAME
         if (subscriptPart.isEmpty() || VALID_SUBSCRIPT.matches(subscriptPart)) return TiBasicTokenTypes.STRING_VARIABLE
         return TiBasicTokenTypes.INVALID_SUBSCRIPT
     }
+
+    private fun isVariableFirstChar(c: Char): Boolean =
+        c.isLetter() || c == '@' || c == '[' || c == ']' || c == '\\' || c == '_'
 }

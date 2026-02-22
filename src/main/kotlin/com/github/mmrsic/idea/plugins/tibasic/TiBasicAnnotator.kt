@@ -1,14 +1,10 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.*
+import com.intellij.lang.ASTNode
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.lang.ASTNode
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
@@ -24,6 +20,7 @@ class TiBasicAnnotator : Annotator {
                 annotateNonAscendingLineNumbers(lines, duplicates, holder)
                 annotateVariableNameConflicts(element, holder)
             }
+
             is TiBasicLine -> annotateLineNumber(element, holder)
             is TiBasicCommentLine -> annotateCommentLineNumber(element, holder)
             is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
@@ -84,23 +81,44 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateVariableNameConflicts(file: TiBasicFile, holder: AnnotationHolder) {
-        val varNodes = file.children
+        val expressions = file.children
             .filterIsInstance<TiBasicLine>()
             .flatMap { it.children.filterIsInstance<TiBasicPrintStatement>() }
             .flatMap { it.children.filterIsInstance<TiBasicExpression>() }
-            .flatMap { expr ->
-                expr.node.getChildren(null)
-                    .filter { it.elementType == TiBasicTokenTypes.STRING_VARIABLE }
-                    .toList()
+        val stringVarNodes = expressions
+            .flatMap { expr -> expr.node.getChildren(null).filter { it.elementType == TiBasicTokenTypes.STRING_VARIABLE }.toList() }
+        val numericVarNodes = expressions
+            .flatMap { expr -> expr.node.getChildren(null).filter { it.elementType == TiBasicTokenTypes.NUMERIC_VARIABLE }.toList() }
+        annotateNameConflicts(stringVarNodes, holder, ::variableName, ::subscriptDimCount)
+        annotateNameConflicts(numericVarNodes, holder, ::numericVariableBaseName, ::numericSubscriptDimCount)
+        val keywords = TiBasicKeywords.getKeywords().map { it.uppercase() }.toSet()
+        (stringVarNodes + numericVarNodes).forEach { node ->
+            val baseName = if (node.elementType == TiBasicTokenTypes.STRING_VARIABLE)
+                variableName(node.text)
+            else
+                node.text.substringBefore('(').trimEnd().uppercase()
+            if (baseName in keywords) {
+                holder
+                    .newAnnotation(HighlightSeverity.ERROR, "Keyword cannot be used as variable name")
+                    .range(node.textRange)
+                    .create()
             }
-        val byName = mutableMapOf<String, MutableList<ASTNode>>()
-        for (node in varNodes) {
-            byName.getOrPut(variableName(node.text)) { mutableListOf() }.add(node)
         }
-        for ((_, nodes) in byName) {
-            val distinctDims = nodes.map { subscriptDimCount(it.text) }.toSet()
-            if (distinctDims.size > 1) {
-                nodes.forEach { node ->
+    }
+
+    private fun annotateNameConflicts(
+        nodes: List<ASTNode>,
+        holder: AnnotationHolder,
+        nameOf: (String) -> String,
+        dimCountOf: (String) -> Int,
+    ) {
+        val byName = mutableMapOf<String, MutableList<ASTNode>>()
+        for (node in nodes) {
+            byName.getOrPut(nameOf(node.text)) { mutableListOf() }.add(node)
+        }
+        for ((_, conflictNodes) in byName) {
+            if (conflictNodes.map { dimCountOf(it.text) }.toSet().size > 1) {
+                conflictNodes.forEach { node ->
                     holder
                         .newAnnotation(HighlightSeverity.ERROR, "Name conflict")
                         .range(node.textRange)
@@ -116,6 +134,15 @@ class TiBasicAnnotator : Annotator {
     private fun subscriptDimCount(tokenText: String): Int {
         val subscript = tokenText.substring(tokenText.indexOf('$') + 1).trim()
         return if (subscript.isEmpty()) 0 else subscript.count { it == ',' } + 1
+    }
+
+    private fun numericVariableBaseName(tokenText: String): String =
+        tokenText.substringBefore('(').trimEnd().uppercase()
+
+    private fun numericSubscriptDimCount(tokenText: String): Int {
+        val parenIdx = tokenText.indexOf('(')
+        if (parenIdx < 0) return 0
+        return tokenText.substring(parenIdx).count { it == ',' } + 1
     }
 
     private fun duplicateLineNumbers(lines: List<TiBasicLine>): Set<TiBasicLine> {

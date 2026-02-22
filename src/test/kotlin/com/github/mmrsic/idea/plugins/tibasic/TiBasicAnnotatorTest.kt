@@ -150,7 +150,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testErrorForDigitAsFirstCharInVariableName() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"Bad variable name\">1A\$</error>",
+            "100 PRINT <error descr=\"Bad variable name\">1A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -158,7 +158,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testErrorForTooLongVariableName() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"Bad variable name\">TOOLONGVARIABLE\$</error>",
+            "100 PRINT <error descr=\"Bad variable name\">TOOLONGVARIABLE$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -166,7 +166,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testErrorForFourDimensionalSubscript() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"Bad subscript definition\">A\$(1,2,3,4)</error>",
+            "100 PRINT <error descr=\"Bad subscript definition\">A$(1,2,3,4)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -174,7 +174,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testErrorForEmptySubscript() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"Bad subscript definition\">A\$()</error>",
+            "100 PRINT <error descr=\"Bad subscript definition\">A$()</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -197,8 +197,8 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testConflictBetweenSimpleVariableAndArray() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"Name conflict\">A\$</error>\n" +
-                    "200 PRINT <error descr=\"Name conflict\">A\$(1)</error>",
+            "100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
+                    "200 PRINT <error descr=\"Name conflict\">A$(1)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -206,8 +206,8 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testConflictBetweenArraysWithDifferentDimensions() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"Name conflict\">A\$(1)</error>\n" +
-                    "200 PRINT <error descr=\"Name conflict\">A\$(1,2)</error>",
+            "100 PRINT <error descr=\"Name conflict\">A$(1)</error>\n" +
+                    "200 PRINT <error descr=\"Name conflict\">A$(1,2)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -215,9 +215,9 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testConflictAnnotatedOnAllThreeOccurrences() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"Name conflict\">A\$</error>\n" +
-                    "200 PRINT <error descr=\"Name conflict\">A\$(1)</error>\n" +
-                    "300 PRINT <error descr=\"Name conflict\">A\$</error>",
+            "100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
+                    "200 PRINT <error descr=\"Name conflict\">A$(1)</error>\n" +
+                    "300 PRINT <error descr=\"Name conflict\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -310,6 +310,168 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "test.tibasic",
             "<error descr=\"Bad line number\">   NOT A LINE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNumericVariableInPrint() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNumericVariableWithMixedCase() {
+        myFixture.configureByText("test.tibasic", "100 PRINT myVar")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNumericVariableWithDigitsAndSpecialFirstChars() {
+        myFixture.configureByText("test.tibasic", "100 PRINT _A1@B")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableWithHyphen() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"PRINT argument must be an expression\">A-B</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForTokenStartingWithDigitNotNumericLiteral() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"PRINT argument must be an expression\">1A</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForDollarSignOnlyInStringVariable() {
+        // A$ is a valid string variable ($ only at end)
+        myFixture.configureByText("test.tibasic", "100 PRINT A$")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNumericVariableWithValidSubscript1D() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A(1)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNumericVariableWithValidSubscript2D() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A(1,2)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNumericVariableWithValidSubscript3D() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A(1,2,3)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNumericVariableWithSpacesAroundSubscript() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A ( 1 , 2 )")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableWithTooManySubscripts() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Bad subscript definition\">A(1,2,3,4)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableWithEmptySubscript() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Bad subscript definition\">A()</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableTooLong() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"PRINT argument must be an expression\">ABCDEFGHIJKLMNOP</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNumericVariableExactly15Chars() {
+        myFixture.configureByText("test.tibasic", "100 PRINT ABCDEFGHIJKLMNO")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    // --- Numeric variable name conflict tests ---
+
+    fun testNameConflictSimpleNumericAndArraySameName() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Name conflict\">A</error>\n" +
+                    "200 PRINT <error descr=\"Name conflict\">A(1)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNameConflictTwoNumericArraysDifferentDims() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Name conflict\">A(1)</error>\n" +
+                    "200 PRINT <error descr=\"Name conflict\">A(1,2)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoNameConflictTwoNumericSimpleVarsWithSameName() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A\n200 PRINT A")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoNameConflictTwoNumericArraysSameDimCount() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A(1)\n200 PRINT A(2)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoNameConflictNumericAndStringVarSameName() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A\n200 PRINT A$")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    // --- Keyword conflict tests ---
+
+    fun testErrorForNumericVariableMatchingKeyword() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForStringVariableWithSameNameAsKeywordButDifferentSuffix() {
+        myFixture.configureByText("test.tibasic", "100 PRINT PRINT$")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingKeywordCaseInsensitive() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">print</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForVariableWithKeywordAsPrefix() {
+        myFixture.configureByText("test.tibasic", "100 PRINT PRINTER")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForVariableWithKeywordAsSuffix() {
+        myFixture.configureByText("test.tibasic", "100 PRINT APRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericArrayMatchingKeyword() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT(1)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
