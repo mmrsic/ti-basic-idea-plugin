@@ -9,6 +9,7 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PRINT_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_LITERAL
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_VARIABLE
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -25,7 +26,8 @@ import com.intellij.psi.tree.IElementType
  * line           ::= numberedLine | commentLine
  * numberedLine   ::= LINE_NUMBER WHITE_SPACE? printStatement
  * printStatement ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
- * expression     ::= STRING_LITERAL (CONCAT_OP STRING_LITERAL)*
+ * expression     ::= stringOperand (CONCAT_OP stringOperand)*
+ * stringOperand  ::= STRING_LITERAL | STRING_VARIABLE
  * commentLine    ::= COMMENT
  * ```
  * Newlines (WHITE_SPACE containing '\n') serve as line separators and are consumed between lines.
@@ -67,11 +69,11 @@ class TiBasicParser : PsiParser, LightPsiParser {
         if (builder.tokenType == TokenType.WHITE_SPACE) {
             builder.advanceLexer()
         }
-        // Consume any invalid tokens that precede the first STRING_LITERAL.
-        while (!isLineEnd(builder) && builder.tokenType != STRING_LITERAL) {
+        // Consume any invalid tokens that precede the first string operand.
+        while (!isLineEnd(builder) && !isStringOperand(builder)) {
             builder.advanceLexer()
         }
-        if (builder.tokenType == STRING_LITERAL) {
+        if (isStringOperand(builder)) {
             parseExpression(builder)
         }
         // Consume any remaining intra-line tokens (invalid content left after expression parsing).
@@ -83,7 +85,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
 
     private fun parseExpression(builder: PsiBuilder) {
         val exprMarker = builder.mark()
-        builder.advanceLexer() // consume first STRING_LITERAL
+        builder.advanceLexer() // consume first string operand
         while (true) {
             val checkpoint = builder.mark()
             skipIntraLineWhitespace(builder)
@@ -93,15 +95,18 @@ class TiBasicParser : PsiParser, LightPsiParser {
             }
             builder.advanceLexer() // consume CONCAT_OP
             skipIntraLineWhitespace(builder)
-            if (builder.tokenType != STRING_LITERAL) {
+            if (!isStringOperand(builder)) {
                 checkpoint.rollbackTo()
                 break
             }
             checkpoint.drop()
-            builder.advanceLexer() // consume STRING_LITERAL
+            builder.advanceLexer() // consume string operand
         }
         exprMarker.done(EXPRESSION)
     }
+
+    private fun isStringOperand(builder: PsiBuilder) =
+        builder.tokenType == STRING_LITERAL || builder.tokenType == STRING_VARIABLE
 
     private fun parseCommentLine(builder: PsiBuilder) {
         val marker = builder.mark()

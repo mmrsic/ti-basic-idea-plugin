@@ -134,5 +134,100 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting(true, false, false)
     }
+
+    fun testNoErrorForStringVariable() {
+        myFixture.configureByText("test.tibasic", "100 PRINT Y$")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForStringVariableArray() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A$(1)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForStringVariableWithSpacesAroundSubscript() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A$ ( 1 , 2 )")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForDigitAsFirstCharInVariableName() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Bad variable name\">1A\$</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForTooLongVariableName() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Bad variable name\">TOOLONGVARIABLE\$</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForFourDimensionalSubscript() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Bad subscript definition\">A\$(1,2,3,4)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForEmptySubscript() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Bad subscript definition\">A\$()</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoConflictForSameSimpleVariableUsedTwice() {
+        myFixture.configureByText("test.tibasic", "100 PRINT Y$\n200 PRINT Y$")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoConflictForSameArrayUsedTwice() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A$(1)\n200 PRINT A$(2)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoConflictForSameTwoDimensionalArrayUsedTwice() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A$(1,2)\n200 PRINT A$(3,4)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testConflictBetweenSimpleVariableAndArray() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Name conflict\">A\$</error>\n" +
+                    "200 PRINT <error descr=\"Name conflict\">A\$(1)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testConflictBetweenArraysWithDifferentDimensions() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Name conflict\">A\$(1)</error>\n" +
+                    "200 PRINT <error descr=\"Name conflict\">A\$(1,2)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testConflictAnnotatedOnAllThreeOccurrences() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Name conflict\">A\$</error>\n" +
+                    "200 PRINT <error descr=\"Name conflict\">A\$(1)</error>\n" +
+                    "300 PRINT <error descr=\"Name conflict\">A\$</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoConflictBetweenDifferentVariableNames() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A$\n200 PRINT B$(1)")
+        myFixture.checkHighlighting(true, false, false)
+    }
 }
 

@@ -208,6 +208,246 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
+    fun testPrintWithStringVariableCreatesExpression() {
+        val file = parseCode("100 PRINT Y$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableExpressionText() {
+        val file = parseCode("100 PRINT Y$")
+        val expr = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+            .children.filterIsInstance<TiBasicExpression>()[0]
+        assertEquals("Y$", expr.text)
+    }
+
+    fun testPrintWithLongStringVariableNameCreatesExpression() {
+        val file = parseCode("100 PRINT STATES$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithHyphenInNameIsNotExpression() {
+        val file = parseCode("100 PRINT LAST-N$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableConcatenatedWithLiteralCreatesExpression() {
+        val file = parseCode("100 PRINT Y$ & \"hello\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, expressions.size)
+        assertEquals("Y$ & \"hello\"", expressions[0].text)
+    }
+
+    fun testStringLiteralConcatenatedWithVariableCreatesExpression() {
+        val file = parseCode("100 PRINT \"hello\" & Y$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, expressions.size)
+        assertEquals("\"hello\" & Y$", expressions[0].text)
+    }
+
+    fun testTooLongStringVariableNameIsNotExpression() {
+        // 16 chars including $ (TOOLONGVARIABLE = 15 letters + $) → PRINT_ARGUMENT, no EXPRESSION
+        val file = parseCode("100 PRINT TOOLONGVARIABLE$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithDigitsInNameCreatesExpression() {
+        val file = parseCode("100 PRINT A1B2$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithAtSignAsFirstCharCreatesExpression() {
+        val file = parseCode("100 PRINT @$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithUnderscoreAsFirstCharCreatesExpression() {
+        val file = parseCode("100 PRINT _$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithLeftBracketAsFirstCharCreatesExpression() {
+        val file = parseCode("100 PRINT [$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithRightBracketAsFirstCharCreatesExpression() {
+        val file = parseCode("100 PRINT ]$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithBackslashAsFirstCharCreatesExpression() {
+        val file = parseCode("100 PRINT \\\$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithAtSignInMiddleCreatesExpression() {
+        val file = parseCode("100 PRINT A@B$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithUnderscoreInMiddleCreatesExpression() {
+        val file = parseCode("100 PRINT A_B$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableAtMaxLengthCreatesExpression() {
+        // 14 uppercase letters + $ = 15 chars total (maximum allowed)
+        val file = parseCode("100 PRINT ABCDEFGHIJKLMN$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithLowercaseFirstCharCreatesExpression() {
+        val file = parseCode("100 PRINT a$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithDigitAsFirstCharIsNotExpression() {
+        val file = parseCode("100 PRINT 1A$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithLowercaseInMiddleCreatesExpression() {
+        val file = parseCode("100 PRINT Aa$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithDigitInMiddleCreatesExpression() {
+        val file = parseCode("100 PRINT A1$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableWithBracketInMiddleIsNotExpression() {
+        // [ and ] are only valid as first character, not within the name
+        val file = parseCode("100 PRINT A[$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableOneDimensionalArrayCreatesExpression() {
+        val file = parseCode("100 PRINT A$(1)")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, expressions.size)
+        assertEquals("A\$(1)", expressions[0].text)
+    }
+
+    fun testStringVariableTwoDimensionalArrayCreatesExpression() {
+        val file = parseCode("100 PRINT B$(2,3)")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, expressions.size)
+        assertEquals("B\$(2,3)", expressions[0].text)
+    }
+
+    fun testStringVariableThreeDimensionalArrayCreatesExpression() {
+        val file = parseCode("100 PRINT C$(4,5,6)")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, expressions.size)
+        assertEquals("C\$(4,5,6)", expressions[0].text)
+    }
+
+    fun testStringVariableArrayWithFourDimensionsIsNotExpression() {
+        val file = parseCode("100 PRINT A$(1,2,3,4)")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableArrayWithEmptySubscriptIsNotExpression() {
+        val file = parseCode("100 PRINT A$()")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableArrayWithUnclosedSubscriptIsNotExpression() {
+        val file = parseCode("100 PRINT A$(1")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableArrayConcatenatedCreatesExpression() {
+        val file = parseCode("100 PRINT A$(1) & B$(2,3)")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, expressions.size)
+        assertEquals("A\$(1) & B\$(2,3)", expressions[0].text)
+    }
+
+    fun testStringVariableArrayWithSpacesAroundParenCreatesExpression() {
+        val file = parseCode("100 PRINT A$ ( 1 )")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableArrayWithSpacesAroundCommasCreatesExpression() {
+        val file = parseCode("100 PRINT B$ ( 2 , 3 )")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableThreeDimensionalArrayWithSpacesCreatesExpression() {
+        val file = parseCode("100 PRINT C$ ( 4 , 5 , 6 )")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringVariableArrayWithSpaceBeforeParenStillConcatenates() {
+        val file = parseCode("100 PRINT A$ ( 1 ) & B$ ( 2 , 3 )")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

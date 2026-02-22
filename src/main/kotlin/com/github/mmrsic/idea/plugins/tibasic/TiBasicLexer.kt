@@ -29,6 +29,8 @@ class TiBasicLexer : LexerBase() {
         val VALID_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)(PRINT)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
         val PARTIAL_KEYWORD_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)([A-Za-z]+)([ \t]*)$""")
         val TRAILING_WS = Regex("""([ \t]*)$""")
+        val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
+        val VALID_SUBSCRIPT = Regex("""^\s*\(\s*\d+\s*(,\s*\d+\s*){0,2}\)\s*$""")
         const val MAX_LINE_NUMBER = 32767
     }
 
@@ -198,10 +200,37 @@ class TiBasicLexer : LexerBase() {
                 else -> {
                     val start = i
                     while (i < argStr.length && !argStr[i].isWhitespace() && argStr[i] != '"' && argStr[i] != '&') i++
-                    result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.PRINT_ARGUMENT))
+                    var end = i
+                    // For potential string variable names: look ahead past whitespace for an array subscript
+                    if (argStr.substring(start, end).endsWith("$", ignoreCase = true)) {
+                        var j = end
+                        while (j < argStr.length && argStr[j].isWhitespace()) j++
+                        if (j < argStr.length && argStr[j] == '(') {
+                            j++ // skip '('
+                            while (j < argStr.length && argStr[j] != ')') j++
+                            if (j < argStr.length) {
+                                j++ // consume ')'
+                                end = j
+                                i = j
+                            }
+                        }
+                    }
+                    val tokenText = argStr.substring(start, end)
+                    val type = classifyArgumentToken(tokenText)
+                    result.add(LineToken(offset + start, offset + end, type))
                 }
             }
         }
         return result
+    }
+
+    private fun classifyArgumentToken(text: String): IElementType {
+        val dollarIdx = text.indexOf('$')
+        if (dollarIdx < 0) return TiBasicTokenTypes.PRINT_ARGUMENT
+        val namePart = text.substring(0, dollarIdx + 1)
+        val subscriptPart = text.substring(dollarIdx + 1)
+        if (!VALID_VARIABLE_NAME.matches(namePart)) return TiBasicTokenTypes.INVALID_VARIABLE_NAME
+        if (subscriptPart.isEmpty() || VALID_SUBSCRIPT.matches(subscriptPart)) return TiBasicTokenTypes.STRING_VARIABLE
+        return TiBasicTokenTypes.INVALID_SUBSCRIPT
     }
 }
