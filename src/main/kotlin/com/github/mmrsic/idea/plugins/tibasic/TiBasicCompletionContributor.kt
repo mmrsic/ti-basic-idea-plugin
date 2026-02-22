@@ -11,9 +11,8 @@ class TiBasicCompletionContributor : CompletionContributor() {
         if (parameters.position.language != TiBasicLanguage) {
             return
         }
-
         TiBasicKeywords.getKeywords().forEach { keyword ->
-            result.addElement(LookupElementBuilder.create(keyword).withTypeText("keyword"))
+            result.caseInsensitive().addElement(LookupElementBuilder.create(keyword).withTypeText("keyword"))
         }
     }
 }

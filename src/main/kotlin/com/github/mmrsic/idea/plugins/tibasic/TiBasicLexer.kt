@@ -27,11 +27,12 @@ class TiBasicLexer : LexerBase() {
 
     private companion object {
         val VALID_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)(PRINT)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
+        val PARTIAL_KEYWORD_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)([A-Za-z]+)([ \t]*)$""")
         val TRAILING_WS = Regex("""([ \t]*)$""")
         const val MAX_LINE_NUMBER = 32767
     }
 
-    private enum class LineKind { VALID, COMMENT }
+    private enum class LineKind { VALID, PARTIAL_KEYWORD, COMMENT }
 
     private data class LineToken(val start: Int, val end: Int, val type: IElementType)
 
@@ -73,6 +74,7 @@ class TiBasicLexer : LexerBase() {
             val kind = classifyLine(lineText)
             when (kind) {
                 LineKind.VALID -> result.addAll(tokenizeValidLine(pos, VALID_LINE.find(lineText)!!))
+                LineKind.PARTIAL_KEYWORD -> result.addAll(tokenizePartialKeywordLine(pos, PARTIAL_KEYWORD_LINE.find(lineText)!!))
                 LineKind.COMMENT -> if (lineEnd > pos) result.add(LineToken(pos, lineEnd, TiBasicTokenTypes.COMMENT))
             }
             pos = lineEnd
@@ -98,9 +100,17 @@ class TiBasicLexer : LexerBase() {
     }
 
     private fun classifyLine(lineText: String): LineKind {
-        val match = VALID_LINE.find(lineText) ?: return LineKind.COMMENT
-        val lineNumber = match.groupValues[2].toIntOrNull() ?: return LineKind.COMMENT
-        return if (lineNumber in 1..MAX_LINE_NUMBER) LineKind.VALID else LineKind.COMMENT
+        val validMatch = VALID_LINE.find(lineText)
+        if (validMatch != null) {
+            val lineNumber = validMatch.groupValues[2].toIntOrNull() ?: return LineKind.COMMENT
+            if (lineNumber in 1..MAX_LINE_NUMBER) return LineKind.VALID
+        }
+        val partialMatch = PARTIAL_KEYWORD_LINE.find(lineText)
+        if (partialMatch != null) {
+            val lineNumber = partialMatch.groupValues[2].toIntOrNull() ?: return LineKind.COMMENT
+            if (lineNumber in 1..MAX_LINE_NUMBER) return LineKind.PARTIAL_KEYWORD
+        }
+        return LineKind.COMMENT
     }
 
     private fun tokenizeValidLine(lineStart: Int, match: MatchResult): List<LineToken> {
@@ -134,6 +144,27 @@ class TiBasicLexer : LexerBase() {
         }
         return result
     }
+
+    private fun tokenizePartialKeywordLine(lineStart: Int, match: MatchResult): List<LineToken> {
+        val result = mutableListOf<LineToken>()
+        var offset = lineStart
+        val (leadingWs, numStr, ws1, keywordStr, trailingWs) = match.destructured
+        if (leadingWs.isNotEmpty()) {
+            result.add(LineToken(offset, offset + leadingWs.length, TokenType.WHITE_SPACE))
+            offset += leadingWs.length
+        }
+        result.add(LineToken(offset, offset + numStr.length, TiBasicTokenTypes.LINE_NUMBER))
+        offset += numStr.length
+        result.add(LineToken(offset, offset + ws1.length, TokenType.WHITE_SPACE))
+        offset += ws1.length
+        result.add(LineToken(offset, offset + keywordStr.length, TiBasicTokenTypes.PRINT_KEYWORD))
+        offset += keywordStr.length
+        if (trailingWs.isNotEmpty()) {
+            result.add(LineToken(offset, offset + trailingWs.length, TokenType.WHITE_SPACE))
+        }
+        return result
+    }
+
 
     private fun tokenizeArgument(offset: Int, argStr: String): List<LineToken> {
         val result = mutableListOf<LineToken>()
