@@ -117,11 +117,8 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForNonStringLiteralPrintArgument() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"PRINT argument must be an expression\">42</error>",
-        )
+    fun testNoErrorForNumericLiteralPrintArgument() {
+        myFixture.configureByText("test.tibasic", "100 PRINT 42")
         myFixture.checkHighlighting(true, false, false)
     }
 

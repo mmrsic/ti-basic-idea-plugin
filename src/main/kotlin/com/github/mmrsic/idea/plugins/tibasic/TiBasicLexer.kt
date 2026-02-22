@@ -31,6 +31,7 @@ class TiBasicLexer : LexerBase() {
         val TRAILING_WS = Regex("""([ \t]*)$""")
         val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
         val VALID_SUBSCRIPT = Regex("""^\s*\(\s*\d+\s*(,\s*\d+\s*){0,2}\)\s*$""")
+        val NUMERIC_LITERAL = Regex("""^[+-]?\d+(\.\d+)?([Ee][+-]?\d+)?$""")
         const val MAX_LINE_NUMBER = 32767
     }
 
@@ -48,7 +49,7 @@ class TiBasicLexer : LexerBase() {
         this.endOffset = endOffset
         val lineStart = findLineStart(buffer, startOffset)
         tokens = tokenize(buffer, lineStart, endOffset)
-        tokenIndex = tokens.indexOfFirst { it.start >= startOffset }.coerceAtLeast(0)
+        tokenIndex = tokens.indexOfLast { it.start <= startOffset }.coerceAtLeast(0)
     }
 
     override fun getState(): Int = 0
@@ -225,6 +226,7 @@ class TiBasicLexer : LexerBase() {
     }
 
     private fun classifyArgumentToken(text: String): IElementType {
+        if (NUMERIC_LITERAL.matches(text)) return TiBasicTokenTypes.NUMERIC_LITERAL
         val dollarIdx = text.indexOf('$')
         if (dollarIdx < 0) return TiBasicTokenTypes.PRINT_ARGUMENT
         val namePart = text.substring(0, dollarIdx + 1)

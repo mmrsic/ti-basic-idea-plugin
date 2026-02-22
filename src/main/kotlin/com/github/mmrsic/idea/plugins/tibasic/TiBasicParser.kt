@@ -7,6 +7,7 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.PRINT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PRINT_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_VARIABLE
@@ -22,13 +23,15 @@ import com.intellij.psi.tree.IElementType
  *
  * Grammar (one iteration per source line):
  * ```
- * file           ::= line*
- * line           ::= numberedLine | commentLine
- * numberedLine   ::= LINE_NUMBER WHITE_SPACE? printStatement
- * printStatement ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
- * expression     ::= stringOperand (CONCAT_OP stringOperand)*
- * stringOperand  ::= STRING_LITERAL | STRING_VARIABLE
- * commentLine    ::= COMMENT
+ * file              ::= line*
+ * line              ::= numberedLine | commentLine
+ * numberedLine      ::= LINE_NUMBER WHITE_SPACE? printStatement
+ * printStatement    ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
+ * expression        ::= stringExpression | numericExpression
+ * stringExpression  ::= stringOperand (CONCAT_OP stringOperand)*
+ * stringOperand     ::= STRING_LITERAL | STRING_VARIABLE
+ * numericExpression ::= NUMERIC_LITERAL
+ * commentLine       ::= COMMENT
  * ```
  * Newlines (WHITE_SPACE containing '\n') serve as line separators and are consumed between lines.
  */
@@ -70,10 +73,10 @@ class TiBasicParser : PsiParser, LightPsiParser {
             builder.advanceLexer()
         }
         // Consume any invalid tokens that precede the first string operand.
-        while (!isLineEnd(builder) && !isStringOperand(builder)) {
+        while (!isLineEnd(builder) && !isExpressionStart(builder)) {
             builder.advanceLexer()
         }
-        if (isStringOperand(builder)) {
+        if (isExpressionStart(builder)) {
             parseExpression(builder)
         }
         // Consume any remaining intra-line tokens (invalid content left after expression parsing).
@@ -85,6 +88,11 @@ class TiBasicParser : PsiParser, LightPsiParser {
 
     private fun parseExpression(builder: PsiBuilder) {
         val exprMarker = builder.mark()
+        if (builder.tokenType == NUMERIC_LITERAL) {
+            builder.advanceLexer()
+            exprMarker.done(EXPRESSION)
+            return
+        }
         builder.advanceLexer() // consume first string operand
         while (true) {
             val checkpoint = builder.mark()
@@ -104,6 +112,9 @@ class TiBasicParser : PsiParser, LightPsiParser {
         }
         exprMarker.done(EXPRESSION)
     }
+
+    private fun isExpressionStart(builder: PsiBuilder) =
+        isStringOperand(builder) || builder.tokenType == NUMERIC_LITERAL
 
     private fun isStringOperand(builder: PsiBuilder) =
         builder.tokenType == STRING_LITERAL || builder.tokenType == STRING_VARIABLE

@@ -131,11 +131,11 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals("\"hello\"", expr.text)
     }
 
-    fun testPrintWithNonStringArgumentProducesNoPrintExpression() {
+    fun testPrintWithNumericLiteralCreatesExpression() {
         val file = parseCode("100 PRINT 42")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
-        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
     fun testPrintWithMultipleStringsJoinedByConcatOpCreatesExpression() {
@@ -446,6 +446,58 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
         assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithIntegerCreatesExpression() {
+        val file = parseCode("100 PRINT 3")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testIntegerExpressionText() {
+        val file = parseCode("100 PRINT 3")
+        val expr = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+            .children.filterIsInstance<TiBasicExpression>()[0]
+        assertEquals("3", expr.text)
+    }
+
+    fun testPrintWithNegativeRealCreatesExpression() {
+        val file = parseCode("100 PRINT -6.783452")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithLargeRealCreatesExpression() {
+        val file = parseCode("100 PRINT 1258948567.236")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithScientificNotationPositiveExponentCreatesExpression() {
+        val file = parseCode("100 PRINT 2.36958E15")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithScientificNotationNegativeExponentCreatesExpression() {
+        val file = parseCode("100 PRINT 8.254689E-12")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testNumericLiteralDoesNotConcatenateWithString() {
+        val file = parseCode("100 PRINT 42 & \"hello\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        val exprs = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, exprs.size)
+        assertEquals("42", exprs[0].text)
     }
 
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
