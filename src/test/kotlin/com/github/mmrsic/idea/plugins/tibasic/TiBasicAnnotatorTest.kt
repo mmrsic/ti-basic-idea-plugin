@@ -82,18 +82,55 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForNonStringLiteralPrintArgument() {
+    fun testNoErrorForConcatenationOfTwoStringLiterals() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"hello\" & \"world\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForConcatenationOfThreeStringLiterals() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"a\" & \"b\" & \"c\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForTrailingConcatOpWithNoRightOperand() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"PRINT argument must be a string literal expression\">42</error>",
+            "100 PRINT \"a\" <error descr=\"PRINT argument must be an expression\">&</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForMultipleExpressionsAsPrintArgument() {
+    fun testErrorForLeadingConcatOpWithNoLeftOperand() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT <error descr=\"PRINT argument must be a string literal expression\">\"a\";\"b\"</error>",
+            "100 PRINT <error descr=\"PRINT argument must be an expression\">&</error> \"b\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForInvalidSeparatorBetweenStringLiterals() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT \"a\"<error descr=\"PRINT argument must be an expression\">;</error>" +
+                    "<error descr=\"PRINT argument must be an expression\">\"b\"</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNonStringLiteralPrintArgument() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"PRINT argument must be an expression\">42</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForConcatWithNonStringRightOperand() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT \"a\" " +
+                    "<error descr=\"PRINT argument must be an expression\">&</error> " +
+                    "<error descr=\"PRINT argument must be an expression\">42</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }

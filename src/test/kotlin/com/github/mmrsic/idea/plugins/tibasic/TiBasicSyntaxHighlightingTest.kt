@@ -138,7 +138,42 @@ class TiBasicSyntaxHighlightingTest : BasePlatformTestCase() {
 
     // ── syntax highlighter attribute mapping ───────────────────────────────
 
-    fun testSyntaxHighlighterReturnKeywordAttributeForPrintKeywordToken() {
+    fun testConcatOpTokenIsEmittedBetweenStringLiterals() {
+        val buffer = "100 PRINT \"a\" & \"b\""
+        val lexer = TiBasicLexer()
+        lexer.start(buffer)
+        // advance past LINE_NUMBER, WS, PRINT_KEYWORD, WS, STRING_LITERAL, WS
+        repeat(6) { lexer.advance() }
+        assertEquals(TiBasicTokenTypes.CONCAT_OP, lexer.tokenType)
+        assertEquals("&", lexer.tokenSequence.toString())
+        lexer.advance()
+        assertEquals(TokenType.WHITE_SPACE, lexer.tokenType)
+        lexer.advance()
+        assertEquals(TiBasicTokenTypes.STRING_LITERAL, lexer.tokenType)
+        assertEquals("\"b\"", lexer.tokenSequence.toString())
+    }
+
+    fun testRestartAtConcatOpPositionYieldsConcatOpFirst() {
+        // "100 PRINT \"a\" & \"b\""
+        //  0123456789012345678901
+        //  LINE_NR WS PRINT WS "a" WS & WS "b"
+        //  [0,3)  [3,4)[4,9)[9,10)[10,13)[13,14)[14,15)[15,16)[16,19)
+        val buffer = "100 PRINT \"a\" & \"b\""
+        val concatOpOffset = 14
+        val lexer = TiBasicLexer()
+        lexer.start(buffer, concatOpOffset, buffer.length, 0)
+        assertEquals(TiBasicTokenTypes.CONCAT_OP, lexer.tokenType)
+        assertEquals("&", lexer.tokenSequence.toString())
+    }
+
+    fun testSyntaxHighlighterReturnsConcatOpAttributeForConcatOpToken() {
+        val highlighter = TiBasicSyntaxHighlighter()
+        val attributes = highlighter.getTokenHighlights(TiBasicTokenTypes.CONCAT_OP)
+        assertTrue("CONCAT_OP token type must map to at least one TextAttributesKey", attributes.isNotEmpty())
+        assertEquals(TiBasicSyntaxHighlighter.CONCAT_OP, attributes[0])
+    }
+
+    fun testSyntaxHighlighterReturnsKeywordAttributeForPrintKeywordToken() {
         val highlighter = TiBasicSyntaxHighlighter()
         val attributes = highlighter.getTokenHighlights(TiBasicTokenTypes.PRINT_KEYWORD)
         assertTrue("PRINT_KEYWORD token type must map to at least one TextAttributesKey", attributes.isNotEmpty())

@@ -10,6 +10,7 @@ object TiBasicTokenTypes {
     val PRINT_KEYWORD = TiBasicElementType("PRINT_KEYWORD")
     val PRINT_ARGUMENT = TiBasicElementType("PRINT_ARGUMENT")
     val STRING_LITERAL = TiBasicElementType("STRING_LITERAL")
+    val CONCAT_OP = TiBasicElementType("CONCAT_OP")
     val COMMENT = TiBasicElementType("COMMENT")
 }
 

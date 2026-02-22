@@ -12,13 +12,13 @@ import com.intellij.psi.tree.IElementType
  * Leading and trailing whitespace on valid lines is emitted as WHITE_SPACE tokens.
  *
  * Within a valid line the lexer produces:
- *  - WHITE_SPACE  – optional leading spaces/tabs
- *  - LINE_NUMBER  – the leading integer
- *  - WHITE_SPACE  – spaces/tabs between tokens
- *  - PRINT_KEYWORD – the PRINT keyword
- *  - WHITE_SPACE  – optional spaces/tabs after PRINT
- *  - PRINT_ARGUMENT – everything after whitespace up to trailing whitespace
- *  - WHITE_SPACE  – optional trailing spaces/tabs
+ *  - WHITE_SPACE    – optional leading spaces/tabs
+ *  - LINE_NUMBER    – the leading integer
+ *  - WHITE_SPACE    – spaces/tabs between tokens
+ *  - PRINT_KEYWORD  – the PRINT keyword
+ *  - WHITE_SPACE    – optional spaces/tabs after PRINT
+ *  - (per argument token): STRING_LITERAL | CONCAT_OP | PRINT_ARGUMENT | WHITE_SPACE
+ *  - WHITE_SPACE    – optional trailing spaces/tabs
  *
  * For invalid lines the entire line content (without the newline) is a single COMMENT token.
  * Newlines themselves are emitted as WHITE_SPACE so the parser can use them as line separators.
@@ -28,7 +28,6 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)(PRINT)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
         val TRAILING_WS = Regex("""([ \t]*)$""")
-        val STRING_LITERAL = Regex("""^"([^"]|"")*"$""")
         const val MAX_LINE_NUMBER = 32767
     }
 
@@ -127,12 +126,50 @@ class TiBasicLexer : LexerBase() {
             offset += ws2.length
         }
         if (argStr.isNotEmpty()) {
-            val argTokenType = if (STRING_LITERAL.matches(argStr)) TiBasicTokenTypes.STRING_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT
-            result.add(LineToken(offset, offset + argStr.length, argTokenType))
+            result.addAll(tokenizeArgument(offset, argStr))
             offset += argStr.length
         }
         if (trailingWsLength > 0) {
             result.add(LineToken(offset, offset + trailingWsLength, TokenType.WHITE_SPACE))
+        }
+        return result
+    }
+
+    private fun tokenizeArgument(offset: Int, argStr: String): List<LineToken> {
+        val result = mutableListOf<LineToken>()
+        var i = 0
+        while (i < argStr.length) {
+            val ch = argStr[i]
+            when {
+                ch.isWhitespace() -> {
+                    val start = i
+                    while (i < argStr.length && argStr[i].isWhitespace()) i++
+                    result.add(LineToken(offset + start, offset + i, TokenType.WHITE_SPACE))
+                }
+                ch == '"' -> {
+                    val start = i
+                    i++
+                    var closed = false
+                    while (i < argStr.length) {
+                        when {
+                            argStr[i] == '"' && i + 1 < argStr.length && argStr[i + 1] == '"' -> i += 2
+                            argStr[i] == '"' -> { i++; closed = true; break }
+                            else -> i++
+                        }
+                    }
+                    val type = if (closed) TiBasicTokenTypes.STRING_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT
+                    result.add(LineToken(offset + start, offset + i, type))
+                }
+                ch == '&' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.CONCAT_OP))
+                    i++
+                }
+                else -> {
+                    val start = i
+                    while (i < argStr.length && !argStr[i].isWhitespace() && argStr[i] != '"' && argStr[i] != '&') i++
+                    result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.PRINT_ARGUMENT))
+                }
+            }
         }
         return result
     }

@@ -7,6 +7,7 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.psi.PsiElement
+import com.intellij.psi.TokenType
 
 class TiBasicAnnotator : Annotator {
 
@@ -23,11 +24,19 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateInvalidPrintArgument(statement: TiBasicPrintStatement, holder: AnnotationHolder) {
-        val invalidArg = statement.node.findChildByType(TiBasicTokenTypes.PRINT_ARGUMENT) ?: return
-        holder
-            .newAnnotation(HighlightSeverity.ERROR, "PRINT argument must be a string literal expression")
-            .range(invalidArg.textRange)
-            .create()
+        val validChildren = setOf(
+            TiBasicTokenTypes.PRINT_KEYWORD,
+            TokenType.WHITE_SPACE,
+            TiBasicNodeTypes.EXPRESSION,
+        )
+        statement.node.getChildren(null)
+            .filter { it.elementType !in validChildren }
+            .forEach { invalidChild ->
+                holder
+                    .newAnnotation(HighlightSeverity.ERROR, "PRINT argument must be an expression")
+                    .range(invalidChild.textRange)
+                    .create()
+            }
     }
 
     private fun duplicateLineNumbers(lines: List<TiBasicLine>): Set<TiBasicLine> {

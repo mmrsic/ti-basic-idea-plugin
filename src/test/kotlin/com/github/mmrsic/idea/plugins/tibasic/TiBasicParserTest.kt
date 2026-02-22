@@ -138,11 +138,53 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
-    fun testPrintWithMultipleExpressionsProducesNoPrintExpression() {
+    fun testPrintWithMultipleStringsJoinedByConcatOpCreatesExpression() {
+        val file = parseCode("100 PRINT \"a\" & \"b\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testExpressionTextIncludesAllConcatenatedParts() {
+        val file = parseCode("100 PRINT \"a\" & \"b\"")
+        val expr = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+            .children.filterIsInstance<TiBasicExpression>()[0]
+        assertEquals("\"a\" & \"b\"", expr.text)
+    }
+
+    fun testConcatenationOfThreeStringsCreatesExpression() {
+        val file = parseCode("100 PRINT \"a\" & \"b\" & \"c\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testConcatenationWithoutSpacesCreatesExpression() {
+        val file = parseCode("100 PRINT \"a\"&\"b\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testTrailingConcatOpProducesNoFullExpression() {
+        // "a" & has no right-hand operand → rollback; EXPRESSION contains only "a"
+        val file = parseCode("100 PRINT \"a\" &")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, expressions.size)
+        assertEquals("\"a\"", expressions[0].text)
+    }
+
+    fun testPrintWithInvalidSeparatorCreatesPartialExpression() {
+        // "a";"b" – semicolon is not & → EXPRESSION for "a" only
         val file = parseCode("100 PRINT \"a\";\"b\"")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
-        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, expressions.size)
+        assertEquals("\"a\"", expressions[0].text)
     }
 
     fun testPrintWithEmptyStringLiteralCreatesExpression() {
