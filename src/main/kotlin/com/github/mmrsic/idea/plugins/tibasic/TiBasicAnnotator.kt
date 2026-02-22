@@ -22,30 +22,29 @@ class TiBasicAnnotator : Annotator {
         return lines.filter { !seen.add(it.lineNumber()) }.toSet()
     }
 
-    private fun annotateDuplicateLineNumbers(
-        duplicates: Set<TiBasicLine>,
-        holder: AnnotationHolder
-    ) {
-        duplicates.forEach { line ->
-            holder.newAnnotation(
-                HighlightSeverity.ERROR,
-                "Duplicate line number ${line.lineNumber()}"
-            ).range(line).create()
-        }
+    private fun annotateDuplicateLineNumbers(duplicates: Set<TiBasicLine>, holder: AnnotationHolder) {
+        duplicates
+            .forEach { line ->
+                holder
+                    .newAnnotation(HighlightSeverity.ERROR, "Duplicate line number ${line.lineNumber()}")
+                    .range(line)
+                    .withFix(ResequenceQuickFix(line))
+                    .create()
+            }
     }
 
-    private fun annotateNonAscendingLineNumbers(
-        lines: List<TiBasicLine>,
-        duplicates: Set<TiBasicLine>,
-        holder: AnnotationHolder,
-    ) {
+    private fun annotateNonAscendingLineNumbers(lines: List<TiBasicLine>, duplicates: Set<TiBasicLine>, holder: AnnotationHolder) {
         lines.zipWithNext().forEach { (previous, current) ->
             if (current in duplicates) return@forEach
             if (current.lineNumber() <= previous.lineNumber()) {
-                holder.newAnnotation(
-                    HighlightSeverity.WARNING,
-                    "Line number ${current.lineNumber()} does not follow ascending order (previous: ${previous.lineNumber()})"
-                ).range(current).create()
+                holder
+                    .newAnnotation(
+                        HighlightSeverity.WARNING,
+                        "Line number ${current.lineNumber()} does not follow ascending order (previous: ${previous.lineNumber()})",
+                    )
+                    .range(current)
+                    .withFix(ResequenceQuickFix(current))
+                    .create()
             }
         }
     }

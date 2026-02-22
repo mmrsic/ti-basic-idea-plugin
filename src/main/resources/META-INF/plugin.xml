@@ -15,6 +15,7 @@
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
+    <resource-bundle>messages.TiBasicBundle</resource-bundle>
     <!-- Extensions defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
@@ -43,4 +44,12 @@
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicAnnotator"
         />
     </extensions>
+    <actions>
+        <action
+                id="TiBasic.ResequenceLineNumbers"
+                class="com.github.mmrsic.idea.plugins.tibasic.ResequenceAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="CodeMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

@@ -58,8 +58,8 @@ Tests, quality assurance & debugging
 
 - Use the IntelliJ Plugin Test Framework for unit and integration tests (light and heavy test setups).
 - At minimum provide: a parsing happy-path test, an annotator test (error detection), and a line marker/action test.
-- Run local tests before committing: `./gradlew test` and `./gradlew runIde` for manual sandbox testing.
-- Use the Plugin Verifier (`./gradlew verifyPlugin`) in CI for the target IDE versions.
+- Never run local tests automatically, always let user run them: `./gradlew test` and `./gradlew runIde` for manual sandbox testing.
+- Use the Plugin Verifier (`./gradlew verifyPlugin`) only in CI for the target IDE versions.
 
 Continuous integration / release
 

@@ -8,7 +8,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 - Syntax highlighting for TI-Basic source files (`.ti-basic`, `.tibasic`, `.ti.bas`)
 - Line-based parser: each valid line consists of a line number (1–32767) followed by a `PRINT` statement
 - Lines that do not match the grammar are treated as comment lines
-- Leading and trailing whitespace on valid lines is recognised and ignored
+- Leading and trailing whitespace on valid lines is recognized and ignored
 - Code completion for TI-Basic keywords
 - Custom file icon for TI-Basic source files
 
@@ -43,10 +43,10 @@ src/
 
 ## Prerequisites
 
-| Tool | Minimum version |
-|------|----------------|
-| JDK  | 21             |
-| Gradle | 8.x (via wrapper) |
+| Tool          | Minimum version          |
+|---------------|--------------------------|
+| JDK           | 21                       |
+| Gradle        | 8.x (via wrapper)        |
 | IntelliJ IDEA | 2025.2 (target platform) |
 
 ## Building
@@ -74,8 +74,8 @@ A **valid line** matches:
 ```
 
 - `lineNumber` — integer in the range **1–32767** (case-insensitive `PRINT` keyword)
-- Leading and trailing whitespace on a valid line is tokenised as `WHITE_SPACE` and ignored by the parser
-- Every other line is tokenised as a single `COMMENT` token and wrapped in a `CommentLine` PSI node
+- Leading and trailing whitespace on a valid line is tokenized as `WHITE_SPACE` and ignored by the parser
+- Every other line is tokenized as a single `COMMENT` token and wrapped in a `CommentLine` PSI node
 
 ## Running tests
 
