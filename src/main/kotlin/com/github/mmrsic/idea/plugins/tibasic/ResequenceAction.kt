@@ -18,7 +18,9 @@ class ResequenceAction : AnAction() {
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
         val file = event.getData(CommonDataKeys.PSI_FILE) as? TiBasicFile ?: return
-        val newText = resequencedText(file)
+        val dialog = ResequenceOptionsDialog(project)
+        if (!dialog.showAndGet()) return
+        val newText = resequencedText(file, start = dialog.chosenStart, step = dialog.chosenStep)
         replaceFileText(project, file, newText)
     }
 }
