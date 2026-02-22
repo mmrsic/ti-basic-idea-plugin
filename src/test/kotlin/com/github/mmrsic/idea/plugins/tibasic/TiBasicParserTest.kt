@@ -36,11 +36,31 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(32767, lines[0].lineNumber())
     }
 
-    fun testLineNumberAboveMaxIsComment() {
+    fun testLineNumberAboveMaxIsLineNotComment() {
         val file = parseCode("32768 PRINT")
-        val comments = file.children.filterIsInstance<TiBasicCommentLine>()
-        assertEquals(1, comments.size)
-        assertEquals("32768 PRINT", comments[0].commentText())
+        assertEquals(0, file.children.filterIsInstance<TiBasicCommentLine>().size)
+        assertEquals(1, file.children.filterIsInstance<TiBasicLine>().size)
+    }
+
+    fun testLineNumberWithLeadingZerosIsValidLine() {
+        val file = parseCode("0100 PRINT")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(100, lines[0].lineNumber())
+    }
+
+    fun testLineNumberManyLeadingZerosIsValidLine() {
+        val file = parseCode("000000100 PRINT")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(100, lines[0].lineNumber())
+    }
+
+    fun testLineNumberAllZerosIsLine() {
+        // 0 is outside 1..32767 → still parsed as TiBasicLine, annotator flags it
+        val file = parseCode("000 PRINT")
+        assertEquals(1, file.children.filterIsInstance<TiBasicLine>().size)
+        assertEquals(0, file.children.filterIsInstance<TiBasicCommentLine>().size)
     }
 
     fun testMultipleValidLines() {

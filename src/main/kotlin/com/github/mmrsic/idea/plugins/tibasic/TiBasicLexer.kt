@@ -26,13 +26,12 @@ import com.intellij.psi.tree.IElementType
 class TiBasicLexer : LexerBase() {
 
     private companion object {
-        val VALID_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)(PRINT)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
-        val PARTIAL_KEYWORD_LINE = Regex("""^([ \t]*)(\d{1,5})([ \t]+)([A-Za-z]+)([ \t]*)$""")
+        val VALID_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
+        val PARTIAL_KEYWORD_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)([A-Za-z]+)([ \t]*)$""")
         val TRAILING_WS = Regex("""([ \t]*)$""")
         val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
         val VALID_SUBSCRIPT = Regex("""^\s*\(\s*\d+\s*(,\s*\d+\s*){0,2}\)\s*$""")
         val NUMERIC_LITERAL = Regex("""^[+-]?\d+(\.\d+)?([Ee][+-]?\d+)?$""")
-        const val MAX_LINE_NUMBER = 32767
     }
 
     private enum class LineKind { VALID, PARTIAL_KEYWORD, COMMENT }
@@ -103,16 +102,8 @@ class TiBasicLexer : LexerBase() {
     }
 
     private fun classifyLine(lineText: String): LineKind {
-        val validMatch = VALID_LINE.find(lineText)
-        if (validMatch != null) {
-            val lineNumber = validMatch.groupValues[2].toIntOrNull() ?: return LineKind.COMMENT
-            if (lineNumber in 1..MAX_LINE_NUMBER) return LineKind.VALID
-        }
-        val partialMatch = PARTIAL_KEYWORD_LINE.find(lineText)
-        if (partialMatch != null) {
-            val lineNumber = partialMatch.groupValues[2].toIntOrNull() ?: return LineKind.COMMENT
-            if (lineNumber in 1..MAX_LINE_NUMBER) return LineKind.PARTIAL_KEYWORD
-        }
+        if (VALID_LINE.containsMatchIn(lineText)) return LineKind.VALID
+        if (PARTIAL_KEYWORD_LINE.containsMatchIn(lineText)) return LineKind.PARTIAL_KEYWORD
         return LineKind.COMMENT
     }
 

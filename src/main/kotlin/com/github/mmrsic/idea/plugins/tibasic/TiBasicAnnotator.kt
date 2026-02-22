@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
@@ -8,6 +9,7 @@ import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.lang.ASTNode
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
 
@@ -22,6 +24,8 @@ class TiBasicAnnotator : Annotator {
                 annotateNonAscendingLineNumbers(lines, duplicates, holder)
                 annotateVariableNameConflicts(element, holder)
             }
+            is TiBasicLine -> annotateLineNumber(element, holder)
+            is TiBasicCommentLine -> annotateCommentLineNumber(element, holder)
             is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
         }
     }
@@ -45,6 +49,38 @@ class TiBasicAnnotator : Annotator {
                     .range(invalidChild.textRange)
                     .create()
             }
+    }
+
+    private fun annotateLineNumber(line: TiBasicLine, holder: AnnotationHolder) {
+        val lineNumberNode = line.node.firstChildNode
+        val lineNumber = lineNumberNode.text.toLongOrNull()
+        if (lineNumber == null || lineNumber !in 1L..32767L) {
+            holder
+                .newAnnotation(HighlightSeverity.ERROR, "Bad line number")
+                .range(lineNumberNode.textRange)
+                .create()
+        }
+    }
+
+    private fun annotateCommentLineNumber(comment: TiBasicCommentLine, holder: AnnotationHolder) {
+        val token = comment.node.firstChildNode
+        val text = token.text
+        var i = 0
+        while (i < text.length && text[i].isWhitespace()) i++
+        val digitsStart = i
+        while (i < text.length && text[i].isDigit()) i++
+        val digitsEnd = i
+        val lineNumber = if (digitsEnd > digitsStart) text.substring(digitsStart, digitsEnd).toLongOrNull() else null
+        if (lineNumber == null || lineNumber !in 1L..32767L) {
+            val errorRange = if (digitsEnd > digitsStart)
+                TextRange(token.startOffset + digitsStart, token.startOffset + digitsEnd)
+            else
+                token.textRange
+            holder
+                .newAnnotation(HighlightSeverity.ERROR, "Bad line number")
+                .range(errorRange)
+                .create()
+        }
     }
 
     private fun annotateVariableNameConflicts(file: TiBasicFile, holder: AnnotationHolder) {
@@ -84,7 +120,7 @@ class TiBasicAnnotator : Annotator {
 
     private fun duplicateLineNumbers(lines: List<TiBasicLine>): Set<TiBasicLine> {
         val seen = mutableSetOf<Int>()
-        return lines.filter { !seen.add(it.lineNumber()) }.toSet()
+        return lines.filter { it.lineNumber() in 1..32767 && !seen.add(it.lineNumber()) }.toSet()
     }
 
     private fun annotateDuplicateLineNumbers(duplicates: Set<TiBasicLine>, holder: AnnotationHolder) {
@@ -99,7 +135,7 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateNonAscendingLineNumbers(lines: List<TiBasicLine>, duplicates: Set<TiBasicLine>, holder: AnnotationHolder) {
-        lines.zipWithNext().forEach { (previous, current) ->
+        lines.filter { it.lineNumber() in 1..32767 }.zipWithNext().forEach { (previous, current) ->
             if (current in duplicates) return@forEach
             if (current.lineNumber() <= previous.lineNumber()) {
                 holder

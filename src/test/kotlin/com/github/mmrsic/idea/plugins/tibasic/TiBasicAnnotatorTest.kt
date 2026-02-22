@@ -226,5 +226,92 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText("test.tibasic", "100 PRINT A$\n200 PRINT B$(1)")
         myFixture.checkHighlighting(true, false, false)
     }
+
+    fun testNoErrorForLineNumberOne() {
+        myFixture.configureByText("test.tibasic", "1 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForLineNumberMax() {
+        myFixture.configureByText("test.tibasic", "32767 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForLineNumberWithLeadingZeros() {
+        myFixture.configureByText("test.tibasic", "0100 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForLineNumberWithManyLeadingZeros() {
+        myFixture.configureByText("test.tibasic", "000000100 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForLineNumberZero() {
+        myFixture.configureByText("test.tibasic", "<error descr=\"Bad line number\">000</error> PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForLineNumberAboveMax() {
+        myFixture.configureByText("test.tibasic", "<error descr=\"Bad line number\">32768</error> PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForVeryLargeLineNumber() {
+        myFixture.configureByText("test.tibasic", "<error descr=\"Bad line number\">99999</error> PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testBadLineNumberDoesNotTriggerDuplicateError() {
+        // Two lines with out-of-range numbers should not be flagged as duplicates of each other
+        myFixture.configureByText(
+            "test.tibasic",
+            "<error descr=\"Bad line number\">32768</error> PRINT\n" +
+                    "<error descr=\"Bad line number\">32769</error> PRINT",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForCommentLineWithValidLineNumber() {
+        myFixture.configureByText("test.tibasic", "100 CALL CLEAR")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForCommentLineWithValidLineNumberAndLeadingZeros() {
+        myFixture.configureByText("test.tibasic", "0100 CALL CLEAR")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommentLineWithLineNumberAboveMax() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "<error descr=\"Bad line number\">32768</error> CALL CLEAR",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommentLineWithLineNumberZero() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "<error descr=\"Bad line number\">0</error> CALL CLEAR",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommentLineWithNoLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "<error descr=\"Bad line number\">this is not valid</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommentLineWithLeadingWhitespaceAndNoLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "<error descr=\"Bad line number\">   NOT A LINE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
 }
 
