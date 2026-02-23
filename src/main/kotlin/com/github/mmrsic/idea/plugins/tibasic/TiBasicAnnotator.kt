@@ -23,9 +23,22 @@ class TiBasicAnnotator : Annotator {
 
             is TiBasicLine -> annotateLineNumber(element, holder)
             is TiBasicCommentLine -> annotateCommentLineNumber(element, holder)
-            is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
+            is TiBasicPrintStatement -> {
+                annotateCommandUsedAsStatement(element, holder)
+                annotateInvalidPrintArgument(element, holder)
+            }
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
             is TiBasicExpression -> annotateExpression(element, holder)
+        }
+    }
+
+    private fun annotateCommandUsedAsStatement(statement: TiBasicPrintStatement, holder: AnnotationHolder) {
+        val keywordNode = statement.node.getChildren(null)
+            .firstOrNull { it.elementType == TiBasicTokenTypes.PRINT_KEYWORD } ?: return
+        if (keywordNode.text.uppercase() in COMMANDS_UPPERCASE) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Command must not be used as statement")
+                .range(keywordNode.textRange)
+                .create()
         }
     }
 
@@ -124,10 +137,17 @@ class TiBasicAnnotator : Annotator {
         val numericAccesses = allAccesses.filter { it.firstChildNode?.elementType == TiBasicTokenTypes.NUMERIC_VARIABLE }
         annotateNameConflicts(stringAccesses, holder, ::variableAccessName, ::variableAccessDimCount)
         annotateNameConflicts(numericAccesses, holder, ::variableAccessName, ::variableAccessDimCount)
+        val commands = COMMANDS_UPPERCASE
         val keywords = TiBasicKeywords.getKeywords().map { it.uppercase() }.toSet()
         allAccesses.forEach { node ->
-            if (variableAccessName(node) in keywords) {
-                holder.newAnnotation(HighlightSeverity.ERROR, "Keyword cannot be used as variable name")
+            val name = variableAccessName(node)
+            val message = when (name) {
+                in commands -> "Command must not be used as variable name"
+                in keywords -> "Keyword cannot be used as variable name"
+                else -> null
+            }
+            if (message != null) {
+                holder.newAnnotation(HighlightSeverity.ERROR, message)
                     .range(node.textRange)
                     .create()
             }
@@ -199,6 +219,8 @@ class TiBasicAnnotator : Annotator {
     }
 
 }
+
+private val COMMANDS_UPPERCASE = TiBasicKeywords.getCommands().map { it.uppercase() }.toSet()
 
 private val COMPARISON_OP_TYPES = setOf(
     TiBasicTokenTypes.EQ_OP,

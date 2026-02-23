@@ -437,6 +437,71 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
 
     // --- Keyword conflict tests ---
 
+    // --- Command-as-statement tests ---
+
+    fun testErrorForCommandByeUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">BYE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandListUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">LIST</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandNewUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">NEW</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandRunUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">RUN</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandNumberUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">NUMBER</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandNumUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">NUM</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandCaseInsensitiveUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">bye</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForPrintUsedAsStatement() {
+        myFixture.configureByText("test.tibasic", "100 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    // --- Keyword conflict tests ---
+
     fun testErrorForNumericVariableMatchingKeyword() {
         myFixture.configureByText(
             "test.tibasic",
@@ -472,6 +537,166 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "test.tibasic",
             "100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT(1)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingKeywordNew() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">NEW</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingKeywordList() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">LIST</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingKeywordRun() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">RUN</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingKeywordBye() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">BYE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">NUMBER</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandNum() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">NUM</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandRes() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">RES</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandResequence() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">RESEQUENCE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandCon() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">CON</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandContinue() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">CONTINUE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandEdit() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">EDIT</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandSave() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">SAVE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMatchingCommandOld() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 PRINT <error descr=\"Command must not be used as variable name\">OLD</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandResUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">RES</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandResequenceUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">RESEQUENCE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandConUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">CON</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandContinueUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">CONTINUE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandEditUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">EDIT</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandSaveUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">SAVE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForCommandOldUsedAsStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Command must not be used as statement\">OLD</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -568,17 +793,17 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     }
 
     fun testNoErrorForStringVariableComparedToStringLiteral() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A\$=\"HI!\"")
+        myFixture.configureByText("test.tibasic", "100 PRINT A$=\"HI!\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStringVariablesComparedWithNotEqual() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A\$<>B\$")
+        myFixture.configureByText("test.tibasic", "100 PRINT A$<>B$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForParenthesizedStringConcatComparedToStringLiteral() {
-        myFixture.configureByText("test.tibasic", "100 PRINT (A\$&B\$)=\"HI!\"")
+        myFixture.configureByText("test.tibasic", "100 PRINT (A$&B$)=\"HI!\"")
         myFixture.checkHighlighting(true, false, false)
     }
 }

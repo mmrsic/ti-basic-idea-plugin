@@ -43,6 +43,10 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicAnnotator"
         />
+        <editorActionHandler
+                action="EditorStartNewLine"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicShiftEnterHandler"
+        />
     </extensions>
     <actions>
         <action

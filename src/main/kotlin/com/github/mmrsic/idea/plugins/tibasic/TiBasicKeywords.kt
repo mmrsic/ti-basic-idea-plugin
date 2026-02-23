@@ -4,8 +4,27 @@ object TiBasicKeywords {
 
     fun getKeywords(): Set<String> = keywords
 
-    private val keywords =
+    fun getCommands(): Set<String> = commands
+
+    private val commands =
         setOf(
+            "BYE",
+            "CON",
+            "CONTINUE",
+            "EDIT",
+            "LIST",
+            "NEW",
+            "NUM",
+            "NUMBER",
+            "OLD",
+            "RES",
+            "RESEQUENCE",
+            "RUN",
+            "SAVE",
+        )
+
+    private val keywords =
+        commands + setOf(
             "PRINT",
         )
 }
