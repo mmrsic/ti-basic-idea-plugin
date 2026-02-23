@@ -61,8 +61,10 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateExpression(expr: TiBasicExpression, holder: AnnotationHolder) {
+        val children = expr.node.getChildren(null).filter { it.elementType != TokenType.WHITE_SPACE }
+        if (children.any { it.elementType in COMPARISON_OP_TYPES }) return
         val isString = isStringExpression(expr)
-        expr.node.getChildren(null).filter { it.elementType != TokenType.WHITE_SPACE }.forEach { child ->
+        children.forEach { child ->
             val isMismatch = if (isString) {
                 child.elementType in NUMERIC_MISMATCH_TYPES ||
                         (child.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
@@ -82,6 +84,7 @@ class TiBasicAnnotator : Annotator {
 
     private fun isStringExpression(expr: TiBasicExpression): Boolean {
         val children = expr.node.getChildren(null).filter { it.elementType != TokenType.WHITE_SPACE }
+        if (children.any { it.elementType in COMPARISON_OP_TYPES }) return false
         if (children.any { it.elementType == TiBasicTokenTypes.CONCAT_OP }) return true
         val first = children.firstOrNull() ?: return false
         return first.elementType == TiBasicTokenTypes.STRING_LITERAL ||
@@ -197,6 +200,15 @@ class TiBasicAnnotator : Annotator {
 
 }
 
+private val COMPARISON_OP_TYPES = setOf(
+    TiBasicTokenTypes.EQ_OP,
+    TiBasicTokenTypes.LT_OP,
+    TiBasicTokenTypes.GT_OP,
+    TiBasicTokenTypes.NEQ_OP,
+    TiBasicTokenTypes.LE_OP,
+    TiBasicTokenTypes.GE_OP,
+)
+
 private val STRING_MISMATCH_TYPES = setOf(
     TiBasicTokenTypes.STRING_LITERAL,
     TiBasicTokenTypes.STRING_VARIABLE,
@@ -210,4 +222,10 @@ private val NUMERIC_MISMATCH_TYPES = setOf(
     TiBasicTokenTypes.MUL_OP,
     TiBasicTokenTypes.DIV_OP,
     TiBasicTokenTypes.POW_OP,
+    TiBasicTokenTypes.EQ_OP,
+    TiBasicTokenTypes.LT_OP,
+    TiBasicTokenTypes.GT_OP,
+    TiBasicTokenTypes.NEQ_OP,
+    TiBasicTokenTypes.LE_OP,
+    TiBasicTokenTypes.GE_OP,
 )

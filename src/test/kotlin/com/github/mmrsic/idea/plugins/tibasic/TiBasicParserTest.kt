@@ -788,6 +788,127 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals("A(B+1)", expr.text)
     }
 
+    fun testEqualityComparisonCreatesExpression() {
+        val file = parseCode("100 PRINT A=B")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testLessThanComparisonCreatesExpression() {
+        val file = parseCode("100 PRINT A<B")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testGreaterThanComparisonCreatesExpression() {
+        val file = parseCode("100 PRINT A>B")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testNotEqualComparisonCreatesExpression() {
+        val file = parseCode("100 PRINT A<>B")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testLessOrEqualComparisonCreatesExpression() {
+        val file = parseCode("100 PRINT A<=B")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testGreaterOrEqualComparisonCreatesExpression() {
+        val file = parseCode("100 PRINT A>=B")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testChainedComparisonIsLeftToRight() {
+        val file = parseCode("100 PRINT A=B=C")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testComparisonWithArithmeticCreatesExpression() {
+        val file = parseCode("100 PRINT A+B=C-D")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testComparisonWithArithmeticText() {
+        val file = parseCode("100 PRINT A+B=C-D")
+        val expr = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+            .children.filterIsInstance<TiBasicExpression>()[0]
+        assertEquals("A+B=C-D", expr.text)
+    }
+
+    fun testComparisonInParenthesesBeforeArithmetic() {
+        val file = parseCode("100 PRINT (A=B)+1")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testComparisonWithSpacesCreatesExpression() {
+        val file = parseCode("100 PRINT A <= B")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testParenthesizedStringConcatComparedToStringLiteralCreatesExpression() {
+        // (A4&B4) – A4 and B4 are numeric variables; & stops the numeric parse inside the paren,
+        // so the parser produces one expression covering "(A4" and consumes the rest as invalid tokens.
+        val file = parseCode("100 PRINT (A4&B4)=\"HI!\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        val expr = stmt.children.filterIsInstance<TiBasicExpression>()[0]
+        assertEquals("(A4", expr.text)
+    }
+
+    fun testParenthesizedStringVarConcatComparedToStringLiteralCreatesExpression() {
+        val file = parseCode("100 PRINT (A\$&B\$)=\"HI!\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        val expr = stmt.children.filterIsInstance<TiBasicExpression>()[0]
+        assertEquals("(A\$&B\$)=\"HI!\"", expr.text)
+    }
+
+    fun testStringVariableComparedToStringLiteralCreatesExpression() {
+        val file = parseCode("100 PRINT A\$=\"HI!\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        val expr = stmt.children.filterIsInstance<TiBasicExpression>()[0]
+        assertEquals("A\$=\"HI!\"", expr.text)
+    }
+
+    fun testStringVariablesComparedWithNotEqualCreatesExpression() {
+        val file = parseCode("100 PRINT A\$<>B\$")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testStringLiteralsComparedWithLessThanCreatesExpression() {
+        val file = parseCode("100 PRINT \"A\"<\"B\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

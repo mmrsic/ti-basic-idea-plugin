@@ -194,6 +194,78 @@ class TiBasicSyntaxHighlightingTest : BasePlatformTestCase() {
         assertEquals(TiBasicSyntaxHighlighter.STRING_LITERAL, attributes[0])
     }
 
+    fun testLexerProducesEqOpToken() {
+        val lexer = TiBasicLexer()
+        lexer.start("100 PRINT A=B")
+        while (lexer.tokenType != null && lexer.tokenType != TiBasicTokenTypes.EQ_OP) lexer.advance()
+        assertEquals(TiBasicTokenTypes.EQ_OP, lexer.tokenType)
+        assertEquals("=", lexer.tokenSequence.toString())
+    }
+
+    fun testLexerProducesLtOpToken() {
+        val lexer = TiBasicLexer()
+        lexer.start("100 PRINT A<B")
+        while (lexer.tokenType != null && lexer.tokenType != TiBasicTokenTypes.LT_OP) lexer.advance()
+        assertEquals(TiBasicTokenTypes.LT_OP, lexer.tokenType)
+        assertEquals("<", lexer.tokenSequence.toString())
+    }
+
+    fun testLexerProducesGtOpToken() {
+        val lexer = TiBasicLexer()
+        lexer.start("100 PRINT A>B")
+        while (lexer.tokenType != null && lexer.tokenType != TiBasicTokenTypes.GT_OP) lexer.advance()
+        assertEquals(TiBasicTokenTypes.GT_OP, lexer.tokenType)
+        assertEquals(">", lexer.tokenSequence.toString())
+    }
+
+    fun testLexerProducesNeqOpToken() {
+        val lexer = TiBasicLexer()
+        lexer.start("100 PRINT A<>B")
+        while (lexer.tokenType != null && lexer.tokenType != TiBasicTokenTypes.NEQ_OP) lexer.advance()
+        assertEquals(TiBasicTokenTypes.NEQ_OP, lexer.tokenType)
+        assertEquals("<>", lexer.tokenSequence.toString())
+    }
+
+    fun testLexerProducesLeOpToken() {
+        val lexer = TiBasicLexer()
+        lexer.start("100 PRINT A<=B")
+        while (lexer.tokenType != null && lexer.tokenType != TiBasicTokenTypes.LE_OP) lexer.advance()
+        assertEquals(TiBasicTokenTypes.LE_OP, lexer.tokenType)
+        assertEquals("<=", lexer.tokenSequence.toString())
+    }
+
+    fun testLexerProducesGeOpToken() {
+        val lexer = TiBasicLexer()
+        lexer.start("100 PRINT A>=B")
+        while (lexer.tokenType != null && lexer.tokenType != TiBasicTokenTypes.GE_OP) lexer.advance()
+        assertEquals(TiBasicTokenTypes.GE_OP, lexer.tokenType)
+        assertEquals(">=", lexer.tokenSequence.toString())
+    }
+
+    fun testSyntaxHighlighterReturnsArithOpAttributeForEqOpToken() {
+        val highlighter = TiBasicSyntaxHighlighter()
+        val attributes = highlighter.getTokenHighlights(TiBasicTokenTypes.EQ_OP)
+        assertTrue("EQ_OP token type must map to at least one TextAttributesKey", attributes.isNotEmpty())
+        assertEquals(TiBasicSyntaxHighlighter.ARITH_OP, attributes[0])
+    }
+
+    fun testSyntaxHighlighterReturnsArithOpAttributeForAllComparisonOpTokens() {
+        val highlighter = TiBasicSyntaxHighlighter()
+        val comparisonOps = listOf(
+            TiBasicTokenTypes.EQ_OP,
+            TiBasicTokenTypes.LT_OP,
+            TiBasicTokenTypes.GT_OP,
+            TiBasicTokenTypes.NEQ_OP,
+            TiBasicTokenTypes.LE_OP,
+            TiBasicTokenTypes.GE_OP,
+        )
+        for (op in comparisonOps) {
+            val attributes = highlighter.getTokenHighlights(op)
+            assertTrue("$op must map to at least one TextAttributesKey", attributes.isNotEmpty())
+            assertEquals("$op must map to ARITH_OP", TiBasicSyntaxHighlighter.ARITH_OP, attributes[0])
+        }
+    }
+
     private fun assertNotEquals(unexpected: IElementType, actual: IElementType?) {
         assertFalse("Expected token type to differ from $unexpected", actual == unexpected)
     }

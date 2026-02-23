@@ -9,10 +9,16 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.DIV_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.EQ_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.GE_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.GT_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LE_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LPAREN
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.MINUS_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.MUL_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NEQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_VARIABLE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PLUS_OP
@@ -37,10 +43,13 @@ import com.intellij.psi.tree.IElementType
  * line              ::= numberedLine | commentLine
  * numberedLine      ::= LINE_NUMBER WHITE_SPACE? printStatement
  * printStatement    ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
- * expression        ::= stringExpr | numericExpr
+ * expression        ::= numericCmp
  * stringExpr        ::= stringOperand (CONCAT_OP stringOperand)*
  * stringOperand     ::= STRING_LITERAL | variableAccess(STRING_VARIABLE)
- * numericExpr       ::= numericAdd
+ * numericExpr       ::= numericCmp
+ * numericCmp        ::= comparable (cmpOp comparable)*   -- left-to-right; result always numeric
+ * comparable        ::= stringExpr | numericAdd          -- string operands valid in comparisons
+ * cmpOp             ::= '=' | '<' | '>' | '<>' | '<=' | '>='
  * numericAdd        ::= numericMul ( ('+' | '-') numericMul )*
  * numericMul        ::= numericPow ( ('*' | '/') numericPow )*
  * numericPow        ::= numericUnary ('^' numericUnary)*        -- right-associative
@@ -48,9 +57,9 @@ import com.intellij.psi.tree.IElementType
  * numericPrimary    ::= NUMERIC_LITERAL
  *                     | variableAccess
  *                     | STRING_LITERAL | variableAccess(STRING_VARIABLE)   -- mismatch, parsed for error reporting
- *                     | '(' numericAdd ')'
+ *                     | '(' numericCmp ')'
  * variableAccess    ::= (NUMERIC_VARIABLE | STRING_VARIABLE) ( '(' subscriptList ')' )?
- * subscriptList     ::= numericExpr (',' numericExpr)*           -- 1-3 validated by annotator
+ * subscriptList     ::= numericCmp (',' numericCmp)*           -- 1-3 validated by annotator
  * commentLine       ::= COMMENT
  * ```
  */
@@ -95,7 +104,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
 
     private fun parseExpression(builder: PsiBuilder) {
         val exprMarker = builder.mark()
-        if (isStringOperand(builder)) parseStringExpr(builder) else parseNumericAdd(builder)
+        parseNumericCmp(builder)
         exprMarker.done(EXPRESSION)
     }
 
@@ -125,6 +134,31 @@ class TiBasicParser : PsiParser, LightPsiParser {
     }
 
     // --- Numeric expression (with semi-permissive mismatch handling) ---
+
+    private fun parseNumericCmp(builder: PsiBuilder) {
+        parseComparable(builder)
+        while (true) {
+            val cp = builder.mark()
+            skipIntraLineWhitespace(builder)
+            if (!isComparisonOp(builder)) {
+                cp.rollbackTo(); break
+            }
+            builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (!isNumericPrimaryStart(builder)) {
+                cp.rollbackTo(); break
+            }
+            cp.drop()
+            parseComparable(builder)
+        }
+    }
+
+    private fun parseComparable(builder: PsiBuilder) {
+        if (isStringOperand(builder)) parseStringExpr(builder) else parseNumericAdd(builder)
+    }
+
+    private fun isComparisonOp(builder: PsiBuilder): Boolean =
+        builder.tokenType in setOf(EQ_OP, LT_OP, GT_OP, NEQ_OP, LE_OP, GE_OP)
 
     private fun parseNumericAdd(builder: PsiBuilder) {
         parseNumericMul(builder)
@@ -196,7 +230,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             LPAREN -> {
                 builder.advanceLexer()
                 skipIntraLineWhitespace(builder)
-                if (isNumericPrimaryStart(builder)) parseNumericAdd(builder)
+                if (isNumericPrimaryStart(builder)) parseNumericCmp(builder)
                 skipIntraLineWhitespace(builder)
                 if (builder.tokenType == RPAREN) builder.advanceLexer()
             }
@@ -244,7 +278,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
 
     private fun parseSubscriptExpr(builder: PsiBuilder) {
         val marker = builder.mark()
-        parseNumericAdd(builder)
+        parseNumericCmp(builder)
         marker.done(EXPRESSION)
     }
 

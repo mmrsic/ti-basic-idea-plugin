@@ -46,7 +46,13 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.MINUS_OP,
             TiBasicTokenTypes.MUL_OP,
             TiBasicTokenTypes.DIV_OP,
-            TiBasicTokenTypes.POW_OP -> arrayOf(ARITH_OP)
+            TiBasicTokenTypes.POW_OP,
+            TiBasicTokenTypes.EQ_OP,
+            TiBasicTokenTypes.LT_OP,
+            TiBasicTokenTypes.GT_OP,
+            TiBasicTokenTypes.NEQ_OP,
+            TiBasicTokenTypes.LE_OP,
+            TiBasicTokenTypes.GE_OP -> arrayOf(ARITH_OP)
 
             TiBasicTokenTypes.LPAREN,
             TiBasicTokenTypes.RPAREN -> arrayOf(PAREN)

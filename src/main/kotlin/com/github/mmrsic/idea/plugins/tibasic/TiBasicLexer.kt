@@ -214,6 +214,34 @@ class TiBasicLexer : LexerBase() {
                     result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.POW_OP)); i++
                 }
 
+                ch == '=' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.EQ_OP)); i++
+                }
+
+                ch == '<' -> {
+                    when {
+                        i + 1 < argStr.length && argStr[i + 1] == '>' -> {
+                            result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.NEQ_OP)); i += 2
+                        }
+
+                        i + 1 < argStr.length && argStr[i + 1] == '=' -> {
+                            result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.LE_OP)); i += 2
+                        }
+
+                        else -> {
+                            result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LT_OP)); i++
+                        }
+                    }
+                }
+
+                ch == '>' -> {
+                    if (i + 1 < argStr.length && argStr[i + 1] == '=') {
+                        result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.GE_OP)); i += 2
+                    } else {
+                        result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.GT_OP)); i++
+                    }
+                }
+
                 ch == '(' -> {
                     result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LPAREN)); i++
                 }

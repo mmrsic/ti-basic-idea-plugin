@@ -566,5 +566,20 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting(true, false, false)
     }
+
+    fun testNoErrorForStringVariableComparedToStringLiteral() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A\$=\"HI!\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForStringVariablesComparedWithNotEqual() {
+        myFixture.configureByText("test.tibasic", "100 PRINT A\$<>B\$")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForParenthesizedStringConcatComparedToStringLiteral() {
+        myFixture.configureByText("test.tibasic", "100 PRINT (A\$&B\$)=\"HI!\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
 }
 
