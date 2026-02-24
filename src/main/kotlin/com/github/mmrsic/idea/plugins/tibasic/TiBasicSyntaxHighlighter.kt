@@ -37,6 +37,7 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.KEYWORD -> arrayOf(KEYWORD)
             TiBasicTokenTypes.PRINT_KEYWORD -> arrayOf(KEYWORD)
             TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD -> arrayOf(KEYWORD)
+            TiBasicTokenTypes.DELETE_KEYWORD -> arrayOf(KEYWORD)
             TiBasicTokenTypes.IDENTIFIER -> arrayOf(DefaultLanguageHighlighterColors.IDENTIFIER)
             TiBasicTokenTypes.LINE_NUMBER -> arrayOf(LINE_NUMBER)
             TiBasicTokenTypes.STRING_LITERAL -> arrayOf(STRING_LITERAL)

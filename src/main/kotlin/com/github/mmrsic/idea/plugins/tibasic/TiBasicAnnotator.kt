@@ -29,6 +29,7 @@ class TiBasicAnnotator : Annotator {
             }
 
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
+            is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
             is TiBasicExpression -> annotateExpression(element, holder)
         }
@@ -134,6 +135,28 @@ class TiBasicAnnotator : Annotator {
             }
     }
 
+    private fun annotateDeleteStatement(statement: TiBasicDeleteStatement, holder: AnnotationHolder) {
+        val validChildren = setOf(TiBasicTokenTypes.DELETE_KEYWORD, TokenType.WHITE_SPACE, TiBasicNodeTypes.EXPRESSION)
+        val expression = statement.children.filterIsInstance<TiBasicExpression>().firstOrNull()
+        val keywordNode = statement.node.getChildren(null)
+            .first { it.elementType == TiBasicTokenTypes.DELETE_KEYWORD }
+        if (expression == null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "String expression expected")
+                .range(keywordNode.textRange).create()
+            return
+        }
+        if (!isStringExpression(expression)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "String expression expected")
+                .range(expression.textRange).create()
+        }
+        statement.node.getChildren(null)
+            .filter { it.elementType !in validChildren }
+            .forEach { child ->
+                holder.newAnnotation(HighlightSeverity.ERROR, "String expression expected")
+                    .range(child.textRange).create()
+            }
+    }
+
     private fun annotateVariableAccess(varAccess: TiBasicVariableAccess, holder: AnnotationHolder) {
         if (!varAccess.hasSubscriptParens()) return
         val dimCount = varAccess.subscriptDimCount()
@@ -171,9 +194,20 @@ class TiBasicAnnotator : Annotator {
         if (children.any { it.elementType in COMPARISON_OP_TYPES }) return false
         if (children.any { it.elementType == TiBasicTokenTypes.CONCAT_OP }) return true
         val first = children.firstOrNull() ?: return false
-        return first.elementType == TiBasicTokenTypes.STRING_LITERAL ||
-                (first.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-                        first.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE)
+        if (first.elementType == TiBasicTokenTypes.STRING_LITERAL) return true
+        if (first.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
+            first.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE
+        ) return true
+        if (first.elementType == TiBasicTokenTypes.LPAREN) {
+            val inner = children.drop(1).dropLast(1)
+            if (inner.isEmpty()) return false
+            if (inner.any { it.elementType == TiBasicTokenTypes.CONCAT_OP }) return true
+            val firstInner = inner.firstOrNull() ?: return false
+            return firstInner.elementType == TiBasicTokenTypes.STRING_LITERAL ||
+                    (firstInner.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
+                            firstInner.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE)
+        }
+        return false
     }
 
     private fun annotateLineNumber(line: TiBasicLine, holder: AnnotationHolder) {

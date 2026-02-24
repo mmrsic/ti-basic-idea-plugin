@@ -2,6 +2,7 @@ package com.github.mmrsic.idea.plugins.tibasic
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
@@ -38,6 +39,7 @@ class TiBasicParserDefinition : ParserDefinition {
             TiBasicNodeTypes.LINE -> TiBasicLine(node)
             TiBasicNodeTypes.PRINT_STATEMENT -> TiBasicPrintStatement(node)
             TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT -> TiBasicLineNumberListStatement(node)
+            TiBasicNodeTypes.DELETE_STATEMENT -> TiBasicDeleteStatement(node)
             TiBasicNodeTypes.EXPRESSION -> TiBasicExpression(node)
             TiBasicNodeTypes.VARIABLE_ACCESS -> TiBasicVariableAccess(node)
             TiBasicNodeTypes.COMMENT_LINE -> TiBasicCommentLine(node)

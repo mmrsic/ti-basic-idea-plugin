@@ -26,7 +26,7 @@ import com.intellij.psi.tree.IElementType
 class TiBasicLexer : LexerBase() {
 
     private companion object {
-        val VALID_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT|BREAK|UNBREAK|TRACE|UNTRACE)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
+        val VALID_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
         val PARTIAL_KEYWORD_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)([A-Za-z]+)([ \t]*)$""")
         val TRAILING_WS = Regex("""([ \t]*)$""")
         val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
@@ -124,10 +124,11 @@ class TiBasicLexer : LexerBase() {
             result.add(LineToken(offset, offset + ws1.length, TokenType.WHITE_SPACE))
             offset += ws1.length
         }
-        val keywordType = if (printStr.uppercase() in LINE_NUMBER_LIST_KEYWORDS)
-            TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
-        else
-            TiBasicTokenTypes.PRINT_KEYWORD
+        val keywordType = when (printStr.uppercase()) {
+            in LINE_NUMBER_LIST_KEYWORDS -> TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
+            "DELETE" -> TiBasicTokenTypes.DELETE_KEYWORD
+            else -> TiBasicTokenTypes.PRINT_KEYWORD
+        }
         result.add(LineToken(offset, offset + printStr.length, keywordType))
         offset += printStr.length
         if (ws2.isNotEmpty()) {
@@ -156,10 +157,11 @@ class TiBasicLexer : LexerBase() {
         offset += numStr.length
         result.add(LineToken(offset, offset + ws1.length, TokenType.WHITE_SPACE))
         offset += ws1.length
-        val keywordType = if (keywordStr.uppercase() in LINE_NUMBER_LIST_KEYWORDS)
-            TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
-        else
-            TiBasicTokenTypes.PRINT_KEYWORD
+        val keywordType = when (keywordStr.uppercase()) {
+            in LINE_NUMBER_LIST_KEYWORDS -> TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
+            "DELETE" -> TiBasicTokenTypes.DELETE_KEYWORD
+            else -> TiBasicTokenTypes.PRINT_KEYWORD
+        }
         result.add(LineToken(offset, offset + keywordStr.length, keywordType))
         offset += keywordStr.length
         if (trailingWs.isNotEmpty()) {

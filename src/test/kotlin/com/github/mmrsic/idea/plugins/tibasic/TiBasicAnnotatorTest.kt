@@ -942,5 +942,57 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
-}
+    fun testNoErrorForDeleteWithEmptyStringLiteral() {
+        myFixture.configureByText("test.tibasic", "100 DELETE \"\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
 
+    fun testNoErrorForDeleteWithStringVariable() {
+        myFixture.configureByText("test.tibasic", "100 DELETE A\$")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForDeleteWithStringConcatenation() {
+        myFixture.configureByText("test.tibasic", "100 DELETE A\$&B\$")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForDeleteWithParenthesizedConcatenation() {
+        myFixture.configureByText("test.tibasic", "100 DELETE (A\$&B\$)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForDeleteWithParenthesizedStringLiteral() {
+        myFixture.configureByText("test.tibasic", "100 DELETE (\"CS1\")")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForDeleteWithStringLiteral() {
+        myFixture.configureByText("test.tibasic", "100 DELETE \"DSK1.STAR\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForDeleteWithoutArgument() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"String expression expected\">DELETE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForDeleteWithNumericLiteral() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 DELETE <error descr=\"String expression expected\">42</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForDeleteWithNumericVariable() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 DELETE <error descr=\"String expression expected\">X</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+}

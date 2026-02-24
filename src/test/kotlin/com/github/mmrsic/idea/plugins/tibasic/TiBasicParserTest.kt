@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
@@ -965,6 +966,41 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         val printStmts = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()
         assertEquals(0, printStmts.size)
+    }
+
+    fun testDeleteProducesDeleteStatement() {
+        val file = parseCode("100 DELETE \"\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDeleteStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testDeleteWithStringVariable() {
+        val file = parseCode("100 DELETE A\$")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDeleteStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testDeleteWithoutArgumentProducesDeleteStatement() {
+        val file = parseCode("100 DELETE")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDeleteStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testDeleteDoesNotProducePrintStatement() {
+        val file = parseCode("100 DELETE \"DSK1.STAR\"")
+        val printStmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()
+        assertEquals(0, printStmts.size)
+    }
+
+    fun testDeleteKeywordIsCaseInsensitive() {
+        val file = parseCode("100 delete \"\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDeleteStatement>()
+        assertEquals(1, stmts.size)
     }
 
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile

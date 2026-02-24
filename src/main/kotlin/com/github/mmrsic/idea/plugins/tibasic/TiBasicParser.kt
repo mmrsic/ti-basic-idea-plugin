@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.COMMENT_LINE
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.DELETE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.LINE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT
@@ -9,6 +10,7 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.VARIABLE_ACCESS
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.CONCAT_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.DELETE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.DIV_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.EQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.GE_OP
@@ -90,9 +92,22 @@ class TiBasicParser : PsiParser, LightPsiParser {
         val lineMarker = builder.mark()
         builder.advanceLexer()
         skipWhitespace(builder)
-        if (builder.tokenType == LINE_NUMBER_LIST_KEYWORD) parseLineNumberListStatement(builder)
-        else parsePrintStatement(builder)
+        when (builder.tokenType) {
+            LINE_NUMBER_LIST_KEYWORD -> parseLineNumberListStatement(builder)
+            DELETE_KEYWORD -> parseDeleteStatement(builder)
+            else -> parsePrintStatement(builder)
+        }
         lineMarker.done(LINE)
+    }
+
+    private fun parseDeleteStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume DELETE_KEYWORD
+        skipWhitespace(builder)
+        while (!isLineEnd(builder) && !isExpressionStart(builder)) builder.advanceLexer()
+        if (isExpressionStart(builder)) parseExpression(builder)
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(DELETE_STATEMENT)
     }
 
     private fun parseLineNumberListStatement(builder: PsiBuilder) {
