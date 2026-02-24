@@ -5,7 +5,6 @@ import com.intellij.lang.ASTNode
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
 
@@ -22,27 +21,22 @@ class TiBasicAnnotator : Annotator {
             }
 
             is TiBasicLine -> annotateLineNumber(element, holder)
-            is TiBasicCommentLine -> annotateCommentLineNumber(element, holder)
-            is TiBasicPrintStatement -> {
-                annotateCommandUsedAsStatement(element, holder)
-                annotateInvalidPrintArgument(element, holder)
-            }
-
+            is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
+            is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
+            is TiBasicInvalidLine -> holder.newAnnotation(HighlightSeverity.ERROR, "Line number expected").range(element).create()
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
             is TiBasicExpression -> annotateExpression(element, holder)
         }
     }
 
-    private fun annotateCommandUsedAsStatement(statement: TiBasicPrintStatement, holder: AnnotationHolder) {
-        val keywordNode = statement.node.getChildren(null)
-            .firstOrNull { it.elementType == TiBasicTokenTypes.PRINT_KEYWORD } ?: return
-        if (keywordNode.text.uppercase() in COMMANDS_UPPERCASE) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Command must not be used as statement")
-                .range(keywordNode.textRange)
-                .create()
-        }
+    private fun annotateUnknownStatement(statement: TiBasicUnknownStatement, holder: AnnotationHolder) {
+        val statementNode = statement.node.firstChildNode ?: return
+        val firstWord = statementNode.text.trimEnd().split(Regex("""\s+""")).first().uppercase()
+        val message = if (firstWord in COMMANDS_UPPERCASE) "Command must not be used as statement"
+        else "Incorrect statement"
+        holder.newAnnotation(HighlightSeverity.ERROR, message).range(statementNode.textRange).create()
     }
 
     private fun annotateInvalidPrintArgument(statement: TiBasicPrintStatement, holder: AnnotationHolder) {
@@ -215,24 +209,6 @@ class TiBasicAnnotator : Annotator {
         val lineNumber = lineNumberNode.text.toLongOrNull()
         if (lineNumber == null || lineNumber !in 1L..32767L) {
             holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number").range(lineNumberNode.textRange).create()
-        }
-    }
-
-    private fun annotateCommentLineNumber(comment: TiBasicCommentLine, holder: AnnotationHolder) {
-        val token = comment.node.firstChildNode
-        val text = token.text
-        var i = 0
-        while (i < text.length && text[i].isWhitespace()) i++
-        val digitsStart = i
-        while (i < text.length && text[i].isDigit()) i++
-        val digitsEnd = i
-        val lineNumber = if (digitsEnd > digitsStart) text.substring(digitsStart, digitsEnd).toLongOrNull() else null
-        if (lineNumber == null || lineNumber !in 1L..32767L) {
-            val errorRange = if (digitsEnd > digitsStart)
-                TextRange(token.startOffset + digitsStart, token.startOffset + digitsEnd)
-            else
-                token.textRange
-            holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number").range(errorRange).create()
         }
     }
 

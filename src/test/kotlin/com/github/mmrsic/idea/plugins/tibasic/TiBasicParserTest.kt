@@ -4,9 +4,11 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRemStatement
 import com.intellij.testFramework.ParsingTestCase
 
 class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition()) {
@@ -73,21 +75,44 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(200, lines[1].lineNumber())
     }
 
-    fun testInvalidLineIsComment() {
+    fun testInvalidLineProducesInvalidLineNode() {
         val file = parseCode("this is not valid")
-        val comments = file.children.filterIsInstance<TiBasicCommentLine>()
-        assertEquals(1, comments.size)
-        assertEquals("this is not valid", comments[0].commentText())
+        val invalidLines = file.children.filterIsInstance<TiBasicInvalidLine>()
+        assertEquals(1, invalidLines.size)
+        assertEquals("this is not valid", invalidLines[0].text)
     }
 
-    fun testMixedValidAndCommentLines() {
+    fun testMixedValidAndInvalidLines() {
         val source = "100 PRINT \"Hello\"\nNOT A LINE\n200 PRINT \"World\""
         val file = parseCode(source)
         val lines = file.children.filterIsInstance<TiBasicLine>()
-        val comments = file.children.filterIsInstance<TiBasicCommentLine>()
+        val invalidLines = file.children.filterIsInstance<TiBasicInvalidLine>()
         assertEquals(2, lines.size)
-        assertEquals(1, comments.size)
-        assertEquals("NOT A LINE", comments[0].commentText())
+        assertEquals(1, invalidLines.size)
+        assertEquals("NOT A LINE", invalidLines[0].text)
+    }
+
+    fun testRemWithoutTextCreatesRemStatement() {
+        val file = parseCode("100 REM")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val remStatements = lines[0].children.filterIsInstance<TiBasicRemStatement>()
+        assertEquals(1, remStatements.size)
+    }
+
+    fun testRemWithTextCreatesRemStatement() {
+        val file = parseCode("100 REM This is a comment")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val remStatements = lines[0].children.filterIsInstance<TiBasicRemStatement>()
+        assertEquals(1, remStatements.size)
+    }
+
+    fun testLineNumberOnlyProducesValidLine() {
+        val file = parseCode("100")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(100, lines[0].lineNumber())
     }
 
     fun testPrintWithoutArgumentIsValid() {

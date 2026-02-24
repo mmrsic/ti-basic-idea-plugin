@@ -19,10 +19,10 @@ class TiBasicSyntaxHighlightingTest : BasePlatformTestCase() {
         assertEquals("PRINT", lexer.tokenSequence.toString())
     }
 
-    fun testInvalidLineProducesCommentToken() {
+    fun testInvalidLineProducesNoLineNumberToken() {
         val lexer = TiBasicLexer()
         lexer.start("X")
-        assertEquals(TiBasicTokenTypes.COMMENT, lexer.tokenType)
+        assertEquals(TiBasicTokenTypes.NO_LINE_NUMBER_TEXT, lexer.tokenType)
         assertEquals("X", lexer.tokenSequence.toString())
     }
 

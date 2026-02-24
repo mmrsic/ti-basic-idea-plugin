@@ -7,27 +7,21 @@ import com.intellij.psi.tree.IElementType
 /**
  * Lexer for TI-Basic source files.
  *
- * A valid line has the form: ```[ws] <lineNumber> [ws] PRINT [ws] [argument] [ws]```
- * where `lineNumber` is an integer in 1..32767. All other lines are treated as COMMENT tokens.
- * Leading and trailing whitespace on valid lines is emitted as WHITE_SPACE tokens.
+ * Every program line must begin with a line number (integer in 1..32767).
+ * Lines are classified into four kinds:
+ *  - VALID_STATEMENT   – line number + known keyword (PRINT, REM, BREAK, etc.)
+ *  - LINE_NUMBER_ONLY  – just a line number with optional surrounding whitespace
+ *  - UNKNOWN_STATEMENT – line number + unrecognised content
+ *  - NO_LINE_NUMBER    – no leading line number (non-blank content)
  *
- * Within a valid line the lexer produces:
- *  - WHITE_SPACE    – optional leading spaces/tabs
- *  - LINE_NUMBER    – the leading integer
- *  - WHITE_SPACE    – spaces/tabs between tokens
- *  - PRINT_KEYWORD  – the PRINT keyword
- *  - WHITE_SPACE    – optional spaces/tabs after PRINT
- *  - (per argument token): STRING_LITERAL | CONCAT_OP | PRINT_ARGUMENT | WHITE_SPACE
- *  - WHITE_SPACE    – optional trailing spaces/tabs
- *
- * For invalid lines the entire line content (without the newline) is a single COMMENT token.
- * Newlines themselves are emitted as WHITE_SPACE so the parser can use them as line separators.
+ * Newlines are emitted as WHITE_SPACE tokens so the parser can use them as line separators.
  */
 class TiBasicLexer : LexerBase() {
 
     private companion object {
-        val VALID_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
-        val PARTIAL_KEYWORD_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)([A-Za-z]+)([ \t]*)$""")
+        val VALID_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
+        val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
+        val UNKNOWN_STATEMENT_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(\S.*)$""")
         val TRAILING_WS = Regex("""([ \t]*)$""")
         val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
         val VALID_NUMERIC_VARIABLE_NAME = Regex("""^[A-Za-z@\[\]\\_][A-Za-z0-9@_]{0,14}$""")
@@ -35,7 +29,7 @@ class TiBasicLexer : LexerBase() {
         val LINE_NUMBER_LIST_KEYWORDS = setOf("BREAK", "UNBREAK", "TRACE", "UNTRACE")
     }
 
-    private enum class LineKind { VALID, PARTIAL_KEYWORD, COMMENT }
+    private enum class LineKind { VALID_STATEMENT, LINE_NUMBER_ONLY, UNKNOWN_STATEMENT, NO_LINE_NUMBER }
 
     private data class LineToken(val start: Int, val end: Int, val type: IElementType)
 
@@ -76,9 +70,16 @@ class TiBasicLexer : LexerBase() {
             val lineText = buffer.subSequence(pos, lineEnd).toString()
             val kind = classifyLine(lineText)
             when (kind) {
-                LineKind.VALID -> result.addAll(tokenizeValidLine(pos, VALID_LINE.find(lineText)!!))
-                LineKind.PARTIAL_KEYWORD -> result.addAll(tokenizePartialKeywordLine(pos, PARTIAL_KEYWORD_LINE.find(lineText)!!))
-                LineKind.COMMENT -> if (lineEnd > pos) result.add(LineToken(pos, lineEnd, TiBasicTokenTypes.COMMENT))
+                LineKind.VALID_STATEMENT -> result.addAll(tokenizeValidLine(pos, VALID_LINE.find(lineText)!!))
+                LineKind.LINE_NUMBER_ONLY -> result.addAll(tokenizeLineNumberOnlyLine(pos, LINE_NUMBER_ONLY.find(lineText)!!))
+                LineKind.UNKNOWN_STATEMENT -> result.addAll(tokenizeUnknownStatementLine(pos, UNKNOWN_STATEMENT_LINE.find(lineText)!!))
+                LineKind.NO_LINE_NUMBER -> if (lineEnd > pos && lineText.isNotBlank()) result.add(
+                    LineToken(
+                        pos,
+                        lineEnd,
+                        TiBasicTokenTypes.NO_LINE_NUMBER_TEXT
+                    )
+                )
             }
             pos = lineEnd
             if (pos < endOffset && buffer[pos] == '\r') pos++
@@ -103,9 +104,10 @@ class TiBasicLexer : LexerBase() {
     }
 
     private fun classifyLine(lineText: String): LineKind {
-        if (VALID_LINE.containsMatchIn(lineText)) return LineKind.VALID
-        if (PARTIAL_KEYWORD_LINE.containsMatchIn(lineText)) return LineKind.PARTIAL_KEYWORD
-        return LineKind.COMMENT
+        if (VALID_LINE.containsMatchIn(lineText)) return LineKind.VALID_STATEMENT
+        if (LINE_NUMBER_ONLY.containsMatchIn(lineText)) return LineKind.LINE_NUMBER_ONLY
+        if (UNKNOWN_STATEMENT_LINE.containsMatchIn(lineText)) return LineKind.UNKNOWN_STATEMENT
+        return LineKind.NO_LINE_NUMBER
     }
 
     private fun tokenizeValidLine(lineStart: Int, match: MatchResult): List<LineToken> {
@@ -127,28 +129,59 @@ class TiBasicLexer : LexerBase() {
         val keywordType = when (printStr.uppercase()) {
             in LINE_NUMBER_LIST_KEYWORDS -> TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
             "DELETE" -> TiBasicTokenTypes.DELETE_KEYWORD
+            "REM" -> TiBasicTokenTypes.REM_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         result.add(LineToken(offset, offset + printStr.length, keywordType))
         offset += printStr.length
-        if (ws2.isNotEmpty()) {
-            result.add(LineToken(offset, offset + ws2.length, TokenType.WHITE_SPACE))
-            offset += ws2.length
-        }
-        if (argStr.isNotEmpty()) {
-            result.addAll(tokenizeArgument(offset, argStr))
-            offset += argStr.length
-        }
-        if (trailingWsLength > 0) {
-            result.add(LineToken(offset, offset + trailingWsLength, TokenType.WHITE_SPACE))
+        if (printStr.uppercase() == "REM") {
+            if (ws2.isNotEmpty()) {
+                result.add(LineToken(offset, offset + ws2.length, TokenType.WHITE_SPACE))
+                offset += ws2.length
+            }
+            if (argStr.isNotEmpty()) {
+                result.add(LineToken(offset, offset + argStr.length, TiBasicTokenTypes.REM_TEXT))
+                offset += argStr.length
+            }
+            if (trailingWsLength > 0) {
+                result.add(LineToken(offset, offset + trailingWsLength, TokenType.WHITE_SPACE))
+            }
+        } else {
+            if (ws2.isNotEmpty()) {
+                result.add(LineToken(offset, offset + ws2.length, TokenType.WHITE_SPACE))
+                offset += ws2.length
+            }
+            if (argStr.isNotEmpty()) {
+                result.addAll(tokenizeArgument(offset, argStr))
+                offset += argStr.length
+            }
+            if (trailingWsLength > 0) {
+                result.add(LineToken(offset, offset + trailingWsLength, TokenType.WHITE_SPACE))
+            }
         }
         return result
     }
 
-    private fun tokenizePartialKeywordLine(lineStart: Int, match: MatchResult): List<LineToken> {
+    private fun tokenizeLineNumberOnlyLine(lineStart: Int, match: MatchResult): List<LineToken> {
         val result = mutableListOf<LineToken>()
         var offset = lineStart
-        val (leadingWs, numStr, ws1, keywordStr, trailingWs) = match.destructured
+        val (leadingWs, numStr, trailingWs) = match.destructured
+        if (leadingWs.isNotEmpty()) {
+            result.add(LineToken(offset, offset + leadingWs.length, TokenType.WHITE_SPACE))
+            offset += leadingWs.length
+        }
+        result.add(LineToken(offset, offset + numStr.length, TiBasicTokenTypes.LINE_NUMBER))
+        offset += numStr.length
+        if (trailingWs.isNotEmpty()) {
+            result.add(LineToken(offset, offset + trailingWs.length, TokenType.WHITE_SPACE))
+        }
+        return result
+    }
+
+    private fun tokenizeUnknownStatementLine(lineStart: Int, match: MatchResult): List<LineToken> {
+        val result = mutableListOf<LineToken>()
+        var offset = lineStart
+        val (leadingWs, numStr, ws1, statementText) = match.destructured
         if (leadingWs.isNotEmpty()) {
             result.add(LineToken(offset, offset + leadingWs.length, TokenType.WHITE_SPACE))
             offset += leadingWs.length
@@ -157,15 +190,14 @@ class TiBasicLexer : LexerBase() {
         offset += numStr.length
         result.add(LineToken(offset, offset + ws1.length, TokenType.WHITE_SPACE))
         offset += ws1.length
-        val keywordType = when (keywordStr.uppercase()) {
-            in LINE_NUMBER_LIST_KEYWORDS -> TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
-            "DELETE" -> TiBasicTokenTypes.DELETE_KEYWORD
-            else -> TiBasicTokenTypes.PRINT_KEYWORD
+        val trailingWsLength = TRAILING_WS.find(statementText)!!.value.length
+        val stmtText = statementText.dropLast(trailingWsLength)
+        if (stmtText.isNotEmpty()) {
+            result.add(LineToken(offset, offset + stmtText.length, TiBasicTokenTypes.UNKNOWN_STATEMENT_TEXT))
+            offset += stmtText.length
         }
-        result.add(LineToken(offset, offset + keywordStr.length, keywordType))
-        offset += keywordStr.length
-        if (trailingWs.isNotEmpty()) {
-            result.add(LineToken(offset, offset + trailingWs.length, TokenType.WHITE_SPACE))
+        if (trailingWsLength > 0) {
+            result.add(LineToken(offset, offset + trailingWsLength, TokenType.WHITE_SPACE))
         }
         return result
     }

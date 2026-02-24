@@ -1,19 +1,19 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.intellij.psi.PsiElement
 
 fun formattedText(file: TiBasicFile): String = formattedText(
-    file.children.filter { it is TiBasicLine || it is TiBasicCommentLine }
+    file.children.filter { it is TiBasicLine || it is TiBasicInvalidLine }
 )
 
 fun formattedText(lines: List<PsiElement>): String =
     lines.joinToString("\n") { child ->
         when (child) {
             is TiBasicLine -> formattedLine(child)
-            is TiBasicCommentLine -> child.commentText()
+            is TiBasicInvalidLine -> child.text
             else -> child.text
         }
     }
@@ -46,15 +46,18 @@ fun uppercaseOutsideStrings(text: String): String {
                 result.append('"')
                 i += 2
             }
+
             ch == '"' -> {
                 inString = !inString
                 result.append(ch)
                 i++
             }
+
             inString -> {
                 result.append(ch)
                 i++
             }
+
             else -> {
                 result.append(ch.uppercaseChar())
                 i++
@@ -76,16 +79,20 @@ fun removeWhitespaceOutsideStrings(text: String): String {
                 result.append('"')
                 i += 2
             }
+
             ch == '"' -> {
                 inString = !inString
                 result.append(ch)
                 i++
             }
+
             inString -> {
                 result.append(ch)
                 i++
             }
+
             ch.isWhitespace() -> i++
+
             else -> {
                 result.append(ch)
                 i++

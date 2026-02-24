@@ -28,6 +28,7 @@ object TiBasicKeywords {
             "BREAK",
             "DELETE",
             "PRINT",
+            "REM",
             "TRACE",
             "UNBREAK",
             "UNTRACE",

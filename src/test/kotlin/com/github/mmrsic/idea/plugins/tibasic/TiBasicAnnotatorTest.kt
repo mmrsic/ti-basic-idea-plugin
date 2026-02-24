@@ -273,45 +273,66 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testNoErrorForCommentLineWithValidLineNumber() {
-        myFixture.configureByText("test.tibasic", "100 CALL CLEAR")
-        myFixture.checkHighlighting(true, false, false)
-    }
-
-    fun testNoErrorForCommentLineWithValidLineNumberAndLeadingZeros() {
-        myFixture.configureByText("test.tibasic", "0100 CALL CLEAR")
-        myFixture.checkHighlighting(true, false, false)
-    }
-
-    fun testErrorForCommentLineWithLineNumberAboveMax() {
+    fun testErrorForUnknownStatementWithValidLineNumber() {
         myFixture.configureByText(
             "test.tibasic",
-            "<error descr=\"Bad line number\">32768</error> CALL CLEAR",
+            "100 <error descr=\"Incorrect statement\">CALL CLEAR</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForCommentLineWithLineNumberZero() {
+    fun testErrorForUnknownStatementWithLeadingZerosLineNumber() {
         myFixture.configureByText(
             "test.tibasic",
-            "<error descr=\"Bad line number\">0</error> CALL CLEAR",
+            "0100 <error descr=\"Incorrect statement\">CALL CLEAR</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForCommentLineWithNoLineNumber() {
+    fun testErrorForUnknownStatementWithLineNumberAboveMax() {
         myFixture.configureByText(
             "test.tibasic",
-            "<error descr=\"Bad line number\">this is not valid</error>",
+            "<error descr=\"Bad line number\">32768</error> <error descr=\"Incorrect statement\">CALL CLEAR</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForCommentLineWithLeadingWhitespaceAndNoLineNumber() {
+    fun testErrorForUnknownStatementWithLineNumberZero() {
         myFixture.configureByText(
             "test.tibasic",
-            "<error descr=\"Bad line number\">   NOT A LINE</error>",
+            "<error descr=\"Bad line number\">0</error> <error descr=\"Incorrect statement\">CALL CLEAR</error>",
         )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForLineWithNoLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "<error descr=\"Line number expected\">this is not valid</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForLineWithLeadingWhitespaceAndNoLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "<error descr=\"Line number expected\">   NOT A LINE</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForRemWithoutText() {
+        myFixture.configureByText("test.tibasic", "100 REM")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForRemWithText() {
+        myFixture.configureByText("test.tibasic", "100 REM This is a comment")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForLineNumberOnly() {
+        myFixture.configureByText("test.tibasic", "100")
         myFixture.checkHighlighting(true, false, false)
     }
 

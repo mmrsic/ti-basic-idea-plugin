@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -41,6 +41,6 @@ class FormatAction : AnAction() {
     }
 
     private fun isFormattable(element: PsiElement): Boolean =
-        element is TiBasicLine || element is TiBasicCommentLine
+        element is TiBasicLine || element is TiBasicInvalidLine
 }
 

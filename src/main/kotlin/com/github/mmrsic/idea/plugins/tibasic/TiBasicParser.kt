@@ -1,14 +1,15 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
-import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.COMMENT_LINE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.DELETE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.EXPRESSION
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.INVALID_LINE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.LINE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.PRINT_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.REM_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.UNKNOWN_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.VARIABLE_ACCESS
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMA
-import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.DELETE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.DIV_OP
@@ -18,19 +19,22 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.GT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LE_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LPAREN
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.MINUS_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.MUL_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NEQ_OP
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NO_LINE_NUMBER_TEXT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.NUMERIC_VARIABLE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PLUS_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.POW_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.PRINT_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.REM_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.RPAREN
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.STRING_VARIABLE
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.UNKNOWN_STATEMENT_TEXT
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -81,7 +85,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             if (builder.eof()) break
             when (builder.tokenType) {
                 LINE_NUMBER -> parseNumberedLine(builder)
-                COMMENT -> parseCommentLine(builder)
+                NO_LINE_NUMBER_TEXT -> parseInvalidLine(builder)
                 else -> builder.advanceLexer()
             }
         }
@@ -95,9 +99,33 @@ class TiBasicParser : PsiParser, LightPsiParser {
         when (builder.tokenType) {
             LINE_NUMBER_LIST_KEYWORD -> parseLineNumberListStatement(builder)
             DELETE_KEYWORD -> parseDeleteStatement(builder)
-            else -> parsePrintStatement(builder)
+            REM_KEYWORD -> parseRemStatement(builder)
+            PRINT_KEYWORD -> parsePrintStatement(builder)
+            UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
+            else -> { /* line number only — valid, no statement */
+            }
         }
         lineMarker.done(LINE)
+    }
+
+    private fun parseRemStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume REM_KEYWORD
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(REM_STATEMENT)
+    }
+
+    private fun parseUnknownStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume UNKNOWN_STATEMENT_TEXT
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(UNKNOWN_STATEMENT)
+    }
+
+    private fun parseInvalidLine(builder: PsiBuilder) {
+        val marker = builder.mark()
+        builder.advanceLexer() // consume NO_LINE_NUMBER_TEXT
+        marker.done(INVALID_LINE)
     }
 
     private fun parseDeleteStatement(builder: PsiBuilder) {
@@ -318,12 +346,6 @@ class TiBasicParser : PsiParser, LightPsiParser {
     private fun isNumericPrimaryStart(builder: PsiBuilder): Boolean =
         builder.tokenType in setOf(NUMERIC_LITERAL, NUMERIC_VARIABLE, PLUS_OP, MINUS_OP, LPAREN, STRING_LITERAL, STRING_VARIABLE)
 
-    private fun parseCommentLine(builder: PsiBuilder) {
-        val marker = builder.mark()
-        builder.advanceLexer()
-        marker.done(COMMENT_LINE)
-    }
-
     private fun skipNewlines(builder: PsiBuilder) {
         while (!builder.eof() && builder.tokenType == TokenType.WHITE_SPACE) builder.advanceLexer()
     }
@@ -337,8 +359,5 @@ class TiBasicParser : PsiParser, LightPsiParser {
     }
 
     private fun isLineEnd(builder: PsiBuilder): Boolean =
-        builder.eof() || builder.tokenType == LINE_NUMBER || builder.tokenType == COMMENT
+        builder.eof() || builder.tokenType == LINE_NUMBER || builder.tokenType == NO_LINE_NUMBER_TEXT
 }
-
-
-

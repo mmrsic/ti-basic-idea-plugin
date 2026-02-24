@@ -6,8 +6,11 @@ import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.lang.ASTNode
 
 class TiBasicLine(node: ASTNode) : ASTWrapperPsiElement(node) {
-    fun lineNumber(): Int = node.firstChildNode.text.toLongOrNull()
-        ?.takeIf { it <= Int.MAX_VALUE }?.toInt() ?: Int.MAX_VALUE
+    fun lineNumber(): Int =
+        node
+            .firstChildNode.text.toLongOrNull()
+            ?.takeIf { it <= Int.MAX_VALUE }?.toInt()
+            ?: Int.MAX_VALUE
 }
 
 class TiBasicPrintStatement(node: ASTNode) : ASTWrapperPsiElement(node)
@@ -15,6 +18,12 @@ class TiBasicPrintStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 class TiBasicLineNumberListStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicDeleteStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
+class TiBasicRemStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
+class TiBasicUnknownStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
+class TiBasicInvalidLine(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node)
 
@@ -26,8 +35,6 @@ class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
         node.getChildren(null).count { it.elementType == TiBasicNodeTypes.EXPRESSION }
 }
 
-class TiBasicCommentLine(node: ASTNode) : ASTWrapperPsiElement(node) {
-    fun commentText(): String = node.firstChildNode.text
-}
+class TiBasicCommentLine(node: ASTNode) : ASTWrapperPsiElement(node)
 
 
