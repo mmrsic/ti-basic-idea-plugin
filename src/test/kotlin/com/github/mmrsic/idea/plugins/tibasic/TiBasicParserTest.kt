@@ -4,6 +4,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
 import com.intellij.testFramework.ParsingTestCase
 
@@ -907,6 +908,63 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
         assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testBreakWithoutArgumentIsValid() {
+        val file = parseCode("100 BREAK")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicLineNumberListStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testUnbreakWithoutArgumentIsValid() {
+        val file = parseCode("100 UNBREAK")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLineNumberListStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testTraceWithoutArgumentIsValid() {
+        val file = parseCode("100 TRACE")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLineNumberListStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testUntraceWithoutArgumentIsValid() {
+        val file = parseCode("100 UNTRACE")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLineNumberListStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testBreakWithSingleLineNumber() {
+        val file = parseCode("100 BREAK 200")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLineNumberListStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testBreakWithMultipleLineNumbers() {
+        val file = parseCode("100 BREAK 200,300,400")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLineNumberListStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testBreakKeywordIsCaseInsensitive() {
+        val file = parseCode("100 break 200")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLineNumberListStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testBreakDoesNotProducePrintStatement() {
+        val file = parseCode("100 BREAK 200")
+        val printStmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()
+        assertEquals(0, printStmts.size)
     }
 
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile

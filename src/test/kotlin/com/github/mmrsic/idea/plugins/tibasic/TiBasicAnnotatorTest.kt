@@ -806,5 +806,141 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText("test.tibasic", "100 PRINT (A$&B$)=\"HI!\"")
         myFixture.checkHighlighting(true, false, false)
     }
+
+    fun testNoErrorForBreakWithoutArgument() {
+        myFixture.configureByText("test.tibasic", "100 BREAK")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForUnbreakWithoutArgument() {
+        myFixture.configureByText("test.tibasic", "100 UNBREAK")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForTraceWithoutArgument() {
+        myFixture.configureByText("test.tibasic", "100 TRACE")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForUntraceWithoutArgument() {
+        myFixture.configureByText("test.tibasic", "100 UNTRACE")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForBreakWithSingleLineNumber() {
+        myFixture.configureByText("test.tibasic", "100 BREAK 200\n200 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForBreakWithMultipleLineNumbers() {
+        myFixture.configureByText("test.tibasic", "100 BREAK 100,200,300\n200 PRINT\n300 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForBreakWithMinLineNumber() {
+        myFixture.configureByText("test.tibasic", "1 PRINT\n100 BREAK 1")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForBreakWithMaxLineNumber() {
+        myFixture.configureByText("test.tibasic", "100 BREAK 32767\n32767 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForTraceWithMultipleLineNumbers() {
+        myFixture.configureByText("test.tibasic", "100 TRACE 100,200\n200 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForUntraceWithMultipleLineNumbers() {
+        myFixture.configureByText("test.tibasic", "100 UNTRACE 100,200\n200 PRINT")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForBreakWithLineNumberZero() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK <error descr=\"Line number must be between 1 and 32767\">0</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForBreakWithLineNumberAboveMax() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK <error descr=\"Line number must be between 1 and 32767\">32768</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForBreakWithNonNumericArgument() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK <error descr=\"Line number expected\">A</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForBreakWithLeadingComma() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK <error descr=\"Line number expected\">,</error>200",
+        )
+        myFixture.checkHighlighting(false, false, false)
+    }
+
+    fun testErrorForBreakWithTrailingComma() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK 200<error descr=\"Line number expected\">,</error>",
+        )
+        myFixture.checkHighlighting(false, false, false)
+    }
+
+    fun testErrorForBreakWithConsecutiveCommas() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK 200,<error descr=\"Line number expected\">,</error>",
+        )
+        myFixture.checkHighlighting(false, false, false)
+    }
+
+    fun testErrorForBreakWithMissingComma() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK 200 <error descr=\"Comma expected\">300</error>",
+        )
+        myFixture.checkHighlighting(false, false, false)
+    }
+
+    fun testWarningForBreakWithUndefinedLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK <warning descr=\"Bad line number\">200</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoWarningForBreakWithDefinedLineNumber() {
+        myFixture.configureByText("test.tibasic", "100 BREAK 200\n200 PRINT")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testWarningOnlyForUndefinedLineNumbersInList() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 BREAK 200,<warning descr=\"Bad line number\">300</warning>\n200 PRINT",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testWarningForTraceWithUndefinedLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 TRACE <warning descr=\"Bad line number\">500</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
 }
 

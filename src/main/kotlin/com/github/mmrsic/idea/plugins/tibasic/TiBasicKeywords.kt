@@ -25,7 +25,11 @@ object TiBasicKeywords {
 
     private val keywords =
         commands + setOf(
+            "BREAK",
             "PRINT",
+            "TRACE",
+            "UNBREAK",
+            "UNTRACE",
         )
 }
 

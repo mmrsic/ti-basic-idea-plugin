@@ -12,6 +12,8 @@ class TiBasicLine(node: ASTNode) : ASTWrapperPsiElement(node) {
 
 class TiBasicPrintStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicLineNumberListStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {

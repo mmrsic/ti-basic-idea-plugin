@@ -3,6 +3,7 @@ package com.github.mmrsic.idea.plugins.tibasic
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.COMMENT_LINE
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.LINE
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.PRINT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes.VARIABLE_ACCESS
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.COMMA
@@ -14,6 +15,7 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.GE_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.GT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LE_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LT_OP
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.LPAREN
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes.MINUS_OP
@@ -88,8 +90,16 @@ class TiBasicParser : PsiParser, LightPsiParser {
         val lineMarker = builder.mark()
         builder.advanceLexer()
         skipWhitespace(builder)
-        parsePrintStatement(builder)
+        if (builder.tokenType == LINE_NUMBER_LIST_KEYWORD) parseLineNumberListStatement(builder)
+        else parsePrintStatement(builder)
         lineMarker.done(LINE)
+    }
+
+    private fun parseLineNumberListStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume LINE_NUMBER_LIST_KEYWORD
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(LINE_NUMBER_LIST_STATEMENT)
     }
 
     private fun parsePrintStatement(builder: PsiBuilder) {

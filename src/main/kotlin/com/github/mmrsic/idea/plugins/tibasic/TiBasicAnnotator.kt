@@ -27,6 +27,8 @@ class TiBasicAnnotator : Annotator {
                 annotateCommandUsedAsStatement(element, holder)
                 annotateInvalidPrintArgument(element, holder)
             }
+
+            is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
             is TiBasicExpression -> annotateExpression(element, holder)
         }
@@ -60,6 +62,75 @@ class TiBasicAnnotator : Annotator {
                     else -> "PRINT argument must be an expression"
                 }
                 holder.newAnnotation(HighlightSeverity.ERROR, message).range(child.textRange).create()
+            }
+    }
+
+    private fun annotateLineNumberListStatement(statement: TiBasicLineNumberListStatement, holder: AnnotationHolder) {
+        val children = statement.node.getChildren(null)
+            .filter { it.elementType != TokenType.WHITE_SPACE && it.elementType != TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD }
+        var expectNumber = true
+        var trailingComma: ASTNode? = null
+        for (child in children) {
+            if (expectNumber) {
+                when {
+                    child.elementType == TiBasicTokenTypes.NUMERIC_LITERAL -> {
+                        val value = child.text.toLongOrNull()
+                        if (value == null || value !in 1L..32767L) {
+                            holder.newAnnotation(HighlightSeverity.ERROR, "Line number must be between 1 and 32767")
+                                .range(child.textRange).create()
+                        }
+                        expectNumber = false
+                        trailingComma = null
+                    }
+
+                    else -> {
+                        holder.newAnnotation(HighlightSeverity.ERROR, "Line number expected")
+                            .range(child.textRange).create()
+                        trailingComma = null
+                    }
+                }
+            } else {
+                when {
+                    child.elementType == TiBasicTokenTypes.COMMA -> {
+                        expectNumber = true
+                        trailingComma = child
+                    }
+
+                    else -> {
+                        holder.newAnnotation(HighlightSeverity.ERROR, "Comma expected")
+                            .range(child.textRange).create()
+                        trailingComma = null
+                    }
+                }
+            }
+        }
+        if (trailingComma != null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Line number expected")
+                .range(trailingComma.textRange).create()
+        }
+        annotateUndefinedLineNumbers(statement, children, holder)
+    }
+
+    private fun annotateUndefinedLineNumbers(
+        statement: TiBasicLineNumberListStatement,
+        children: List<ASTNode>,
+        holder: AnnotationHolder,
+    ) {
+        val file = statement.containingFile as? TiBasicFile ?: return
+        val definedLineNumbers =
+            file.children
+                .filterIsInstance<TiBasicLine>()
+                .map { it.lineNumber() }
+                .filter { it in 1..32767 }
+                .toSet()
+        children
+            .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
+            .forEach { child ->
+                val value = child.text.toLongOrNull() ?: return@forEach
+                if (value in 1L..32767L && value.toInt() !in definedLineNumbers) {
+                    holder.newAnnotation(HighlightSeverity.WARNING, "Bad line number")
+                        .range(child.textRange).create()
+                }
             }
     }
 

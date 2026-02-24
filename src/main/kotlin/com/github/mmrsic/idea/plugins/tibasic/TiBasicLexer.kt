@@ -26,12 +26,13 @@ import com.intellij.psi.tree.IElementType
 class TiBasicLexer : LexerBase() {
 
     private companion object {
-        val VALID_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
+        val VALID_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT|BREAK|UNBREAK|TRACE|UNTRACE)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
         val PARTIAL_KEYWORD_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)([A-Za-z]+)([ \t]*)$""")
         val TRAILING_WS = Regex("""([ \t]*)$""")
         val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
         val VALID_NUMERIC_VARIABLE_NAME = Regex("""^[A-Za-z@\[\]\\_][A-Za-z0-9@_]{0,14}$""")
         val NUMERIC_LITERAL = Regex("""^\d+(\.\d+)?([Ee][+-]?\d+)?$""")
+        val LINE_NUMBER_LIST_KEYWORDS = setOf("BREAK", "UNBREAK", "TRACE", "UNTRACE")
     }
 
     private enum class LineKind { VALID, PARTIAL_KEYWORD, COMMENT }
@@ -123,7 +124,11 @@ class TiBasicLexer : LexerBase() {
             result.add(LineToken(offset, offset + ws1.length, TokenType.WHITE_SPACE))
             offset += ws1.length
         }
-        result.add(LineToken(offset, offset + printStr.length, TiBasicTokenTypes.PRINT_KEYWORD))
+        val keywordType = if (printStr.uppercase() in LINE_NUMBER_LIST_KEYWORDS)
+            TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
+        else
+            TiBasicTokenTypes.PRINT_KEYWORD
+        result.add(LineToken(offset, offset + printStr.length, keywordType))
         offset += printStr.length
         if (ws2.isNotEmpty()) {
             result.add(LineToken(offset, offset + ws2.length, TokenType.WHITE_SPACE))
@@ -151,7 +156,11 @@ class TiBasicLexer : LexerBase() {
         offset += numStr.length
         result.add(LineToken(offset, offset + ws1.length, TokenType.WHITE_SPACE))
         offset += ws1.length
-        result.add(LineToken(offset, offset + keywordStr.length, TiBasicTokenTypes.PRINT_KEYWORD))
+        val keywordType = if (keywordStr.uppercase() in LINE_NUMBER_LIST_KEYWORDS)
+            TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
+        else
+            TiBasicTokenTypes.PRINT_KEYWORD
+        result.add(LineToken(offset, offset + keywordStr.length, keywordType))
         offset += keywordStr.length
         if (trailingWs.isNotEmpty()) {
             result.add(LineToken(offset, offset + trailingWs.length, TokenType.WHITE_SPACE))

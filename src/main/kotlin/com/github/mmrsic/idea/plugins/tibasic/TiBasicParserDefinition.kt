@@ -5,6 +5,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCommentLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
 import com.intellij.lang.ASTNode
 import com.intellij.lang.ParserDefinition
@@ -36,6 +37,7 @@ class TiBasicParserDefinition : ParserDefinition {
         when (node.elementType) {
             TiBasicNodeTypes.LINE -> TiBasicLine(node)
             TiBasicNodeTypes.PRINT_STATEMENT -> TiBasicPrintStatement(node)
+            TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT -> TiBasicLineNumberListStatement(node)
             TiBasicNodeTypes.EXPRESSION -> TiBasicExpression(node)
             TiBasicNodeTypes.VARIABLE_ACCESS -> TiBasicVariableAccess(node)
             TiBasicNodeTypes.COMMENT_LINE -> TiBasicCommentLine(node)
