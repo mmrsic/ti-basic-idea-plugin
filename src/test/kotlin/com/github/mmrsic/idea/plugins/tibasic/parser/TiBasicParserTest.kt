@@ -1020,6 +1020,48 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testExplicitLetProducesLetStatement() {
+        val file = parseCode("100 LET A = 5")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testImplicitLetProducesLetStatement() {
+        val file = parseCode("100 A = 5")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testImplicitLetWithStringVariableProducesLetStatement() {
+        val file = parseCode("100 A$ = \"hello\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testExplicitLetWithSubscriptedVariableProducesLetStatement() {
+        val file = parseCode("100 LET A(1) = 5")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testLetKeywordIsCaseInsensitive() {
+        val file = parseCode("100 let A = 5")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testLetDoesNotProducePrintStatement() {
+        val file = parseCode("100 LET A = 5")
+        val printStmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()
+        assertEquals(0, printStmts.size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

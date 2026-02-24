@@ -11,6 +11,7 @@ object TiBasicTokenTypes {
     val LINE_NUMBER_LIST_KEYWORD = TiBasicElementType("LINE_NUMBER_LIST_KEYWORD")
     val DELETE_KEYWORD = TiBasicElementType("DELETE_KEYWORD")
     val REM_KEYWORD = TiBasicElementType("REM_KEYWORD")
+    val LET_KEYWORD = TiBasicElementType("LET_KEYWORD")
     val REM_TEXT = TiBasicElementType("REM_TEXT")
     val UNKNOWN_STATEMENT_TEXT = TiBasicElementType("UNKNOWN_STATEMENT_TEXT")
     val NO_LINE_NUMBER_TEXT = TiBasicElementType("NO_LINE_NUMBER_TEXT")

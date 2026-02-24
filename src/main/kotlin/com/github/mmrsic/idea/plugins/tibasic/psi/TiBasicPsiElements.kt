@@ -22,6 +22,8 @@ class TiBasicLineNumberListStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicDeleteStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicLetStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicRemStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicUnknownStatement(node: ASTNode) : ASTWrapperPsiElement(node)

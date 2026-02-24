@@ -11,6 +11,7 @@ object TiBasicNodeTypes {
     val LINE_NUMBER_LIST_STATEMENT = TiBasicElementType("LINE_NUMBER_LIST_STATEMENT")
     val DELETE_STATEMENT = TiBasicElementType("DELETE_STATEMENT")
     val REM_STATEMENT = TiBasicElementType("REM_STATEMENT")
+    val LET_STATEMENT = TiBasicElementType("LET_STATEMENT")
     val UNKNOWN_STATEMENT = TiBasicElementType("UNKNOWN_STATEMENT")
     val INVALID_LINE = TiBasicElementType("INVALID_LINE")
     val EXPRESSION = TiBasicElementType("EXPRESSION")

@@ -92,5 +92,25 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 print \"say \"\"hi\"\"\"")
         assertEquals("100 PRINT \"say \"\"hi\"\"\"", formattedText(file))
     }
+
+    fun testImplicitLetVariableIsUppercasedAndSpacesRemoved() {
+        val file = configureFile("100 a = 5")
+        assertEquals("100 A=5", formattedText(file))
+    }
+
+    fun testImplicitLetWithExtraSpacesAroundEquals() {
+        val file = configureFile("100 a  =  5")
+        assertEquals("100 A=5", formattedText(file))
+    }
+
+    fun testImplicitLetStringVariablePreservesStringContent() {
+        val file = configureFile("100 a$ = \"hello world\"")
+        assertEquals("100 A$=\"hello world\"", formattedText(file))
+    }
+
+    fun testExplicitLetKeywordIsUppercased() {
+        val file = configureFile("100 let a = 5")
+        assertEquals("100 LET a=5", formattedText(file))
+    }
 }
 

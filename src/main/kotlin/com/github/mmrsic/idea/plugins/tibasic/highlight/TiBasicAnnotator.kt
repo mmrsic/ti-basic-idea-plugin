@@ -9,6 +9,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
@@ -19,6 +20,7 @@ import com.intellij.lang.ASTNode
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
 
@@ -35,6 +37,7 @@ class TiBasicAnnotator : Annotator {
             }
 
             is TiBasicLine -> annotateLineNumber(element, holder)
+            is TiBasicLetStatement -> annotateLetStatement(element, holder)
             is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
@@ -51,6 +54,28 @@ class TiBasicAnnotator : Annotator {
         val message = if (firstWord in COMMANDS_UPPERCASE) "Command must not be used as statement"
         else "Incorrect statement"
         holder.newAnnotation(HighlightSeverity.ERROR, message).range(statementNode.textRange).create()
+    }
+
+    private fun annotateLetStatement(statement: TiBasicLetStatement, holder: AnnotationHolder) {
+        val varAccessNode = statement.node.allChildren
+            .firstOrNull { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
+        if (varAccessNode != null && varAccessNode.firstChildNode?.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Bad variable name")
+                .range(varAccessNode.textRange)
+                .create()
+            return
+        }
+        val expression = statement.children.filterIsInstance<TiBasicExpression>().firstOrNull()
+            ?: return
+        if (varAccessNode == null) return
+        val isStringVar = varAccessNode.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE
+        val isStringExpr = isStringExpression(expression)
+        if (isStringVar != isStringExpr) {
+            val mismatchRange = TextRange(varAccessNode.textRange.startOffset, expression.textRange.endOffset)
+            holder.newAnnotation(HighlightSeverity.ERROR, "String-number mismatch")
+                .range(mismatchRange)
+                .create()
+        }
     }
 
     private fun annotateInvalidPrintArgument(statement: TiBasicPrintStatement, holder: AnnotationHolder) {

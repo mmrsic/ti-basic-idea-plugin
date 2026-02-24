@@ -16,6 +16,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 
 | Statement           | Description                                               |
 |---------------------|-----------------------------------------------------------|
+| `LET`               | Assign a value to a variable (`LET` keyword is optional)  |
 | `PRINT`             | Output values or text                                     |
 | `REM`               | Remark / comment                                          |
 | `DELETE`            | Delete a string expression                                |
@@ -39,18 +40,19 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 
 The annotator inspects every file and highlights:
 
-| Severity | Check                                                                 |
-|----------|-----------------------------------------------------------------------|
-| Error    | Line number out of range (< 1 or > 32767)                             |
-| Error    | Duplicate line numbers                                                |
-| Warning  | Line numbers not in ascending order                                   |
-| Error    | Line without a line number                                            |
-| Error    | Unknown statement keyword                                             |
-| Error    | Variable name that is a reserved keyword or command                   |
-| Error    | Conflicting variable usage (scalar vs. array)                         |
-| Error    | Empty subscript or more than 3 subscript dimensions                   |
-| Error    | Type mismatch (numeric value where string is required, or vice versa) |
-| Warning  | Reference to an undefined line number in BREAK/UNBREAK/TRACE/UNTRACE  |
+| Severity | Check                                                                            |
+|----------|----------------------------------------------------------------------------------|
+| Error    | Line number out of range (< 1 or > 32767)                                        |
+| Error    | Duplicate line numbers                                                           |
+| Warning  | Line numbers not in ascending order                                              |
+| Error    | Line without a line number                                                       |
+| Error    | Unknown statement keyword                                                        |
+| Error    | Variable name that is a reserved keyword or command                              |
+| Error    | Conflicting variable usage (scalar vs. array)                                    |
+| Error    | Empty subscript or more than 3 subscript dimensions                              |
+| Error    | Type mismatch (numeric value where string is required, or vice versa)            |
+| Error    | String-number mismatch in LET assignment (variable type differs from expression) |
+| Warning  | Reference to an undefined line number in BREAK/UNBREAK/TRACE/UNTRACE             |
 
 ### Code actions
 

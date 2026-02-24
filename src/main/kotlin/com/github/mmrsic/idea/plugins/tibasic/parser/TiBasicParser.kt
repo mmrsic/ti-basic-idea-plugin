@@ -7,7 +7,9 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIV_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.EQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GE_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INVALID_VARIABLE_NAME
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LE_OP
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LET_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LINE_NUMBER
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LPAREN
@@ -29,6 +31,7 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.UNKNOWN_ST
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DELETE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LET_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.PRINT_STATEMENT
@@ -101,11 +104,31 @@ class TiBasicParser : PsiParser, LightPsiParser {
             DELETE_KEYWORD -> parseDeleteStatement(builder)
             REM_KEYWORD -> parseRemStatement(builder)
             PRINT_KEYWORD -> parsePrintStatement(builder)
+            LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
             else -> { /* line number only — valid, no statement */
             }
         }
         lineMarker.done(LINE)
+    }
+
+    private fun parseLetStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        if (builder.tokenType == LET_KEYWORD) {
+            builder.advanceLexer() // consume optional LET
+            skipWhitespace(builder)
+        }
+        if (builder.tokenType == NUMERIC_VARIABLE || builder.tokenType == STRING_VARIABLE ||
+            builder.tokenType == INVALID_VARIABLE_NAME
+        ) {
+            parseVariableAccess(builder)
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == EQ_OP) builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (isExpressionStart(builder)) parseExpression(builder)
+        }
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(LET_STATEMENT)
     }
 
     private fun parseRemStatement(builder: PsiBuilder) {

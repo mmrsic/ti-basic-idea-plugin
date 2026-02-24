@@ -40,6 +40,7 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.PRINT_KEYWORD,
             TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD,
             TiBasicTokenTypes.DELETE_KEYWORD,
+            TiBasicTokenTypes.LET_KEYWORD,
             TiBasicTokenTypes.REM_KEYWORD -> arrayOf(KEYWORD)
 
             TiBasicTokenTypes.REM_TEXT -> arrayOf(COMMENT)

@@ -3,6 +3,7 @@ package com.github.mmrsic.idea.plugins.tibasic.action.format
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.intellij.psi.PsiElement
 
@@ -25,7 +26,10 @@ private fun formattedLine(line: TiBasicLine): String {
     val keywordMatch = TiBasicKeywords.getKeywords()
         .map { it.uppercase() }
         .firstOrNull { statementText.uppercase().startsWith(it) }
-        ?: return "${line.lineNumber()} ${uppercaseOutsideStrings(statementText)}"
+        ?: return "${line.lineNumber()} ${
+            if (printStatement is TiBasicLetStatement) removeWhitespaceOutsideStrings(uppercaseOutsideStrings(statementText))
+            else uppercaseOutsideStrings(statementText)
+        }"
     val afterKeyword = statementText.drop(keywordMatch.length)
     val trimmedArgument = afterKeyword.trim()
     return if (trimmedArgument.isEmpty()) {

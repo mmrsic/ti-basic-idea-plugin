@@ -10,14 +10,15 @@ Every non-empty line must begin with a **line number**.
 
 ## Line classification
 
-The lexer classifies each line into one of four kinds before tokenising it:
+The lexer classifies each line into one of five kinds before tokenizing it:
 
-| Kind                | Pattern                                       | PSI node                                           |
-|---------------------|-----------------------------------------------|----------------------------------------------------|
-| `VALID_STATEMENT`   | `[ws] lineNumber [ws] keyword [ws] argument?` | `TiBasicLine` containing a statement node          |
-| `LINE_NUMBER_ONLY`  | `[ws] lineNumber [ws]`                        | `TiBasicLine` with no child statement              |
-| `UNKNOWN_STATEMENT` | `[ws] lineNumber [ws] unrecognisedText`       | `TiBasicLine` containing `TiBasicUnknownStatement` |
-| `NO_LINE_NUMBER`    | anything else (non-blank)                     | `TiBasicInvalidLine` (annotated as error)          |
+| Kind                     | Pattern                                                          | PSI node                                           |
+|--------------------------|------------------------------------------------------------------|----------------------------------------------------|
+| `VALID_STATEMENT`        | `[ws] lineNumber [ws] keyword [ws] argument?`                    | `TiBasicLine` containing a statement node          |
+| `LINE_NUMBER_ONLY`       | `[ws] lineNumber [ws]`                                           | `TiBasicLine` with no child statement              |
+| `LET_IMPLICIT_STATEMENT` | `[ws] lineNumber [ws] variable [ws] = ...`  (no leading keyword) | `TiBasicLine` containing `TiBasicLetStatement`     |
+| `UNKNOWN_STATEMENT`      | `[ws] lineNumber [ws] unrecognisedText`                          | `TiBasicLine` containing `TiBasicUnknownStatement` |
+| `NO_LINE_NUMBER`         | anything else (non-blank)                                        | `TiBasicInvalidLine` (annotated as error)          |
 
 Blank lines are silently ignored.
 
@@ -33,12 +34,15 @@ invalidLine       = noLineNumberText ;          (* annotated as error *)
 lineNumber        = digit { digit } ;           (* value must be in 1..32767 *)
 
 statement         = printStatement
+                  | letStatement
                   | remStatement
                   | deleteStatement
                   | lineNumberListStatement
                   | unknownStatement ;
 
 printStatement          = PRINT     [ whitespace ] [ expression ] ;
+letStatement            = [ LET whitespace ] variableAccess EQ expression ;
+                          (* LET keyword is optional; annotator checks type compatibility *)
 remStatement            = REM       [ whitespace ] [ remarkText ] ;
 deleteStatement         = DELETE    [ whitespace ] [ stringExpression ] ;
 lineNumberListStatement = listKeyword whitespace lineNumberList ;
@@ -88,6 +92,7 @@ Recognised as statement-starting keywords (case-insensitive):
 
 | Token                                  | Statement kind              |
 |----------------------------------------|-----------------------------|
+| `LET`                                  | Variable assignment         |
 | `PRINT`                                | Print expression            |
 | `REM`                                  | Remark/comment              |
 | `DELETE`                               | Delete string               |
@@ -95,7 +100,7 @@ Recognised as statement-starting keywords (case-insensitive):
 
 ### Commands (not valid as statements)
 
-These identifiers are recognised by the annotator and produce a specific error:
+These identifiers are recognized by the annotator and produce a specific error:
 
 `BYE`, `CON`, `CONTINUE`, `EDIT`, `LIST`, `NEW`, `NUM`, `NUMBER`, `OLD`, `RES`, `RESEQUENCE`, `RUN`, `SAVE`
 
@@ -142,12 +147,18 @@ These identifiers are recognised by the annotator and produce a specific error:
 150 DELETE A$                  ✓ valid
 160 BREAK 100,120,140          ✓ valid — line-number list
 170                            ✓ valid — line number only (no statement)
-180 PRINT A(1,2,3,4)           ✗ error — more than 3 subscript dimensions
-190 RUN                        ✗ error — command used as statement
-200 PRINT A$ + 1               ✗ error — String-Number-Mismatch
+180 LET A = 5                  ✓ valid — explicit LET assignment
+190 A = 5                      ✓ valid — implicit LET (no keyword)
+200 A$ = "HELLO"               ✓ valid — implicit LET, string variable
+210 LET A(2) = 3.14            ✓ valid — explicit LET with subscripted variable
+220 PRINT A(1,2,3,4)           ✗ error — more than 3 subscript dimensions
+230 RUN                        ✗ error — command used as statement
+240 PRINT A$ + 1               ✗ error — String-Number-Mismatch
+250 LET A = "hello"            ✗ error — String-number mismatch (numeric variable, string expression)
+260 LET A$ = 5                 ✗ error — String-number mismatch (string variable, numeric expression)
 99999 PRINT "X"                ✗ error — line number out of range (> 32767)
 PRINT "no number"              ✗ error — line number expected
-210 FOOBAR                     ✗ error — unknown statement
+270 FOOBAR                     ✗ error — unknown statement
 ```
 
 ## Scope and dialect notes

@@ -7,6 +7,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
@@ -42,6 +43,7 @@ class TiBasicParserDefinition : ParserDefinition {
     override fun createElement(node: ASTNode): PsiElement =
         when (node.elementType) {
             TiBasicNodeTypes.LINE -> TiBasicLine(node)
+            TiBasicNodeTypes.LET_STATEMENT -> TiBasicLetStatement(node)
             TiBasicNodeTypes.PRINT_STATEMENT -> TiBasicPrintStatement(node)
             TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT -> TiBasicLineNumberListStatement(node)
             TiBasicNodeTypes.DELETE_STATEMENT -> TiBasicDeleteStatement(node)

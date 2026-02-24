@@ -1016,4 +1016,43 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting(true, false, false)
     }
+
+    fun testNoErrorForExplicitLetWithNumericAssignment() {
+        myFixture.configureByText("test.tibasic", "100 LET A = 5")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForImplicitLetWithNumericAssignment() {
+        myFixture.configureByText("test.tibasic", "100 A = 5")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForImplicitLetWithStringAssignment() {
+        myFixture.configureByText("test.tibasic", "100 A$ = \"hello\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForStringExpressionAssignedToNumericVariable() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"String-number mismatch\">A = \"hello\"</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericExpressionAssignedToStringVariable() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"String-number mismatch\">A$ = 5</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForStringExpressionAssignedToNumericVariableWithLetKeyword() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 LET <error descr=\"String-number mismatch\">A = \"hello\"</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
 }

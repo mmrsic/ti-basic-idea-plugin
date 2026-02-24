@@ -29,12 +29,12 @@ Source text
 TiBasicLexer          (tibasic.lexer)
     Reads lines, classifies them, emits typed tokens.
     Each source line is classified as:
-      VALID_STATEMENT, LINE_NUMBER_ONLY, UNKNOWN_STATEMENT, or NO_LINE_NUMBER.
+      VALID_STATEMENT, LINE_NUMBER_ONLY, LET_IMPLICIT_STATEMENT, UNKNOWN_STATEMENT, or NO_LINE_NUMBER.
     │
     ▼
 TiBasicParser         (tibasic.parser)
     Driven by PsiBuilder; builds a composite AST.
-    Produces nodes: LINE, PRINT_STATEMENT, DELETE_STATEMENT,
+    Produces nodes: LINE, PRINT_STATEMENT, LET_STATEMENT, DELETE_STATEMENT,
     REM_STATEMENT, LINE_NUMBER_LIST_STATEMENT, UNKNOWN_STATEMENT,
     INVALID_LINE, EXPRESSION, VARIABLE_ACCESS.
     │
@@ -69,6 +69,7 @@ PSI tree              (tibasic.psi)
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
 | `TiBasicFile`                    | Duplicate line numbers (error + quick-fix), non-ascending line numbers (warning + quick-fix), variable-name conflicts (scalar vs. array) |
 | `TiBasicLine`                    | Line number out of `VALID_LINE_NUMBER_RANGE` (1–32767)                                                                                   |
+| `TiBasicLetStatement`            | Invalid variable name; type mismatch between variable and expression (highlighted over `variable = expression`)                          |
 | `TiBasicPrintStatement`          | Invalid variable names, type mismatches (string vs. numeric)                                                                             |
 | `TiBasicDeleteStatement`         | Numeric literal/variable where string expression is required                                                                             |
 | `TiBasicLineNumberListStatement` | Missing line numbers, extra tokens, trailing comma, undefined line number references (warning)                                           |
