@@ -91,6 +91,22 @@ Tests, quality assurance & debugging
 - Run local tests before committing: `./gradlew test` and `./gradlew runIde` for manual sandbox testing.
 - Use the Plugin Verifier (`./gradlew verifyPlugin`) only in CI for the target IDE versions.
 
+Documentation maintenance
+
+- **Keep `README.md` current for users**: whenever a user-visible feature is added, changed, or removed, update the
+  relevant section of `README.md` (Features, Supported statements, Error and warning annotations, Code actions, or
+  Project structure). The README must always reflect what the plugin actually does.
+- **Keep `docs/` current for contributors**: whenever a change affects architecture, grammar, extension points, or
+  testing conventions, update the corresponding file in `docs/`:
+  - `docs/architecture.md` — package map, data-flow, annotator checks, threading, design decisions
+  - `docs/grammar.md` — EBNF grammar, token reference, valid/invalid examples
+  - `docs/extension-points.md` — all registered extension points and `tibasic.ext` extensions
+  - `docs/testing.md` — test setup, base class, conventions
+- **Docs are part of the definition of done**: a PR that adds or changes a feature is not complete until the
+  documentation is updated. Add doc updates to the same commit or PR as the code change.
+- **Do not duplicate content between `README.md` and `docs/`**: `README.md` is user-facing and summarizes features;
+  `docs/` contains implementation detail for contributors. Link from `README.md` to `docs/` rather than copying.
+
 Continuous integration / release
 
 - CI should at minimum run: Gradle clean, build, tests, and plugin verifier. Optionally include code-style checks and
@@ -139,6 +155,7 @@ Templates & PR checklist
 - Build: `./gradlew build` (green)
 - Run plugin: `./gradlew runIde` (manual smoke test)
 - Plugin verifier: `./gradlew verifyPlugin` (CI check)
+- Docs: `README.md` updated for user-facing changes; `docs/` updated for contributor-facing changes
 - PR: description, tests, release-notes entry (if relevant), justification for new dependencies
 
 Contacts / further notes
