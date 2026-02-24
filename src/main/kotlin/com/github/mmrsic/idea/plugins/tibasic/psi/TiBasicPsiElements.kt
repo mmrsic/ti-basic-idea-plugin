@@ -1,9 +1,12 @@
 package com.github.mmrsic.idea.plugins.tibasic.psi
 
-import com.github.mmrsic.idea.plugins.tibasic.TiBasicNodeTypes
-import com.github.mmrsic.idea.plugins.tibasic.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.lang.ASTNode
+
+val VALID_LINE_NUMBER_RANGE = 1..32767
 
 class TiBasicLine(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun lineNumber(): Int =
@@ -29,10 +32,10 @@ class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun hasSubscriptParens(): Boolean =
-        node.getChildren(null).any { it.elementType == TiBasicTokenTypes.LPAREN }
+        node.allChildren.any { it.elementType == TiBasicTokenTypes.LPAREN }
 
     fun subscriptDimCount(): Int =
-        node.getChildren(null).count { it.elementType == TiBasicNodeTypes.EXPRESSION }
+        node.allChildren.count { it.elementType == TiBasicNodeTypes.EXPRESSION }
 }
 
 class TiBasicCommentLine(node: ASTNode) : ASTWrapperPsiElement(node)

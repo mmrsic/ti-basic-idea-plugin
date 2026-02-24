@@ -22,42 +22,42 @@
         <fileType
                 name="TI-Basic File"
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicFileType"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicFileType"
                 fieldName="INSTANCE"
                 extensions="ti-basic;tibasic;ti.bas"
         />
-        <fileIconProvider implementation="com.github.mmrsic.idea.plugins.tibasic.TiBasicFileIconProvider"/>
+        <fileIconProvider implementation="com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicFileIconProvider"/>
         <lang.syntaxHighlighterFactory
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicSyntaxHighlighterFactory"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.highlight.TiBasicSyntaxHighlighterFactory"
                 language="TI-Basic"
         />
         <completion.contributor
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicCompletionContributor"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCompletionContributor"
         />
         <lang.parserDefinition
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicParserDefinition"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicParserDefinition"
         />
         <annotator
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicAnnotator"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.highlight.TiBasicAnnotator"
         />
         <editorActionHandler
                 action="EditorStartNewLine"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.TiBasicShiftEnterHandler"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicShiftEnterHandler"
         />
     </extensions>
     <actions>
         <action
                 id="TiBasic.ResequenceLineNumbers"
-                class="com.github.mmrsic.idea.plugins.tibasic.ResequenceAction">
+                class="com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
         <action
                 id="TiBasic.FormatCode"
-                class="com.github.mmrsic.idea.plugins.tibasic.FormatAction">
+                class="com.github.mmrsic.idea.plugins.tibasic.action.format.FormatAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>

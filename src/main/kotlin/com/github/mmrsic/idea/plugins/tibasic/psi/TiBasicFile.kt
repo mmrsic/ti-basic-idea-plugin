@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.psi
 
-import com.github.mmrsic.idea.plugins.tibasic.TiBasicFileType
-import com.github.mmrsic.idea.plugins.tibasic.TiBasicLanguage
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicFileType
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
 import com.intellij.extapi.psi.PsiFileBase
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.psi.FileViewProvider
@@ -9,5 +9,6 @@ import com.intellij.psi.FileViewProvider
 class TiBasicFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, TiBasicLanguage) {
     override fun getFileType(): FileType = TiBasicFileType
     override fun toString(): String = "TI-Basic File"
+    fun lines(): List<TiBasicLine> = children.filterIsInstance<TiBasicLine>()
 }
 

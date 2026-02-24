@@ -18,6 +18,36 @@ General principles
   function and variable names, small well-named functions/methods, and well-structured tests. Comments are allowed only
   in exceptional cases (e.g., unavoidable context for a complex algorithm) and must be explicitly justified.
 
+Code reuse (DRY — Don't Repeat Yourself)
+
+- **No duplication, even in small parts**: as long as extracting shared code requires no disproportionate effort,
+  every repeated pattern — even a single expression, range literal, or two-line block — must be extracted into a named
+  constant, extension function, or shared helper. The bar for extraction is deliberately low.
+- **Magic values must be named constants**: numeric or string literals that carry domain meaning (e.g., valid line
+  number bounds, default step values) must be defined as named constants at the appropriate scope, never written inline
+  more than once.
+- **Identical boilerplate in sibling classes must be lifted**: when two or more classes (e.g., actions, test cases)
+  contain identical method bodies, extract a common abstract base class, interface default, or top-level helper.
+- **Test helper duplication is code duplication**: shared test setup (e.g., `configureFile`) must live in a common
+  test base class, not be copied into each test class.
+- **Shared algorithmic skeletons must be parameterized**: when two functions differ only in a single step of an
+  otherwise identical loop or traversal, introduce a higher-order function (lambda parameter) rather than duplicating
+  the surrounding structure.
+- Before introducing new code, search the codebase for existing utilities that already solve the same problem.
+
+Framework class improvements via Kotlin extensions
+
+- **Prefer readable extension properties/functions over raw framework API calls**: whenever a framework method call is
+  verbose, requires a dummy argument, or obscures intent, wrap it in a Kotlin extension. Example:
+  `node.getChildren(null)` → `node.allChildren` as `val ASTNode.allChildren: Array<ASTNode> get() = getChildren(null)`.
+- **Group extensions by the framework type they extend**: place all extensions on `ASTNode` in
+  `ASTNodeExtensions.kt`, extensions on `PsiElement` in `PsiElementExtensions.kt`, and so on. Never scatter
+  extensions on the same type across multiple files.
+- **Extensions go in the main source set** (`src/main/kotlin/.../tibasic/`) unless they are exclusively needed in
+  tests, in which case they belong in the test source set.
+- **Check the extensions file before calling a raw framework method**: if `ASTNodeExtensions.kt` (or the appropriate
+  file) already wraps the method, use the extension instead.
+
 Project structure & build
 
 - Build using Gradle Kotlin DSL with the `org.jetbrains.intellij` plugin. Changes to `build.gradle.kts` must remain
