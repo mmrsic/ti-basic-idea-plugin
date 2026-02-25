@@ -6,6 +6,7 @@ import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicEndStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
@@ -13,6 +14,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicStopStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicUnknownStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.psi.VALID_LINE_NUMBER_RANGE
@@ -41,11 +43,24 @@ class TiBasicAnnotator : Annotator {
             is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
+            is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
+            is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
             is TiBasicInvalidLine -> holder.newAnnotation(HighlightSeverity.ERROR, "Line number expected").range(element).create()
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
             is TiBasicExpression -> annotateExpression(element, holder)
         }
+    }
+
+    private fun annotateTrailingContent(stmtNode: ASTNode, stmtName: String, holder: AnnotationHolder) {
+        val trailing = stmtNode.allChildren
+            .dropWhile { it.elementType == TiBasicTokenTypes.END_KEYWORD || it.elementType == TiBasicTokenTypes.STOP_KEYWORD }
+            .filter { it.elementType != TokenType.WHITE_SPACE }
+        if (trailing.isEmpty()) return
+        val range = TextRange(trailing.first().startOffset, trailing.last().startOffset + trailing.last().textLength)
+        holder.newAnnotation(HighlightSeverity.WARNING, "Everything after $stmtName statement is ignored")
+            .range(range)
+            .create()
     }
 
     private fun annotateUnknownStatement(statement: TiBasicUnknownStatement, holder: AnnotationHolder) {

@@ -26,6 +26,10 @@ class TiBasicLetStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicRemStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicEndStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
+class TiBasicStopStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicUnknownStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicInvalidLine(node: ASTNode) : ASTWrapperPsiElement(node)

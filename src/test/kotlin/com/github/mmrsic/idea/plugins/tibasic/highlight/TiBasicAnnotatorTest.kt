@@ -1055,4 +1055,61 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting(true, false, false)
     }
+
+    fun testNoErrorForEndStatement() {
+        myFixture.configureByText("test.tibasic", "100 END")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForEndAsLastLine() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"OK\"\n200 END")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForMultipleEndStatements() {
+        myFixture.configureByText("test.tibasic", "100 END\n200 END")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForStopStatement() {
+        myFixture.configureByText("test.tibasic", "100 STOP")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForStopInMiddleOfProgram() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\n200 STOP\n300 PRINT \"B\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testWarningForTrailingContentAfterEnd() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 END<warning descr=\"Everything after END statement is ignored\">=5</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testWarningForTrailingContentAfterEndWithSpace() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 END <warning descr=\"Everything after END statement is ignored\">X</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testWarningForTrailingContentAfterStop() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 STOP<warning descr=\"Everything after STOP statement is ignored\">*3</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testWarningForTrailingContentAfterStopWithSpace() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 STOP <warning descr=\"Everything after STOP statement is ignored\">A</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
 }

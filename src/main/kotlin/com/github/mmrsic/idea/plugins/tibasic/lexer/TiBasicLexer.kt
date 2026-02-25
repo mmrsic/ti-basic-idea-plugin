@@ -19,7 +19,8 @@ import com.intellij.psi.tree.IElementType
 class TiBasicLexer : LexerBase() {
 
     private companion object {
-        val VALID_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
+        val VALID_LINE =
+            Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
         val IMPLICIT_LET_LINE = Regex("""^[ \t]*\d+[ \t]+[A-Za-z@\[\]\\_][A-Za-z0-9@_]*\$?(?:\([^)]*\))?[ \t]*=.*$""")
         val UNKNOWN_STATEMENT_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(\S.*)$""")
@@ -134,6 +135,8 @@ class TiBasicLexer : LexerBase() {
             "DELETE" -> TiBasicTokenTypes.DELETE_KEYWORD
             "REM" -> TiBasicTokenTypes.REM_KEYWORD
             "LET" -> TiBasicTokenTypes.LET_KEYWORD
+            "END" -> TiBasicTokenTypes.END_KEYWORD
+            "STOP" -> TiBasicTokenTypes.STOP_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         result.add(LineToken(offset, offset + printStr.length, keywordType))

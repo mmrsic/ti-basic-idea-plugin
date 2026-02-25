@@ -41,7 +41,9 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD,
             TiBasicTokenTypes.DELETE_KEYWORD,
             TiBasicTokenTypes.LET_KEYWORD,
-            TiBasicTokenTypes.REM_KEYWORD -> arrayOf(KEYWORD)
+            TiBasicTokenTypes.REM_KEYWORD,
+            TiBasicTokenTypes.END_KEYWORD,
+            TiBasicTokenTypes.STOP_KEYWORD -> arrayOf(KEYWORD)
 
             TiBasicTokenTypes.REM_TEXT -> arrayOf(COMMENT)
             TiBasicTokenTypes.IDENTIFIER -> arrayOf(DefaultLanguageHighlighterColors.IDENTIFIER)

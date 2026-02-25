@@ -19,6 +19,8 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 | `LET`               | Assign a value to a variable (`LET` keyword is optional)  |
 | `PRINT`             | Output values or text                                     |
 | `REM`               | Remark / comment                                          |
+| `END`               | Halt program execution (by convention the last line)      |
+| `STOP`              | Halt program execution (by convention used mid-program)   |
 | `DELETE`            | Delete a string expression                                |
 | `BREAK` / `UNBREAK` | Set or clear breakpoints at given line numbers            |
 | `TRACE` / `UNTRACE` | Enable or disable execution tracing at given line numbers |

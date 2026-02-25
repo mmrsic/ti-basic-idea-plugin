@@ -4,6 +4,7 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DELETE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIV_OP
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.END_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.EQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GE_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
@@ -25,10 +26,12 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.POW_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.PRINT_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.REM_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RPAREN
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STOP_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_VARIABLE
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.UNKNOWN_STATEMENT_TEXT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DELETE_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.END_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LET_STATEMENT
@@ -36,6 +39,7 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.PRINT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.REM_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.STOP_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.UNKNOWN_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.VARIABLE_ACCESS
 import com.intellij.lang.ASTNode
@@ -52,8 +56,10 @@ import com.intellij.psi.tree.IElementType
  * ```
  * file              ::= line*
  * line              ::= numberedLine | commentLine
- * numberedLine      ::= LINE_NUMBER WHITE_SPACE? printStatement
+ * numberedLine      ::= LINE_NUMBER WHITE_SPACE? (printStatement | endStatement | stopStatement | ...)?
  * printStatement    ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
+ * endStatement      ::= END_KEYWORD
+ * stopStatement     ::= STOP_KEYWORD
  * expression        ::= numericCmp
  * stringExpr        ::= stringOperand (CONCAT_OP stringOperand)*
  * stringOperand     ::= STRING_LITERAL | variableAccess(STRING_VARIABLE)
@@ -103,6 +109,8 @@ class TiBasicParser : PsiParser, LightPsiParser {
             LINE_NUMBER_LIST_KEYWORD -> parseLineNumberListStatement(builder)
             DELETE_KEYWORD -> parseDeleteStatement(builder)
             REM_KEYWORD -> parseRemStatement(builder)
+            END_KEYWORD -> parseEndStatement(builder)
+            STOP_KEYWORD -> parseStopStatement(builder)
             PRINT_KEYWORD -> parsePrintStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
@@ -136,6 +144,20 @@ class TiBasicParser : PsiParser, LightPsiParser {
         builder.advanceLexer() // consume REM_KEYWORD
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(REM_STATEMENT)
+    }
+
+    private fun parseEndStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume END_KEYWORD
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(END_STATEMENT)
+    }
+
+    private fun parseStopStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume STOP_KEYWORD
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(STOP_STATEMENT)
     }
 
     private fun parseUnknownStatement(builder: PsiBuilder) {

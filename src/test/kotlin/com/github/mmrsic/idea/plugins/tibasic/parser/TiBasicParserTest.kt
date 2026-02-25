@@ -1062,6 +1062,72 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(0, printStmts.size)
     }
 
+    fun testEndProducesEndStatement() {
+        val file = parseCode("100 END")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicEndStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testEndKeywordIsCaseInsensitive() {
+        val file = parseCode("100 end")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicEndStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testEndDoesNotProducePrintStatement() {
+        val file = parseCode("100 END")
+        val printStmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()
+        assertEquals(0, printStmts.size)
+    }
+
+    fun testEndCanAppearMultipleTimes() {
+        val file = parseCode("100 END\n200 END")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(2, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicEndStatement>().size)
+        assertEquals(1, lines[1].children.filterIsInstance<TiBasicEndStatement>().size)
+    }
+
+    fun testStopProducesStopStatement() {
+        val file = parseCode("100 STOP")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicStopStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testStopKeywordIsCaseInsensitive() {
+        val file = parseCode("100 stop")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicStopStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testStopDoesNotProducePrintStatement() {
+        val file = parseCode("100 STOP")
+        val printStmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()
+        assertEquals(0, printStmts.size)
+    }
+
+    fun testStopCanAppearMultipleTimes() {
+        val file = parseCode("100 STOP\n200 STOP")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(2, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicStopStatement>().size)
+        assertEquals(1, lines[1].children.filterIsInstance<TiBasicStopStatement>().size)
+    }
+
+    fun testEndAndStopCanCoexist() {
+        val file = parseCode("100 STOP\n200 PRINT \"OK\"\n300 END")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(3, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicStopStatement>().size)
+        assertEquals(1, lines[2].children.filterIsInstance<TiBasicEndStatement>().size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

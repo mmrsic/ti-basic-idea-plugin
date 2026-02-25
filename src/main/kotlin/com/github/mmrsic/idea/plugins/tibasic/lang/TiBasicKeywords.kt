@@ -27,9 +27,11 @@ object TiBasicKeywords {
         commands + setOf(
             "BREAK",
             "DELETE",
+            "END",
             "LET",
             "PRINT",
             "REM",
+            "STOP",
             "TRACE",
             "UNBREAK",
             "UNTRACE",
