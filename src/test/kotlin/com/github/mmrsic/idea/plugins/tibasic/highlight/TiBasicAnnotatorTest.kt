@@ -1112,4 +1112,78 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun testNoErrorForGotoWithExistingLineNumber() {
+        myFixture.configureByText("test.tibasic", "100 GOTO 200\n200 PRINT \"OK\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForGoToTwoWordsWithExistingLineNumber() {
+        myFixture.configureByText("test.tibasic", "100 GO TO 200\n200 PRINT \"OK\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testWarningForGotoWithUndefinedLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 GOTO <warning descr=\"Bad line number\">999</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testWarningForGoToTwoWordsWithUndefinedLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 GO TO <warning descr=\"Bad line number\">999</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForGotoWithLineNumberZero() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 GOTO <error descr=\"Bad line number\">0</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForGotoWithLineNumberTooLarge() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 GOTO <error descr=\"Bad line number\">99999</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForGotoWithoutLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">GOTO</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForGotoWithNonNumericArgument() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">GOTO ABC</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForGotoWithMultipleLineNumbers() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">GOTO 200 300</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForGoWithoutTo() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">GO 200</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
 }

@@ -14,6 +14,7 @@ object TiBasicNodeTypes {
     val LET_STATEMENT = TiBasicElementType("LET_STATEMENT")
     val END_STATEMENT = TiBasicElementType("END_STATEMENT")
     val STOP_STATEMENT = TiBasicElementType("STOP_STATEMENT")
+    val GOTO_STATEMENT = TiBasicElementType("GOTO_STATEMENT")
     val UNKNOWN_STATEMENT = TiBasicElementType("UNKNOWN_STATEMENT")
     val INVALID_LINE = TiBasicElementType("INVALID_LINE")
     val EXPRESSION = TiBasicElementType("EXPRESSION")

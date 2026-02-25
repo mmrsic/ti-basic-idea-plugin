@@ -38,6 +38,7 @@ statement         = printStatement
                   | remStatement
                   | endStatement
                   | stopStatement
+                  | gotoStatement
                   | deleteStatement
                   | lineNumberListStatement
                   | unknownStatement ;
@@ -50,6 +51,8 @@ endStatement            = END ;
                           (* halts program; by convention placed as the last line, but may appear anywhere *)
 stopStatement           = STOP ;
                           (* halts program; by convention used within the program body, not at the end *)
+gotoStatement           = ( GOTO | GO whitespace TO ) lineNumber ;
+                          (* transfers control to the given line; lineNumber must be in 1..32767 *)
 deleteStatement         = DELETE    [ whitespace ] [ stringExpression ] ;
 lineNumberListStatement = listKeyword whitespace lineNumberList ;
 unknownStatement        = unknownText ;         (* annotated as error *)
@@ -103,6 +106,7 @@ Recognised as statement-starting keywords (case-insensitive):
 | `REM`                                  | Remark/comment                              |
 | `END`                                  | Halt program (end of program by convention) |
 | `STOP`                                 | Halt program (mid-program by convention)    |
+| `GOTO` / `GO TO`                       | Unconditional branch to a line number       |
 | `DELETE`                               | Delete string                               |
 | `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                 |
 
@@ -161,6 +165,8 @@ These identifiers are recognized by the annotator and produce a specific error:
 210 LET A(2) = 3.14            ✓ valid — explicit LET with subscripted variable
 220 END                        ✓ valid — halts program (conventional last line)
 230 STOP                       ✓ valid — halts program (conventional mid-program)
+240 GOTO 100                   ✓ valid — unconditional branch
+250 GO TO 100                  ✓ valid — unconditional branch (two-word form)
 220 PRINT A(1,2,3,4)           ✗ error — more than 3 subscript dimensions
 230 RUN                        ✗ error — command used as statement
 240 PRINT A$ + 1               ✗ error — String-Number-Mismatch

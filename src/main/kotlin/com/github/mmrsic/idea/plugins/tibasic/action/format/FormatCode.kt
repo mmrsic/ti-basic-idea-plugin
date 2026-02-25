@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.format
 
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
@@ -21,22 +22,41 @@ fun formattedText(lines: List<PsiElement>): String =
     }
 
 private fun formattedLine(line: TiBasicLine): String {
-    val printStatement = line.children.firstOrNull() ?: return "${line.lineNumber()}"
-    val statementText = printStatement.text.trim()
+    val statement = line.children.firstOrNull() ?: return "${line.lineNumber()}"
+    val statementText = statement.text.trim()
+
+    val firstTokenType = statement.node.firstChildNode?.elementType
+    if (firstTokenType == TiBasicTokenTypes.GOTO_KEYWORD) {
+        return formattedGotoLine(line.lineNumber(), statement.node.firstChildNode!!.text, statementText)
+    }
+
     val keywordMatch = TiBasicKeywords.getKeywords()
         .map { it.uppercase() }
         .firstOrNull { statementText.uppercase().startsWith(it) }
         ?: return "${line.lineNumber()} ${
-            if (printStatement is TiBasicLetStatement) removeWhitespaceOutsideStrings(uppercaseOutsideStrings(statementText))
+            if (statement is TiBasicLetStatement) removeWhitespaceOutsideStrings(uppercaseOutsideStrings(statementText))
             else uppercaseOutsideStrings(statementText)
         }"
     val afterKeyword = statementText.drop(keywordMatch.length)
+    if (keywordMatch == "REM") {
+        val trimmedRem = afterKeyword.trim()
+        return if (trimmedRem.isEmpty()) "${line.lineNumber()} $keywordMatch"
+        else "${line.lineNumber()} $keywordMatch  $trimmedRem"
+    }
     val trimmedArgument = afterKeyword.trim()
     return if (trimmedArgument.isEmpty()) {
         "${line.lineNumber()} $keywordMatch"
     } else {
         "${line.lineNumber()} $keywordMatch ${removeWhitespaceOutsideStrings(trimmedArgument)}"
     }
+}
+
+private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {
+    val normalizedKeyword = keywordTokenText.trim().replace(Regex("""[ \t]+"""), " ").uppercase()
+    val canonicalKeyword = if (normalizedKeyword == "GO TO") "GO TO" else "GOTO"
+    val argText = statementText.drop(keywordTokenText.length).trim()
+    return if (argText.isEmpty()) "$lineNumber $canonicalKeyword"
+    else "$lineNumber $canonicalKeyword $argText"
 }
 
 fun uppercaseOutsideStrings(text: String): String =

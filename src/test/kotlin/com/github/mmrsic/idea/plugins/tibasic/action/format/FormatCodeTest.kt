@@ -112,5 +112,50 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 let a = 5")
         assertEquals("100 LET a=5", formattedText(file))
     }
+
+    fun testRemPreservesSpacesInComment() {
+        val file = configureFile("100 REM  GOTO Beispiel")
+        assertEquals("100 REM  GOTO Beispiel", formattedText(file))
+    }
+
+    fun testRemPreservesSingleSpaceInComment() {
+        val file = configureFile("100 REM hello world")
+        assertEquals("100 REM  hello world", formattedText(file))
+    }
+
+    fun testRemLowercaseKeywordIsUppercased() {
+        val file = configureFile("100 rem  hello world")
+        assertEquals("100 REM  hello world", formattedText(file))
+    }
+
+    fun testGotoKeywordIsUppercased() {
+        val file = configureFile("100 goto 200\n200 PRINT \"OK\"")
+        assertEquals("100 GOTO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
+
+    fun testGotoPreservesSingleWordForm() {
+        val file = configureFile("100 GOTO 200\n200 PRINT \"OK\"")
+        assertEquals("100 GOTO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
+
+    fun testGoToPreservesTwoWordForm() {
+        val file = configureFile("100 GO TO 200\n200 PRINT \"OK\"")
+        assertEquals("100 GO TO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
+
+    fun testGoToLowercaseKeywordIsUppercased() {
+        val file = configureFile("100 go to 200\n200 PRINT \"OK\"")
+        assertEquals("100 GO TO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
+
+    fun testGoToWithDoubleSpaceNormalizesToSingleSpace() {
+        val file = configureFile("100 go  to 200\n200 PRINT \"OK\"")
+        assertEquals("100 GO TO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
+
+    fun testGotoWithExtraSpaceBeforeLineNumberNormalized() {
+        val file = configureFile("100 GOTO  200\n200 PRINT \"OK\"")
+        assertEquals("100 GOTO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
 }
 

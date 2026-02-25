@@ -21,6 +21,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 | `REM`               | Remark / comment                                          |
 | `END`               | Halt program execution (by convention the last line)      |
 | `STOP`              | Halt program execution (by convention used mid-program)   |
+| `GOTO` / `GO TO`    | Unconditional branch to the given line number             |
 | `DELETE`            | Delete a string expression                                |
 | `BREAK` / `UNBREAK` | Set or clear breakpoints at given line numbers            |
 | `TRACE` / `UNTRACE` | Enable or disable execution tracing at given line numbers |

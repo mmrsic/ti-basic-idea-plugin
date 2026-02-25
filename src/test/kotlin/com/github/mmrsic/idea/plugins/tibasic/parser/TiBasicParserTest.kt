@@ -1128,6 +1128,48 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, lines[2].children.filterIsInstance<TiBasicEndStatement>().size)
     }
 
+    fun testGotoProducesGotoStatement() {
+        val file = parseCode("100 GOTO 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGotoKeywordIsCaseInsensitive() {
+        val file = parseCode("100 goto 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGoToTwoWordsProducesGotoStatement() {
+        val file = parseCode("100 GO TO 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGoToTwoWordsCaseInsensitive() {
+        val file = parseCode("100 go to 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGotoDoesNotProducePrintStatement() {
+        val file = parseCode("100 GOTO 200\n200 PRINT \"OK\"")
+        val printStmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()
+        assertEquals(0, printStmts.size)
+    }
+
+    fun testGotoWithoutLineNumberProducesGotoStatement() {
+        val file = parseCode("100 GOTO")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

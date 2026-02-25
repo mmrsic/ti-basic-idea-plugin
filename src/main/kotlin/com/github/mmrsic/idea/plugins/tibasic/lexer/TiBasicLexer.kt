@@ -20,7 +20,10 @@ class TiBasicLexer : LexerBase() {
 
     private companion object {
         val VALID_LINE =
-            Regex("""^([ \t]*)(\d+)([ \t]+)(PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""", RegexOption.IGNORE_CASE)
+            Regex(
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
+                RegexOption.IGNORE_CASE
+            )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
         val IMPLICIT_LET_LINE = Regex("""^[ \t]*\d+[ \t]+[A-Za-z@\[\]\\_][A-Za-z0-9@_]*\$?(?:\([^)]*\))?[ \t]*=.*$""")
         val UNKNOWN_STATEMENT_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(\S.*)$""")
@@ -130,18 +133,20 @@ class TiBasicLexer : LexerBase() {
             result.add(LineToken(offset, offset + ws1.length, TokenType.WHITE_SPACE))
             offset += ws1.length
         }
-        val keywordType = when (printStr.uppercase()) {
+        val normalizedKeyword = printStr.trim().replace(Regex("""[ \t]+"""), " ").uppercase()
+        val keywordType = when (normalizedKeyword) {
             in LINE_NUMBER_LIST_KEYWORDS -> TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
             "DELETE" -> TiBasicTokenTypes.DELETE_KEYWORD
             "REM" -> TiBasicTokenTypes.REM_KEYWORD
             "LET" -> TiBasicTokenTypes.LET_KEYWORD
             "END" -> TiBasicTokenTypes.END_KEYWORD
             "STOP" -> TiBasicTokenTypes.STOP_KEYWORD
+            "GOTO", "GO TO" -> TiBasicTokenTypes.GOTO_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         result.add(LineToken(offset, offset + printStr.length, keywordType))
         offset += printStr.length
-        if (printStr.uppercase() == "REM") {
+        if (normalizedKeyword == "REM") {
             if (ws2.isNotEmpty()) {
                 result.add(LineToken(offset, offset + ws2.length, TokenType.WHITE_SPACE))
                 offset += ws2.length

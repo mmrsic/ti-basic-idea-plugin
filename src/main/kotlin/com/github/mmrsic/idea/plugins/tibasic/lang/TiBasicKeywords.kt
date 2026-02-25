@@ -28,6 +28,8 @@ object TiBasicKeywords {
             "BREAK",
             "DELETE",
             "END",
+            "GO TO",
+            "GOTO",
             "LET",
             "PRINT",
             "REM",

@@ -5,6 +5,7 @@ import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicEndStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
@@ -43,6 +44,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
+            is TiBasicGotoStatement -> annotateGotoStatement(element, holder)
             is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
             is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
@@ -61,6 +63,35 @@ class TiBasicAnnotator : Annotator {
         holder.newAnnotation(HighlightSeverity.WARNING, "Everything after $stmtName statement is ignored")
             .range(range)
             .create()
+    }
+
+    private fun annotateGotoStatement(statement: TiBasicGotoStatement, holder: AnnotationHolder) {
+        val contentNodes = statement.node.allChildren
+            .filter { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD && it.elementType != TokenType.WHITE_SPACE }
+        if (contentNodes.size != 1 || contentNodes[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Incorrect statement")
+                .range(statement)
+                .create()
+            return
+        }
+        val lineNumberNode = contentNodes[0]
+        val lineNumber = lineNumberNode.text.toLongOrNull()?.toInt()
+        if (lineNumber == null || lineNumber !in VALID_LINE_NUMBER_RANGE) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
+                .range(lineNumberNode.textRange)
+                .create()
+            return
+        }
+        val file = statement.containingFile as? TiBasicFile ?: return
+        val definedLineNumbers = file.lines()
+            .map { it.lineNumber() }
+            .filter { it in VALID_LINE_NUMBER_RANGE }
+            .toSet()
+        if (lineNumber !in definedLineNumbers) {
+            holder.newAnnotation(HighlightSeverity.WARNING, "Bad line number")
+                .range(lineNumberNode.textRange)
+                .create()
+        }
     }
 
     private fun annotateUnknownStatement(statement: TiBasicUnknownStatement, holder: AnnotationHolder) {
