@@ -1,8 +1,8 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.resequence
 
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
 
-class ResequenceQuickFixTest : BasePlatformTestCase() {
+class ResequenceQuickFixTest : TiBasicTestBase() {
 
     fun testQuickFixAvailableForDuplicateLineNumber() {
         myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\n<caret>100 PRINT \"B\"")

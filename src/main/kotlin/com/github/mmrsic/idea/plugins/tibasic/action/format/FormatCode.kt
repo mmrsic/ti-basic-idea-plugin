@@ -52,13 +52,16 @@ private fun formattedLine(line: TiBasicLine): String {
     return if (trimmedArgument.isEmpty()) {
         "${line.lineNumber()} $keywordMatch"
     } else {
-        "${line.lineNumber()} $keywordMatch ${removeWhitespaceOutsideStrings(trimmedArgument)}"
+        val formattedArg = if (statement is TiBasicLetStatement)
+            removeWhitespaceOutsideStrings(uppercaseOutsideStrings(trimmedArgument))
+        else
+            removeWhitespaceOutsideStrings(trimmedArgument)
+        "${line.lineNumber()} $keywordMatch $formattedArg"
     }
 }
 
 private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {
-    val normalizedKeyword = keywordTokenText.trim().replace(Regex("""[ \t]+"""), " ").uppercase()
-    val canonicalKeyword = if (normalizedKeyword == "GO TO") "GO TO" else "GOTO"
+    val canonicalKeyword = canonicalGotoKeyword(keywordTokenText)
     val argText = statementText.drop(keywordTokenText.length).trim()
     return if (argText.isEmpty()) "$lineNumber $canonicalKeyword"
     else "$lineNumber $canonicalKeyword $argText"
@@ -66,18 +69,18 @@ private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, stateme
 
 private fun formattedOnGotoLine(lineNumber: Int, statement: TiBasicOnGotoStatement): String {
     val stmtStart = statement.textRange.startOffset
+    val onKeywordNode = statement.node.firstChildNode!!
     val gotoNode = statement.node.allChildren.firstOrNull { it.elementType == TiBasicTokenTypes.GOTO_KEYWORD }
-    val onKeywordLength = 2 // "ON" is always 2 characters
     val stmtText = statement.text
     if (gotoNode == null) {
-        val argText = stmtText.drop(onKeywordLength).trim()
+        val argText = stmtText.drop(onKeywordNode.textLength).trim()
         return if (argText.isEmpty()) "$lineNumber ON"
         else "$lineNumber ON ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
     }
-    val canonicalGoto = if (gotoNode.text.trim().replace(Regex("""[ \t]+"""), " ").uppercase() == "GO TO") "GO TO" else "GOTO"
+    val canonicalGoto = canonicalGotoKeyword(gotoNode.text)
     val gotoRelStart = gotoNode.startOffset - stmtStart
     val gotoRelEnd = gotoNode.startOffset + gotoNode.textLength - stmtStart
-    val exprPart = stmtText.substring(onKeywordLength, gotoRelStart).trim()
+    val exprPart = stmtText.substring(onKeywordNode.textLength, gotoRelStart).trim()
     val lineNumsPart = stmtText.substring(gotoRelEnd).trim()
     return buildString {
         append("$lineNumber ON")
@@ -85,6 +88,11 @@ private fun formattedOnGotoLine(lineNumber: Int, statement: TiBasicOnGotoStateme
         append(" $canonicalGoto")
         if (lineNumsPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(lineNumsPart)}")
     }
+}
+
+private fun canonicalGotoKeyword(rawText: String): String {
+    val normalized = rawText.trim().replace(Regex("""[ \t]+"""), " ").uppercase()
+    return if (normalized == "GO TO") "GO TO" else "GOTO"
 }
 
 fun uppercaseOutsideStrings(text: String): String =

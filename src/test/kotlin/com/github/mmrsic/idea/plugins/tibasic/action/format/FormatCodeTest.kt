@@ -110,7 +110,7 @@ class FormatCodeTest : TiBasicTestBase() {
 
     fun testExplicitLetKeywordIsUppercased() {
         val file = configureFile("100 let a = 5")
-        assertEquals("100 LET a=5", formattedText(file))
+        assertEquals("100 LET A=5", formattedText(file))
     }
 
     fun testRemPreservesSpacesInComment() {

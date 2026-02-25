@@ -57,4 +57,28 @@ class ResequenceLineNumbersTest : TiBasicTestBase() {
         val result = resequencedText(file, start = 20, step = 7)
         assertEquals("20 PRINT \"A\"\n27 PRINT \"B\"\n34 PRINT \"C\"", result)
     }
+
+    fun testResequenceUpdatesGotoTarget() {
+        val file = configureFile("100 GOTO 200\n200 PRINT \"OK\"")
+        val result = resequencedText(file)
+        assertEquals("100 GOTO 110\n110 PRINT \"OK\"", result)
+    }
+
+    fun testResequenceUpdatesOnGotoTargets() {
+        val file = configureFile("100 ON X GOTO 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"")
+        val result = resequencedText(file)
+        assertEquals("100 ON X GOTO 110,120\n110 PRINT \"A\"\n120 PRINT \"B\"", result)
+    }
+
+    fun testResequenceUpdatesLineNumberListStatement() {
+        val file = configureFile("100 BREAK 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"")
+        val result = resequencedText(file)
+        assertEquals("100 BREAK 110,120\n110 PRINT \"A\"\n120 PRINT \"B\"", result)
+    }
+
+    fun testResequenceUndefinedGotoTargetIsLeftUnchanged() {
+        val file = configureFile("100 GOTO 999\n200 PRINT \"OK\"")
+        val result = resequencedText(file)
+        assertEquals("100 GOTO 999\n110 PRINT \"OK\"", result)
+    }
 }

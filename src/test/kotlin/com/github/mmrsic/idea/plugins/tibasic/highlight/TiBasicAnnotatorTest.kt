@@ -127,7 +127,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
             "test.tibasic",
             "100 PRINT \"a\" " +
                     "<error descr=\"PRINT argument must be an expression\">&</error> " +
-                    "<error descr=\"String-Number-Mismatch\">42</error>",
+                    "<error descr=\"String-number mismatch\">42</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -148,10 +148,10 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     }
 
     fun testErrorForDigitAsFirstCharInVariableName() {
-        // 1 is a numeric literal, A$ is a string variable after numeric expr → String-Number-Mismatch
+        // 1 is a numeric literal, A$ is a string variable after numeric expr → String-number mismatch
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT 1<error descr=\"String-Number-Mismatch\">A$</error>",
+            "100 PRINT 1<error descr=\"String-number mismatch\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -774,7 +774,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
-    // --- String-Number-Mismatch tests ---
+    // --- String-number mismatch tests ---
 
     fun testStringNumberMismatchNumericVarInNumericExpressionIsNotMismatch() {
         myFixture.configureByText("test.tibasic", "100 PRINT A+B")
@@ -784,7 +784,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testStringNumberMismatchStringLiteralInNumericExpression() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT A+<error descr=\"String-Number-Mismatch\">\"hello\"</error>",
+            "100 PRINT A+<error descr=\"String-number mismatch\">\"hello\"</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -792,7 +792,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testStringNumberMismatchStringVarAfterNumericExpression() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT 1<error descr=\"String-Number-Mismatch\">A$</error>",
+            "100 PRINT 1<error descr=\"String-number mismatch\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -800,7 +800,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testStringNumberMismatchConcatOpAfterNumericExpression() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT A<error descr=\"String-Number-Mismatch\">&</error><error descr=\"PRINT argument must be an expression\">B</error>",
+            "100 PRINT A<error descr=\"String-number mismatch\">&</error><error descr=\"PRINT argument must be an expression\">B</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -808,7 +808,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testStringNumberMismatchNumericLiteralAfterStringExpression() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> <error descr=\"String-Number-Mismatch\">42</error>",
+            "100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> <error descr=\"String-number mismatch\">42</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }

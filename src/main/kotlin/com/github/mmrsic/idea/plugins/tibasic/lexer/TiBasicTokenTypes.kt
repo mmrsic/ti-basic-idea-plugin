@@ -4,8 +4,6 @@ import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
 import com.intellij.psi.tree.IElementType
 
 object TiBasicTokenTypes {
-    val KEYWORD = TiBasicElementType("KEYWORD")
-    val IDENTIFIER = TiBasicElementType("IDENTIFIER")
     val LINE_NUMBER = TiBasicElementType("LINE_NUMBER")
     val PRINT_KEYWORD = TiBasicElementType("PRINT_KEYWORD")
     val LINE_NUMBER_LIST_KEYWORD = TiBasicElementType("LINE_NUMBER_LIST_KEYWORD")
@@ -40,7 +38,6 @@ object TiBasicTokenTypes {
     val LPAREN = TiBasicElementType("LPAREN")
     val RPAREN = TiBasicElementType("RPAREN")
     val COMMA = TiBasicElementType("COMMA")
-    val COMMENT = TiBasicElementType("COMMENT")
 }
 
 class TiBasicElementType(debugName: String) : IElementType(debugName, TiBasicLanguage)

@@ -1,8 +1,8 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.format
 
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
 
-class FormatActionTest : BasePlatformTestCase() {
+class FormatActionTest : TiBasicTestBase() {
 
     fun testWholeFileFormattedWithoutSelection() {
         myFixture.configureByText("test.tibasic", "100 print \"a\"\n200 print \"b\"")

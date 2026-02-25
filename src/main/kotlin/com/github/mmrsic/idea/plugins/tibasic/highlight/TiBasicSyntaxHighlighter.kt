@@ -20,6 +20,8 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TextAttributesKey.createTextAttributesKey("TI_BASIC_NUMERIC_LITERAL", DefaultLanguageHighlighterColors.NUMBER)
         val NUMERIC_VARIABLE =
             TextAttributesKey.createTextAttributesKey("TI_BASIC_NUMERIC_VARIABLE", DefaultLanguageHighlighterColors.LOCAL_VARIABLE)
+        val STRING_VARIABLE =
+            TextAttributesKey.createTextAttributesKey("TI_BASIC_STRING_VARIABLE", DefaultLanguageHighlighterColors.LOCAL_VARIABLE)
         val CONCAT_OP =
             TextAttributesKey.createTextAttributesKey("TI_BASIC_CONCAT_OP", DefaultLanguageHighlighterColors.OPERATION_SIGN)
         val ARITH_OP =
@@ -36,7 +38,6 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
 
     override fun getTokenHighlights(tokenType: IElementType): Array<TextAttributesKey> =
         when (tokenType) {
-            TiBasicTokenTypes.KEYWORD,
             TiBasicTokenTypes.PRINT_KEYWORD,
             TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD,
             TiBasicTokenTypes.DELETE_KEYWORD,
@@ -48,11 +49,11 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.ON_KEYWORD -> arrayOf(KEYWORD)
 
             TiBasicTokenTypes.REM_TEXT -> arrayOf(COMMENT)
-            TiBasicTokenTypes.IDENTIFIER -> arrayOf(DefaultLanguageHighlighterColors.IDENTIFIER)
             TiBasicTokenTypes.LINE_NUMBER -> arrayOf(LINE_NUMBER)
             TiBasicTokenTypes.STRING_LITERAL -> arrayOf(STRING_LITERAL)
             TiBasicTokenTypes.NUMERIC_LITERAL -> arrayOf(NUMERIC_LITERAL)
             TiBasicTokenTypes.NUMERIC_VARIABLE -> arrayOf(NUMERIC_VARIABLE)
+            TiBasicTokenTypes.STRING_VARIABLE -> arrayOf(STRING_VARIABLE)
             TiBasicTokenTypes.CONCAT_OP -> arrayOf(CONCAT_OP)
             TiBasicTokenTypes.PLUS_OP,
             TiBasicTokenTypes.MINUS_OP,
@@ -70,7 +71,6 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.RPAREN -> arrayOf(PAREN)
 
             TiBasicTokenTypes.PRINT_ARGUMENT -> arrayOf(PRINT_ARGUMENT)
-            TiBasicTokenTypes.COMMENT -> arrayOf(COMMENT)
             TokenType.BAD_CHARACTER -> arrayOf(DefaultLanguageHighlighterColors.INVALID_STRING_ESCAPE)
             else -> emptyArray()
         }

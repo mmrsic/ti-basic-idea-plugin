@@ -216,11 +216,11 @@ class TiBasicAnnotator : Annotator {
             .forEach { child ->
                 val message = when {
                     child.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME -> "Bad variable name"
-                    isNumericExpr && child.elementType in STRING_MISMATCH_TYPES -> "String-Number-Mismatch"
+                    isNumericExpr && child.elementType in STRING_MISMATCH_TYPES -> "String-number mismatch"
                     isNumericExpr && child.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-                            child.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE -> "String-Number-Mismatch"
+                            child.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE -> "String-number mismatch"
 
-                    isStringExpr && child.elementType in NUMERIC_MISMATCH_TYPES -> "String-Number-Mismatch"
+                    isStringExpr && child.elementType in NUMERIC_MISMATCH_TYPES -> "String-number mismatch"
                     else -> "PRINT argument must be an expression"
                 }
                 holder.newAnnotation(HighlightSeverity.ERROR, message).range(child.textRange).create()
@@ -342,7 +342,7 @@ class TiBasicAnnotator : Annotator {
                                 child.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE)
             }
             if (isMismatch) {
-                holder.newAnnotation(HighlightSeverity.ERROR, "String-Number-Mismatch")
+                holder.newAnnotation(HighlightSeverity.ERROR, "String-number mismatch")
                     .range(child.textRange)
                     .create()
             }
@@ -385,7 +385,7 @@ class TiBasicAnnotator : Annotator {
         annotateNameConflicts(stringAccesses, holder, ::variableAccessName, ::variableAccessDimCount)
         annotateNameConflicts(numericAccesses, holder, ::variableAccessName, ::variableAccessDimCount)
         val commands = COMMANDS_UPPERCASE
-        val keywords = TiBasicKeywords.getKeywords().map { it.uppercase() }.toSet()
+        val keywords = KEYWORDS_UPPERCASE
         allAccesses.forEach { node ->
             val name = variableAccessName(node)
             val message = when (name) {
@@ -468,6 +468,8 @@ class TiBasicAnnotator : Annotator {
 
 private val COMMANDS_UPPERCASE = TiBasicKeywords.getCommands().map { it.uppercase() }.toSet()
 
+private val KEYWORDS_UPPERCASE = TiBasicKeywords.getKeywords().map { it.uppercase() }.toSet()
+
 private val COMPARISON_OP_TYPES = setOf(
     TiBasicTokenTypes.EQ_OP,
     TiBasicTokenTypes.LT_OP,
@@ -490,10 +492,4 @@ private val NUMERIC_MISMATCH_TYPES = setOf(
     TiBasicTokenTypes.MUL_OP,
     TiBasicTokenTypes.DIV_OP,
     TiBasicTokenTypes.POW_OP,
-    TiBasicTokenTypes.EQ_OP,
-    TiBasicTokenTypes.LT_OP,
-    TiBasicTokenTypes.GT_OP,
-    TiBasicTokenTypes.NEQ_OP,
-    TiBasicTokenTypes.LE_OP,
-    TiBasicTokenTypes.GE_OP,
 )

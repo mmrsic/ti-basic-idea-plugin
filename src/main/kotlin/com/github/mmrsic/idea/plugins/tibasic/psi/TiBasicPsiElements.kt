@@ -47,7 +47,3 @@ class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun subscriptDimCount(): Int =
         node.allChildren.count { it.elementType == TiBasicNodeTypes.EXPRESSION }
 }
-
-class TiBasicCommentLine(node: ASTNode) : ASTWrapperPsiElement(node)
-
-

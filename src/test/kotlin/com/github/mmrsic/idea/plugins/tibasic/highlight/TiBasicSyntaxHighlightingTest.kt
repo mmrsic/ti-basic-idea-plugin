@@ -89,11 +89,11 @@ class TiBasicSyntaxHighlightingTest : BasePlatformTestCase() {
         assertEquals("\"hello\"", lexer.tokenSequence.toString())
     }
 
-    fun testRestartAtStringLiteralPositionDoesNotProduceCommentToken() {
+    fun testRestartAtStringLiteralPositionDoesNotProduceLineNumberToken() {
         val buffer = "100 PRINT \"hello\""
         val lexer = TiBasicLexer()
         lexer.start(buffer, 10, buffer.length, 0)
-        assertNotEquals(TiBasicTokenTypes.COMMENT, lexer.tokenType)
+        assertNotEquals(TiBasicTokenTypes.LINE_NUMBER, lexer.tokenType)
     }
 
     fun testRestartMidLineTokensFollowCorrectly() {
@@ -182,10 +182,10 @@ class TiBasicSyntaxHighlightingTest : BasePlatformTestCase() {
         assertEquals(TiBasicSyntaxHighlighter.KEYWORD, attributes[0])
     }
 
-    fun testSyntaxHighlighterReturnCommentAttributeForCommentToken() {
+    fun testSyntaxHighlighterReturnsCommentAttributeForRemText() {
         val highlighter = TiBasicSyntaxHighlighter()
-        val attributes = highlighter.getTokenHighlights(TiBasicTokenTypes.COMMENT)
-        assertTrue("COMMENT token type must map to at least one TextAttributesKey", attributes.isNotEmpty())
+        val attributes = highlighter.getTokenHighlights(TiBasicTokenTypes.REM_TEXT)
+        assertTrue("REM_TEXT token type must map to at least one TextAttributesKey", attributes.isNotEmpty())
         assertEquals(TiBasicSyntaxHighlighter.COMMENT, attributes[0])
     }
 
