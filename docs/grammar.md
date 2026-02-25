@@ -53,6 +53,8 @@ stopStatement           = STOP ;
                           (* halts program; by convention used within the program body, not at the end *)
 gotoStatement           = ( GOTO | GO whitespace TO ) lineNumber ;
                           (* transfers control to the given line; lineNumber must be in 1..32767 *)
+onGotoStatement         = ON whitespace numericExpression whitespace ( GOTO | GO whitespace TO ) whitespace lineNumberList ;
+                          (* computed branch; expression must be numeric; at least one lineNumber required *)
 deleteStatement         = DELETE    [ whitespace ] [ stringExpression ] ;
 lineNumberListStatement = listKeyword whitespace lineNumberList ;
 unknownStatement        = unknownText ;         (* annotated as error *)
@@ -107,6 +109,7 @@ Recognised as statement-starting keywords (case-insensitive):
 | `END`                                  | Halt program (end of program by convention) |
 | `STOP`                                 | Halt program (mid-program by convention)    |
 | `GOTO` / `GO TO`                       | Unconditional branch to a line number       |
+| `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines     |
 | `DELETE`                               | Delete string                               |
 | `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                 |
 
@@ -167,6 +170,8 @@ These identifiers are recognized by the annotator and produce a specific error:
 230 STOP                       ✓ valid — halts program (conventional mid-program)
 240 GOTO 100                   ✓ valid — unconditional branch
 250 GO TO 100                  ✓ valid — unconditional branch (two-word form)
+260 ON X GOTO 100,200,300      ✓ valid — computed branch (numeric expression X)
+270 ON X GO TO 100,200         ✓ valid — computed branch (two-word GO TO form)
 220 PRINT A(1,2,3,4)           ✗ error — more than 3 subscript dimensions
 230 RUN                        ✗ error — command used as statement
 240 PRINT A$ + 1               ✗ error — String-Number-Mismatch

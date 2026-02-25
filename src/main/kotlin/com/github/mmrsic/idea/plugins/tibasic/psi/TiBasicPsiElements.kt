@@ -32,6 +32,8 @@ class TiBasicStopStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicGotoStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicOnGotoStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicUnknownStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicInvalidLine(node: ASTNode) : ASTWrapperPsiElement(node)

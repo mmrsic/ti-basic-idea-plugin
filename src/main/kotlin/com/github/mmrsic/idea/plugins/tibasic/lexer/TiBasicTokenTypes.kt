@@ -15,6 +15,7 @@ object TiBasicTokenTypes {
     val END_KEYWORD = TiBasicElementType("END_KEYWORD")
     val STOP_KEYWORD = TiBasicElementType("STOP_KEYWORD")
     val GOTO_KEYWORD = TiBasicElementType("GOTO_KEYWORD")
+    val ON_KEYWORD = TiBasicElementType("ON_KEYWORD")
     val REM_TEXT = TiBasicElementType("REM_TEXT")
     val UNKNOWN_STATEMENT_TEXT = TiBasicElementType("UNKNOWN_STATEMENT_TEXT")
     val NO_LINE_NUMBER_TEXT = TiBasicElementType("NO_LINE_NUMBER_TEXT")

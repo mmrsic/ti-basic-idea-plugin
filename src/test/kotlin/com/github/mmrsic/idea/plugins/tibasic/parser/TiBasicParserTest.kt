@@ -1170,6 +1170,49 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testOnGotoProducesOnGotoStatement() {
+        val file = parseCode("100 ON X GOTO 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testOnGotoKeywordIsCaseInsensitive() {
+        val file = parseCode("100 on x goto 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testOnGoToTwoWordsProducesOnGotoStatement() {
+        val file = parseCode("100 ON X GO TO 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testOnGotoWithMultipleLineNumbersProducesOnGotoStatement() {
+        val file = parseCode("100 ON X GOTO 200,300,400\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 PRINT \"C\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGotoStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testOnGotoContainsExpression() {
+        val file = parseCode("100 ON X GOTO 200\n200 PRINT \"OK\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGotoStatement>()[0]
+        val exprs = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals(1, exprs.size)
+    }
+
+    fun testOnGotoDoesNotProduceGotoStatement() {
+        val file = parseCode("100 ON X GOTO 200\n200 PRINT \"OK\"")
+        val gotoStmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGotoStatement>()
+        assertEquals(0, gotoStmts.size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

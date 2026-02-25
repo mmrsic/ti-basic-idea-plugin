@@ -6,6 +6,7 @@ import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicEndStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
@@ -45,6 +46,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
             is TiBasicGotoStatement -> annotateGotoStatement(element, holder)
+            is TiBasicOnGotoStatement -> annotateOnGotoStatement(element, holder)
             is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
             is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
@@ -91,6 +93,86 @@ class TiBasicAnnotator : Annotator {
             holder.newAnnotation(HighlightSeverity.WARNING, "Bad line number")
                 .range(lineNumberNode.textRange)
                 .create()
+        }
+    }
+
+    private fun annotateOnGotoStatement(statement: TiBasicOnGotoStatement, holder: AnnotationHolder) {
+        val children = statement.node.allChildren.filter { it.elementType != TokenType.WHITE_SPACE }
+        val expression = statement.children.filterIsInstance<TiBasicExpression>().firstOrNull()
+        val gotoKeywordNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.GOTO_KEYWORD }
+
+        if (expression == null || gotoKeywordNode == null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Incorrect statement")
+                .range(statement)
+                .create()
+            return
+        }
+
+        if (isStringExpression(expression)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "String-number mismatch")
+                .range(expression)
+                .create()
+        }
+
+        val afterGoto = children
+            .dropWhile { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD }
+            .drop(1)
+
+        if (afterGoto.isEmpty() || afterGoto[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Incorrect statement")
+                .range(statement)
+                .create()
+            return
+        }
+
+        val file = statement.containingFile as? TiBasicFile ?: return
+        val definedLineNumbers = file.lines()
+            .map { it.lineNumber() }
+            .filter { it in VALID_LINE_NUMBER_RANGE }
+            .toSet()
+
+        var expectNumber = true
+        var trailingComma: ASTNode? = null
+        for (child in afterGoto) {
+            if (expectNumber) {
+                when {
+                    child.elementType == TiBasicTokenTypes.NUMERIC_LITERAL -> {
+                        val value = child.text.toLongOrNull()?.toInt()
+                        if (value == null || value !in VALID_LINE_NUMBER_RANGE) {
+                            holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
+                                .range(child.textRange).create()
+                        } else if (value !in definedLineNumbers) {
+                            holder.newAnnotation(HighlightSeverity.WARNING, "Bad line number")
+                                .range(child.textRange).create()
+                        }
+                        expectNumber = false
+                        trailingComma = null
+                    }
+
+                    else -> {
+                        holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
+                            .range(child.textRange).create()
+                        trailingComma = null
+                    }
+                }
+            } else {
+                when {
+                    child.elementType == TiBasicTokenTypes.COMMA -> {
+                        expectNumber = true
+                        trailingComma = child
+                    }
+
+                    else -> {
+                        holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
+                            .range(child.textRange).create()
+                        trailingComma = null
+                    }
+                }
+            }
+        }
+        if (trailingComma != null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
+                .range(trailingComma.textRange).create()
         }
     }
 

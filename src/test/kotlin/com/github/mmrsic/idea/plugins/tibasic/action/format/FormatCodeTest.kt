@@ -157,5 +157,30 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 GOTO  200\n200 PRINT \"OK\"")
         assertEquals("100 GOTO 200\n200 PRINT \"OK\"", formattedText(file))
     }
+
+    fun testOnGotoFormatted() {
+        val file = configureFile("100 ON X GOTO 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"")
+        assertEquals("100 ON X GOTO 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"", formattedText(file))
+    }
+
+    fun testOnGotoKeywordUppercased() {
+        val file = configureFile("100 on x goto 200\n200 PRINT \"OK\"")
+        assertEquals("100 ON X GOTO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
+
+    fun testOnGoToTwoWordsPreserved() {
+        val file = configureFile("100 ON X GO TO 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"")
+        assertEquals("100 ON X GO TO 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"", formattedText(file))
+    }
+
+    fun testOnGotoSpacesAroundCommaRemoved() {
+        val file = configureFile("100 ON X GOTO 200 , 300\n200 PRINT \"A\"\n300 PRINT \"B\"")
+        assertEquals("100 ON X GOTO 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"", formattedText(file))
+    }
+
+    fun testOnGotoExpressionSpacesRemoved() {
+        val file = configureFile("100 ON X + Y GOTO 200\n200 PRINT \"OK\"")
+        assertEquals("100 ON X+Y GOTO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
 }
 

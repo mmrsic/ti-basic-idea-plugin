@@ -7,24 +7,25 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 
 ### Language support
 
-- Recognises TI-Basic source files with extensions `.ti-basic`, `.tibasic`, `.ti.bas`
+- Recognizes TI-Basic source files with extensions `.ti-basic`, `.tibasic`, `.ti.bas`
 - Custom file icon for TI-Basic source files
 - Each source line must start with a **line number** in the range **1–32767**; lines without a number are flagged as
   errors
 
 ### Supported statements
 
-| Statement           | Description                                               |
-|---------------------|-----------------------------------------------------------|
-| `LET`               | Assign a value to a variable (`LET` keyword is optional)  |
-| `PRINT`             | Output values or text                                     |
-| `REM`               | Remark / comment                                          |
-| `END`               | Halt program execution (by convention the last line)      |
-| `STOP`              | Halt program execution (by convention used mid-program)   |
-| `GOTO` / `GO TO`    | Unconditional branch to the given line number             |
-| `DELETE`            | Delete a string expression                                |
-| `BREAK` / `UNBREAK` | Set or clear breakpoints at given line numbers            |
-| `TRACE` / `UNTRACE` | Enable or disable execution tracing at given line numbers |
+| Statement                  | Description                                               |
+|----------------------------|-----------------------------------------------------------|
+| `LET`                      | Assign a value to a variable (`LET` keyword is optional)  |
+| `PRINT`                    | Output values or text                                     |
+| `REM`                      | Remark / comment                                          |
+| `END`                      | Halt program execution (by convention the last line)      |
+| `STOP`                     | Halt program execution (by convention used mid-program)   |
+| `GOTO` / `GO TO`           | Unconditional branch to the given line number             |
+| `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers            |
+| `DELETE`                   | Delete a string expression                                |
+| `BREAK` / `UNBREAK`        | Set or clear breakpoints at given line numbers            |
+| `TRACE` / `UNTRACE`        | Enable or disable execution tracing at given line numbers |
 
 Lines whose keyword is not one of the above are flagged as unknown statements.
 
@@ -43,19 +44,23 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 
 The annotator inspects every file and highlights:
 
-| Severity | Check                                                                            |
-|----------|----------------------------------------------------------------------------------|
-| Error    | Line number out of range (< 1 or > 32767)                                        |
-| Error    | Duplicate line numbers                                                           |
-| Warning  | Line numbers not in ascending order                                              |
-| Error    | Line without a line number                                                       |
-| Error    | Unknown statement keyword                                                        |
-| Error    | Variable name that is a reserved keyword or command                              |
-| Error    | Conflicting variable usage (scalar vs. array)                                    |
-| Error    | Empty subscript or more than 3 subscript dimensions                              |
-| Error    | Type mismatch (numeric value where string is required, or vice versa)            |
-| Error    | String-number mismatch in LET assignment (variable type differs from expression) |
-| Warning  | Reference to an undefined line number in BREAK/UNBREAK/TRACE/UNTRACE             |
+| Severity | Check                                                                               |
+|----------|-------------------------------------------------------------------------------------|
+| Error    | Line number out of range (< 1 or > 32767)                                           |
+| Error    | Duplicate line numbers                                                              |
+| Warning  | Line numbers not in ascending order                                                 |
+| Error    | Line without a line number                                                          |
+| Error    | Unknown statement keyword                                                           |
+| Error    | Variable name that is a reserved keyword or command                                 |
+| Error    | Conflicting variable usage (scalar vs. array)                                       |
+| Error    | Empty subscript or more than 3 subscript dimensions                                 |
+| Error    | Type mismatch (numeric value where string is required, or vice versa)               |
+| Error    | String-number mismatch in LET assignment (variable type differs from expression)    |
+| Warning  | Reference to an undefined line number in BREAK/UNBREAK/TRACE/UNTRACE                |
+| Error    | `ON … GOTO` with string expression (String-number mismatch)                         |
+| Error    | `ON … GOTO` missing expression, GOTO keyword, or line numbers (Incorrect statement) |
+| Error    | `ON … GOTO` line number out of range 1–32767 (Bad line number)                      |
+| Warning  | `ON … GOTO` reference to an undefined line number                                   |
 
 ### Code actions
 
@@ -63,7 +68,7 @@ The annotator inspects every file and highlights:
 
 - Converts all keywords outside string literals to uppercase
 - Removes extraneous whitespace outside string literals
-- Normalises exactly one space between the line number and the first keyword
+- Normalizes exactly one space between the line number and the first keyword
 - Can be applied to the whole file or to the current selection
 
 **Resequence Line Numbers** (`Tools › TI-Basic › Resequence`)

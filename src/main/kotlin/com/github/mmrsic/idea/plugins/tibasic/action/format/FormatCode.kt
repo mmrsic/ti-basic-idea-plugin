@@ -1,10 +1,12 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.format
 
+import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.intellij.psi.PsiElement
 
@@ -28,6 +30,9 @@ private fun formattedLine(line: TiBasicLine): String {
     val firstTokenType = statement.node.firstChildNode?.elementType
     if (firstTokenType == TiBasicTokenTypes.GOTO_KEYWORD) {
         return formattedGotoLine(line.lineNumber(), statement.node.firstChildNode!!.text, statementText)
+    }
+    if (firstTokenType == TiBasicTokenTypes.ON_KEYWORD) {
+        return formattedOnGotoLine(line.lineNumber(), statement as TiBasicOnGotoStatement)
     }
 
     val keywordMatch = TiBasicKeywords.getKeywords()
@@ -57,6 +62,29 @@ private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, stateme
     val argText = statementText.drop(keywordTokenText.length).trim()
     return if (argText.isEmpty()) "$lineNumber $canonicalKeyword"
     else "$lineNumber $canonicalKeyword $argText"
+}
+
+private fun formattedOnGotoLine(lineNumber: Int, statement: TiBasicOnGotoStatement): String {
+    val stmtStart = statement.textRange.startOffset
+    val gotoNode = statement.node.allChildren.firstOrNull { it.elementType == TiBasicTokenTypes.GOTO_KEYWORD }
+    val onKeywordLength = 2 // "ON" is always 2 characters
+    val stmtText = statement.text
+    if (gotoNode == null) {
+        val argText = stmtText.drop(onKeywordLength).trim()
+        return if (argText.isEmpty()) "$lineNumber ON"
+        else "$lineNumber ON ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
+    }
+    val canonicalGoto = if (gotoNode.text.trim().replace(Regex("""[ \t]+"""), " ").uppercase() == "GO TO") "GO TO" else "GOTO"
+    val gotoRelStart = gotoNode.startOffset - stmtStart
+    val gotoRelEnd = gotoNode.startOffset + gotoNode.textLength - stmtStart
+    val exprPart = stmtText.substring(onKeywordLength, gotoRelStart).trim()
+    val lineNumsPart = stmtText.substring(gotoRelEnd).trim()
+    return buildString {
+        append("$lineNumber ON")
+        if (exprPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))}")
+        append(" $canonicalGoto")
+        if (lineNumsPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(lineNumsPart)}")
+    }
 }
 
 fun uppercaseOutsideStrings(text: String): String =

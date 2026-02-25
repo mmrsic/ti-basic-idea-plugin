@@ -7,6 +7,7 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIV_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.END_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.EQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOTO_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.ON_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GE_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INVALID_VARIABLE_NAME
@@ -35,6 +36,7 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DELETE_STA
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.END_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOTO_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LET_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
@@ -58,7 +60,9 @@ import com.intellij.psi.tree.IElementType
  * ```
  * file              ::= line*
  * line              ::= numberedLine | commentLine
- * numberedLine      ::= LINE_NUMBER WHITE_SPACE? (printStatement | endStatement | stopStatement | ...)?
+ * numberedLine      ::= LINE_NUMBER WHITE_SPACE? (printStatement | endStatement | stopStatement | gotoStatement | onGotoStatement | ...)?
+ * gotoStatement     ::= GOTO_KEYWORD WHITE_SPACE? NUMERIC_LITERAL
+ * onGotoStatement   ::= ON_KEYWORD WHITE_SPACE? expression WHITE_SPACE? GOTO_KEYWORD (WHITE_SPACE? NUMERIC_LITERAL (COMMA NUMERIC_LITERAL)*)?
  * printStatement    ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
  * endStatement      ::= END_KEYWORD
  * stopStatement     ::= STOP_KEYWORD
@@ -114,6 +118,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             END_KEYWORD -> parseEndStatement(builder)
             STOP_KEYWORD -> parseStopStatement(builder)
             GOTO_KEYWORD -> parseGotoStatement(builder)
+            ON_KEYWORD -> parseOnGotoStatement(builder)
             PRINT_KEYWORD -> parsePrintStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
@@ -168,6 +173,18 @@ class TiBasicParser : PsiParser, LightPsiParser {
         builder.advanceLexer() // consume GOTO_KEYWORD
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(GOTO_STATEMENT)
+    }
+
+    private fun parseOnGotoStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume ON_KEYWORD
+        skipWhitespace(builder)
+        if (isExpressionStart(builder)) {
+            parseExpression(builder)
+            skipIntraLineWhitespace(builder)
+        }
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(ON_GOTO_STATEMENT)
     }
 
     private fun parseUnknownStatement(builder: PsiBuilder) {

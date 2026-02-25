@@ -969,17 +969,17 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     }
 
     fun testNoErrorForDeleteWithStringVariable() {
-        myFixture.configureByText("test.tibasic", "100 DELETE A\$")
+        myFixture.configureByText("test.tibasic", "100 DELETE A$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDeleteWithStringConcatenation() {
-        myFixture.configureByText("test.tibasic", "100 DELETE A\$&B\$")
+        myFixture.configureByText("test.tibasic", "100 DELETE A$&B$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDeleteWithParenthesizedConcatenation() {
-        myFixture.configureByText("test.tibasic", "100 DELETE (A\$&B\$)")
+        myFixture.configureByText("test.tibasic", "100 DELETE (A$&B$)")
         myFixture.checkHighlighting(true, false, false)
     }
 
@@ -1183,6 +1183,102 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "test.tibasic",
             "100 <error descr=\"Incorrect statement\">GO 200</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForOnGotoWithExistingLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 ON X GOTO 200\n200 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForOnGoToTwoWordsWithExistingLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 ON X GO TO 200\n200 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForOnGotoWithMultipleExistingLineNumbers() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 ON X GOTO 200,300,400\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 PRINT \"C\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testWarningForOnGotoWithUndefinedLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,300\n300 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testWarningForEachUndefinedLineNumberInOnGoto() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,<warning descr=\"Bad line number\">300</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForOnGotoWithLineNumberZero() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 ON X GOTO <error descr=\"Bad line number\">0</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForOnGotoWithLineNumberTooLarge() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 ON X GOTO <error descr=\"Bad line number\">32768</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForOnGotoWithoutExpression() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">ON GOTO 200</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForOnGotoWithoutGotoKeyword() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">ON X 200</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForOnGotoWithoutLineNumbers() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">ON X GOTO</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForOnGotoWithStringExpression() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 ON <error descr=\"String-number mismatch\">A$</error> GOTO 200\n200 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForOnGotoWithTrailingComma() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">ON X GOTO ,</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }

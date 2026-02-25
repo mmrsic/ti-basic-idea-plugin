@@ -31,6 +31,7 @@ object TiBasicKeywords {
             "GO TO",
             "GOTO",
             "LET",
+            "ON",
             "PRINT",
             "REM",
             "STOP",

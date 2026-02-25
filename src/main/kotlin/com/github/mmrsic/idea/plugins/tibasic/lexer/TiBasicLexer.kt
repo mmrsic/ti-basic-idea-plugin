@@ -21,7 +21,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -142,6 +142,7 @@ class TiBasicLexer : LexerBase() {
             "END" -> TiBasicTokenTypes.END_KEYWORD
             "STOP" -> TiBasicTokenTypes.STOP_KEYWORD
             "GOTO", "GO TO" -> TiBasicTokenTypes.GOTO_KEYWORD
+            "ON" -> TiBasicTokenTypes.ON_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         result.add(LineToken(offset, offset + printStr.length, keywordType))
@@ -365,7 +366,23 @@ class TiBasicLexer : LexerBase() {
                     while (i < argStr.length && (argStr[i].isLetterOrDigit() || argStr[i] == '@' || argStr[i] == '_')) i++
                     if (i < argStr.length && argStr[i] == '$') i++
                     val text = argStr.substring(start, i)
-                    result.add(LineToken(offset + start, offset + i, classifyIdentifierToken(text)))
+                    val upperText = text.uppercase()
+                    when {
+                        upperText == "GOTO" ->
+                            result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.GOTO_KEYWORD))
+
+                        upperText == "GO" -> {
+                            val endOfGoTo = goToEnd(argStr, i)
+                            if (endOfGoTo >= 0) {
+                                result.add(LineToken(offset + start, offset + endOfGoTo, TiBasicTokenTypes.GOTO_KEYWORD))
+                                i = endOfGoTo
+                            } else {
+                                result.add(LineToken(offset + start, offset + i, classifyIdentifierToken(text)))
+                            }
+                        }
+
+                        else -> result.add(LineToken(offset + start, offset + i, classifyIdentifierToken(text)))
+                    }
                 }
 
                 else -> {
@@ -380,6 +397,17 @@ class TiBasicLexer : LexerBase() {
         if (text.endsWith('$', ignoreCase = true))
             return if (VALID_VARIABLE_NAME.matches(text)) TiBasicTokenTypes.STRING_VARIABLE else TiBasicTokenTypes.INVALID_VARIABLE_NAME
         return if (VALID_NUMERIC_VARIABLE_NAME.matches(text)) TiBasicTokenTypes.NUMERIC_VARIABLE else TiBasicTokenTypes.INVALID_VARIABLE_NAME
+    }
+
+    /** Returns end position of "GO TO" in [s] starting at [i] (pointing just after "GO"), or -1 if not found. */
+    private fun goToEnd(s: String, i: Int): Int {
+        var j = i
+        if (j >= s.length || !s[j].isWhitespace()) return -1
+        while (j < s.length && s[j].isWhitespace()) j++
+        if (j + 2 > s.length || !s.substring(j, j + 2).equals("TO", ignoreCase = true)) return -1
+        val afterTo = j + 2
+        if (afterTo < s.length && (s[afterTo].isLetterOrDigit() || s[afterTo] == '_' || s[afterTo] == '@')) return -1
+        return afterTo
     }
 
     private fun isVariableFirstChar(c: Char): Boolean =
