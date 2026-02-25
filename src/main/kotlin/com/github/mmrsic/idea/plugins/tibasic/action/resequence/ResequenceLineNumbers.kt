@@ -1,12 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.resequence
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.*
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 
@@ -43,20 +40,16 @@ private fun collectLineNumberTargetReplacements(
 ) {
     when (element) {
         is TiBasicGotoStatement ->
-            element.node.allChildren
-                .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
+            element.node.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
                 .forEach { replaceIfMapped(it, oldToNew, replacements) }
 
         is TiBasicOnGotoStatement ->
-            element.node.allChildren
-                .dropWhile { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD }
-                .drop(1)
+            element.node.childrenAfter(TiBasicTokenTypes.GOTO_KEYWORD)
                 .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
                 .forEach { replaceIfMapped(it, oldToNew, replacements) }
 
         is TiBasicLineNumberListStatement ->
-            element.node.allChildren
-                .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
+            element.node.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
                 .forEach { replaceIfMapped(it, oldToNew, replacements) }
     }
 }

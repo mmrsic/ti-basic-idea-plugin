@@ -1,13 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.format
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.*
 import com.intellij.psi.PsiElement
 
 fun formattedText(file: TiBasicFile): String = formattedText(
@@ -70,7 +66,7 @@ private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, stateme
 private fun formattedOnGotoLine(lineNumber: Int, statement: TiBasicOnGotoStatement): String {
     val stmtStart = statement.textRange.startOffset
     val onKeywordNode = statement.node.firstChildNode!!
-    val gotoNode = statement.node.allChildren.firstOrNull { it.elementType == TiBasicTokenTypes.GOTO_KEYWORD }
+    val gotoNode = statement.node.firstChildOfType(TiBasicTokenTypes.GOTO_KEYWORD)
     val stmtText = statement.text
     if (gotoNode == null) {
         val argText = stmtText.drop(onKeywordNode.textLength).trim()

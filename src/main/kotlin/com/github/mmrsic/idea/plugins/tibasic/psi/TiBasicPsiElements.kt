@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.psi
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.intellij.extapi.psi.ASTWrapperPsiElement
@@ -42,8 +43,8 @@ class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun hasSubscriptParens(): Boolean =
-        node.allChildren.any { it.elementType == TiBasicTokenTypes.LPAREN }
+        node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
 
     fun subscriptDimCount(): Int =
-        node.allChildren.count { it.elementType == TiBasicNodeTypes.EXPRESSION }
+        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).size
 }

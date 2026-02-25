@@ -2,6 +2,12 @@ package com.github.mmrsic.idea.plugins.tibasic.highlight
 
 import com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceQuickFix
 import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.error
+import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildType
+import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.warning
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
@@ -20,10 +26,10 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicStopStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicUnknownStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.psi.VALID_LINE_NUMBER_RANGE
+import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
 import com.intellij.lang.ASTNode
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
-import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
@@ -50,7 +56,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
             is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
-            is TiBasicInvalidLine -> holder.newAnnotation(HighlightSeverity.ERROR, "Line number expected").range(element).create()
+            is TiBasicInvalidLine -> holder.error("Line number expected", element)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
             is TiBasicExpression -> annotateExpression(element, holder)
         }
@@ -62,56 +68,44 @@ class TiBasicAnnotator : Annotator {
             .filter { it.elementType != TokenType.WHITE_SPACE }
         if (trailing.isEmpty()) return
         val range = TextRange(trailing.first().startOffset, trailing.last().startOffset + trailing.last().textLength)
-        holder.newAnnotation(HighlightSeverity.WARNING, "Everything after $stmtName statement is ignored")
-            .range(range)
-            .create()
+        holder.warning("Everything after $stmtName statement is ignored", range)
     }
 
     private fun annotateGotoStatement(statement: TiBasicGotoStatement, holder: AnnotationHolder) {
-        val contentNodes = statement.node.allChildren
-            .filter { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD && it.elementType != TokenType.WHITE_SPACE }
+        val contentNodes = statement.node.nonWhitespaceChildren
+            .filter { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD }
         if (contentNodes.size != 1 || contentNodes[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Incorrect statement")
-                .range(statement)
-                .create()
+            holder.error("Incorrect statement", statement)
             return
         }
         val lineNumberNode = contentNodes[0]
         val lineNumber = lineNumberNode.text.toLongOrNull()?.toInt()
         if (lineNumber == null || lineNumber !in VALID_LINE_NUMBER_RANGE) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
-                .range(lineNumberNode.textRange)
-                .create()
+            holder.error("Bad line number", lineNumberNode.textRange)
             return
         }
-        val file = statement.containingFile as? TiBasicFile ?: return
+        val file = statement.containingTiBasicFile ?: return
         val definedLineNumbers = file.lines()
             .map { it.lineNumber() }
             .filter { it in VALID_LINE_NUMBER_RANGE }
             .toSet()
         if (lineNumber !in definedLineNumbers) {
-            holder.newAnnotation(HighlightSeverity.WARNING, "Bad line number")
-                .range(lineNumberNode.textRange)
-                .create()
+            holder.warning("Bad line number", lineNumberNode.textRange)
         }
     }
 
     private fun annotateOnGotoStatement(statement: TiBasicOnGotoStatement, holder: AnnotationHolder) {
-        val children = statement.node.allChildren.filter { it.elementType != TokenType.WHITE_SPACE }
-        val expression = statement.children.filterIsInstance<TiBasicExpression>().firstOrNull()
+        val children = statement.node.nonWhitespaceChildren
+        val expression = statement.firstChildOfType<TiBasicExpression>()
         val gotoKeywordNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.GOTO_KEYWORD }
 
         if (expression == null || gotoKeywordNode == null) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Incorrect statement")
-                .range(statement)
-                .create()
+            holder.error("Incorrect statement", statement)
             return
         }
 
         if (isStringExpression(expression)) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "String-number mismatch")
-                .range(expression)
-                .create()
+            holder.error("String-number mismatch", expression)
         }
 
         val afterGoto = children
@@ -119,13 +113,11 @@ class TiBasicAnnotator : Annotator {
             .drop(1)
 
         if (afterGoto.isEmpty() || afterGoto[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Incorrect statement")
-                .range(statement)
-                .create()
+            holder.error("Incorrect statement", statement)
             return
         }
 
-        val file = statement.containingFile as? TiBasicFile ?: return
+        val file = statement.containingTiBasicFile ?: return
         val definedLineNumbers = file.lines()
             .map { it.lineNumber() }
             .filter { it in VALID_LINE_NUMBER_RANGE }
@@ -139,19 +131,16 @@ class TiBasicAnnotator : Annotator {
                     child.elementType == TiBasicTokenTypes.NUMERIC_LITERAL -> {
                         val value = child.text.toLongOrNull()?.toInt()
                         if (value == null || value !in VALID_LINE_NUMBER_RANGE) {
-                            holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
-                                .range(child.textRange).create()
+                            holder.error("Bad line number", child.textRange)
                         } else if (value !in definedLineNumbers) {
-                            holder.newAnnotation(HighlightSeverity.WARNING, "Bad line number")
-                                .range(child.textRange).create()
+                            holder.warning("Bad line number", child.textRange)
                         }
                         expectNumber = false
                         trailingComma = null
                     }
 
                     else -> {
-                        holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
-                            .range(child.textRange).create()
+                        holder.error("Bad line number", child.textRange)
                         trailingComma = null
                     }
                 }
@@ -163,16 +152,14 @@ class TiBasicAnnotator : Annotator {
                     }
 
                     else -> {
-                        holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
-                            .range(child.textRange).create()
+                        holder.error("Bad line number", child.textRange)
                         trailingComma = null
                     }
                 }
             }
         }
         if (trailingComma != null) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number")
-                .range(trailingComma.textRange).create()
+            holder.error("Bad line number", trailingComma.textRange)
         }
     }
 
@@ -181,34 +168,28 @@ class TiBasicAnnotator : Annotator {
         val firstWord = statementNode.text.trimEnd().split(Regex("""\s+""")).first().uppercase()
         val message = if (firstWord in COMMANDS_UPPERCASE) "Command must not be used as statement"
         else "Incorrect statement"
-        holder.newAnnotation(HighlightSeverity.ERROR, message).range(statementNode.textRange).create()
+        holder.error(message, statementNode.textRange)
     }
 
     private fun annotateLetStatement(statement: TiBasicLetStatement, holder: AnnotationHolder) {
-        val varAccessNode = statement.node.allChildren
-            .firstOrNull { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
-        if (varAccessNode != null && varAccessNode.firstChildNode?.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Bad variable name")
-                .range(varAccessNode.textRange)
-                .create()
+        val varAccessNode = statement.node.firstChildOfType(TiBasicNodeTypes.VARIABLE_ACCESS)
+        if (varAccessNode != null && varAccessNode.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
+            holder.error("Bad variable name", varAccessNode.textRange)
             return
         }
-        val expression = statement.children.filterIsInstance<TiBasicExpression>().firstOrNull()
-            ?: return
+        val expression = statement.firstChildOfType<TiBasicExpression>() ?: return
         if (varAccessNode == null) return
-        val isStringVar = varAccessNode.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE
+        val isStringVar = varAccessNode.firstChildType == TiBasicTokenTypes.STRING_VARIABLE
         val isStringExpr = isStringExpression(expression)
         if (isStringVar != isStringExpr) {
             val mismatchRange = TextRange(varAccessNode.textRange.startOffset, expression.textRange.endOffset)
-            holder.newAnnotation(HighlightSeverity.ERROR, "String-number mismatch")
-                .range(mismatchRange)
-                .create()
+            holder.error("String-number mismatch", mismatchRange)
         }
     }
 
     private fun annotateInvalidPrintArgument(statement: TiBasicPrintStatement, holder: AnnotationHolder) {
         val validChildren = setOf(TiBasicTokenTypes.PRINT_KEYWORD, TokenType.WHITE_SPACE, TiBasicNodeTypes.EXPRESSION)
-        val expression = statement.children.filterIsInstance<TiBasicExpression>().firstOrNull()
+        val expression = statement.firstChildOfType<TiBasicExpression>()
         val isNumericExpr = expression != null && !isStringExpression(expression)
         val isStringExpr = expression != null && isStringExpression(expression)
         statement.node.allChildren
@@ -218,18 +199,18 @@ class TiBasicAnnotator : Annotator {
                     child.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME -> "Bad variable name"
                     isNumericExpr && child.elementType in STRING_MISMATCH_TYPES -> "String-number mismatch"
                     isNumericExpr && child.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-                            child.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE -> "String-number mismatch"
+                            child.firstChildType == TiBasicTokenTypes.STRING_VARIABLE -> "String-number mismatch"
 
                     isStringExpr && child.elementType in NUMERIC_MISMATCH_TYPES -> "String-number mismatch"
                     else -> "PRINT argument must be an expression"
                 }
-                holder.newAnnotation(HighlightSeverity.ERROR, message).range(child.textRange).create()
+                holder.error(message, child.textRange)
             }
     }
 
     private fun annotateLineNumberListStatement(statement: TiBasicLineNumberListStatement, holder: AnnotationHolder) {
-        val children = statement.node.allChildren
-            .filter { it.elementType != TokenType.WHITE_SPACE && it.elementType != TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD }
+        val children = statement.node.nonWhitespaceChildren
+            .filter { it.elementType != TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD }
         var expectNumber = true
         var trailingComma: ASTNode? = null
         for (child in children) {
@@ -238,16 +219,14 @@ class TiBasicAnnotator : Annotator {
                     child.elementType == TiBasicTokenTypes.NUMERIC_LITERAL -> {
                         val value = child.text.toLongOrNull()
                         if (value == null || value.toInt() !in VALID_LINE_NUMBER_RANGE) {
-                            holder.newAnnotation(HighlightSeverity.ERROR, "Line number must be between 1 and 32767")
-                                .range(child.textRange).create()
+                            holder.error("Line number must be between 1 and 32767", child.textRange)
                         }
                         expectNumber = false
                         trailingComma = null
                     }
 
                     else -> {
-                        holder.newAnnotation(HighlightSeverity.ERROR, "Line number expected")
-                            .range(child.textRange).create()
+                        holder.error("Line number expected", child.textRange)
                         trailingComma = null
                     }
                 }
@@ -259,16 +238,14 @@ class TiBasicAnnotator : Annotator {
                     }
 
                     else -> {
-                        holder.newAnnotation(HighlightSeverity.ERROR, "Comma expected")
-                            .range(child.textRange).create()
+                        holder.error("Comma expected", child.textRange)
                         trailingComma = null
                     }
                 }
             }
         }
         if (trailingComma != null) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Line number expected")
-                .range(trailingComma.textRange).create()
+            holder.error("Line number expected", trailingComma.textRange)
         }
         annotateUndefinedLineNumbers(statement, children, holder)
     }
@@ -278,7 +255,7 @@ class TiBasicAnnotator : Annotator {
         children: List<ASTNode>,
         holder: AnnotationHolder,
     ) {
-        val file = statement.containingFile as? TiBasicFile ?: return
+        val file = statement.containingTiBasicFile ?: return
         val definedLineNumbers =
             file.lines()
                 .map { it.lineNumber() }
@@ -289,31 +266,26 @@ class TiBasicAnnotator : Annotator {
             .forEach { child ->
                 val value = child.text.toLongOrNull() ?: return@forEach
                 if (value.toInt() in VALID_LINE_NUMBER_RANGE && value.toInt() !in definedLineNumbers) {
-                    holder.newAnnotation(HighlightSeverity.WARNING, "Bad line number")
-                        .range(child.textRange).create()
+                    holder.warning("Bad line number", child.textRange)
                 }
             }
     }
 
     private fun annotateDeleteStatement(statement: TiBasicDeleteStatement, holder: AnnotationHolder) {
         val validChildren = setOf(TiBasicTokenTypes.DELETE_KEYWORD, TokenType.WHITE_SPACE, TiBasicNodeTypes.EXPRESSION)
-        val expression = statement.children.filterIsInstance<TiBasicExpression>().firstOrNull()
-        val keywordNode = statement.node.allChildren
-            .first { it.elementType == TiBasicTokenTypes.DELETE_KEYWORD }
+        val expression = statement.firstChildOfType<TiBasicExpression>()
+        val keywordNode = statement.node.firstChildOfType(TiBasicTokenTypes.DELETE_KEYWORD)!!
         if (expression == null) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "String expression expected")
-                .range(keywordNode.textRange).create()
+            holder.error("String expression expected", keywordNode.textRange)
             return
         }
         if (!isStringExpression(expression)) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "String expression expected")
-                .range(expression.textRange).create()
+            holder.error("String expression expected", expression.textRange)
         }
         statement.node.allChildren
             .filter { it.elementType !in validChildren }
             .forEach { child ->
-                holder.newAnnotation(HighlightSeverity.ERROR, "String expression expected")
-                    .range(child.textRange).create()
+                holder.error("String expression expected", child.textRange)
             }
     }
 
@@ -321,42 +293,38 @@ class TiBasicAnnotator : Annotator {
         if (!varAccess.hasSubscriptParens()) return
         val dimCount = varAccess.subscriptDimCount()
         if (dimCount == 0 || dimCount > 3) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Bad subscript definition")
-                .range(varAccess)
-                .create()
+            holder.error("Bad subscript definition", varAccess)
         }
     }
 
     private fun annotateExpression(expr: TiBasicExpression, holder: AnnotationHolder) {
-        val children = expr.node.allChildren.filter { it.elementType != TokenType.WHITE_SPACE }
+        val children = expr.node.nonWhitespaceChildren
         if (children.any { it.elementType in COMPARISON_OP_TYPES }) return
         val isString = isStringExpression(expr)
         children.forEach { child ->
             val isMismatch = if (isString) {
                 child.elementType in NUMERIC_MISMATCH_TYPES ||
                         (child.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-                                child.firstChildNode?.elementType == TiBasicTokenTypes.NUMERIC_VARIABLE)
+                                child.firstChildType == TiBasicTokenTypes.NUMERIC_VARIABLE)
             } else {
                 child.elementType in STRING_MISMATCH_TYPES ||
                         (child.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-                                child.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE)
+                                child.firstChildType == TiBasicTokenTypes.STRING_VARIABLE)
             }
             if (isMismatch) {
-                holder.newAnnotation(HighlightSeverity.ERROR, "String-number mismatch")
-                    .range(child.textRange)
-                    .create()
+                holder.error("String-number mismatch", child.textRange)
             }
         }
     }
 
     private fun isStringExpression(expr: TiBasicExpression): Boolean {
-        val children = expr.node.allChildren.filter { it.elementType != TokenType.WHITE_SPACE }
+        val children = expr.node.nonWhitespaceChildren
         if (children.any { it.elementType in COMPARISON_OP_TYPES }) return false
         if (children.any { it.elementType == TiBasicTokenTypes.CONCAT_OP }) return true
         val first = children.firstOrNull() ?: return false
         if (first.elementType == TiBasicTokenTypes.STRING_LITERAL) return true
         if (first.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-            first.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE
+            first.firstChildType == TiBasicTokenTypes.STRING_VARIABLE
         ) return true
         if (first.elementType == TiBasicTokenTypes.LPAREN) {
             val inner = children.drop(1).dropLast(1)
@@ -365,7 +333,7 @@ class TiBasicAnnotator : Annotator {
             val firstInner = inner.firstOrNull() ?: return false
             return firstInner.elementType == TiBasicTokenTypes.STRING_LITERAL ||
                     (firstInner.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-                            firstInner.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE)
+                            firstInner.firstChildType == TiBasicTokenTypes.STRING_VARIABLE)
         }
         return false
     }
@@ -374,14 +342,14 @@ class TiBasicAnnotator : Annotator {
         val lineNumberNode = line.node.firstChildNode
         val lineNumber = lineNumberNode.text.toLongOrNull()
         if (lineNumber == null || lineNumber.toInt() !in VALID_LINE_NUMBER_RANGE) {
-            holder.newAnnotation(HighlightSeverity.ERROR, "Bad line number").range(lineNumberNode.textRange).create()
+            holder.error("Bad line number", lineNumberNode.textRange)
         }
     }
 
     private fun annotateVariableNameConflicts(file: TiBasicFile, holder: AnnotationHolder) {
         val allAccesses = collectVariableAccesses(file)
-        val stringAccesses = allAccesses.filter { it.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE }
-        val numericAccesses = allAccesses.filter { it.firstChildNode?.elementType == TiBasicTokenTypes.NUMERIC_VARIABLE }
+        val stringAccesses = allAccesses.filter { it.firstChildType == TiBasicTokenTypes.STRING_VARIABLE }
+        val numericAccesses = allAccesses.filter { it.firstChildType == TiBasicTokenTypes.NUMERIC_VARIABLE }
         annotateNameConflicts(stringAccesses, holder, ::variableAccessName, ::variableAccessDimCount)
         annotateNameConflicts(numericAccesses, holder, ::variableAccessName, ::variableAccessDimCount)
         val commands = COMMANDS_UPPERCASE
@@ -394,9 +362,7 @@ class TiBasicAnnotator : Annotator {
                 else -> null
             }
             if (message != null) {
-                holder.newAnnotation(HighlightSeverity.ERROR, message)
-                    .range(node.textRange)
-                    .create()
+                holder.error(message, node.textRange)
             }
         }
     }
@@ -424,7 +390,7 @@ class TiBasicAnnotator : Annotator {
         for ((_, conflictNodes) in byName) {
             if (conflictNodes.map { dimCountOf(it) }.toSet().size > 1) {
                 conflictNodes.forEach { node ->
-                    holder.newAnnotation(HighlightSeverity.ERROR, "Name conflict").range(node.textRange).create()
+                    holder.error("Name conflict", node.textRange)
                 }
             }
         }
@@ -433,7 +399,7 @@ class TiBasicAnnotator : Annotator {
     private fun variableAccessName(node: ASTNode): String = node.firstChildNode.text.uppercase()
 
     private fun variableAccessDimCount(node: ASTNode): Int =
-        node.allChildren.count { it.elementType == TiBasicNodeTypes.EXPRESSION }
+        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).size
 
     private fun duplicateLineNumbers(lines: List<TiBasicLine>): Set<TiBasicLine> {
         val seen = mutableSetOf<Int>()
@@ -442,10 +408,7 @@ class TiBasicAnnotator : Annotator {
 
     private fun annotateDuplicateLineNumbers(duplicates: Set<TiBasicLine>, holder: AnnotationHolder) {
         duplicates.forEach { line ->
-            holder.newAnnotation(HighlightSeverity.ERROR, "Duplicate line number ${line.lineNumber()}")
-                .range(line)
-                .withFix(ResequenceQuickFix(line))
-                .create()
+            holder.error("Duplicate line number ${line.lineNumber()}", line, ResequenceQuickFix(line))
         }
     }
 
@@ -453,13 +416,11 @@ class TiBasicAnnotator : Annotator {
         lines.filter { it.lineNumber() in VALID_LINE_NUMBER_RANGE }.zipWithNext().forEach { (previous, current) ->
             if (current in duplicates) return@forEach
             if (current.lineNumber() <= previous.lineNumber()) {
-                holder.newAnnotation(
-                    HighlightSeverity.WARNING,
+                holder.warning(
                     "Line number ${current.lineNumber()} does not follow ascending order (previous: ${previous.lineNumber()})",
+                    current,
+                    ResequenceQuickFix(current),
                 )
-                    .range(current)
-                    .withFix(ResequenceQuickFix(current))
-                    .create()
             }
         }
     }
