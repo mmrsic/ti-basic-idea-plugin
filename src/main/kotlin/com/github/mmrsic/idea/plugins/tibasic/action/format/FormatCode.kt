@@ -30,6 +30,9 @@ private fun formattedLine(line: TiBasicLine): String {
     if (firstTokenType == TiBasicTokenTypes.ON_KEYWORD) {
         return formattedOnGotoLine(line.lineNumber(), statement as TiBasicOnGotoStatement)
     }
+    if (firstTokenType == TiBasicTokenTypes.IF_KEYWORD) {
+        return formattedIfLine(line.lineNumber(), statement as TiBasicIfStatement)
+    }
 
     val keywordMatch = TiBasicKeywords.getKeywords()
         .map { it.uppercase() }
@@ -53,6 +56,42 @@ private fun formattedLine(line: TiBasicLine): String {
         else
             removeWhitespaceOutsideStrings(trimmedArgument)
         "${line.lineNumber()} $keywordMatch $formattedArg"
+    }
+}
+
+private fun formattedIfLine(lineNumber: Int, statement: TiBasicIfStatement): String {
+    val stmtStart = statement.textRange.startOffset
+    val stmtText = statement.text
+    val ifNode = statement.node.firstChildNode!!
+    val thenNode = statement.node.firstChildOfType(TiBasicTokenTypes.THEN_KEYWORD)
+    val elseNode = statement.node.firstChildOfType(TiBasicTokenTypes.ELSE_KEYWORD)
+
+    if (thenNode == null) {
+        val argText = stmtText.drop(ifNode.textLength).trim()
+        return if (argText.isEmpty()) "$lineNumber IF"
+        else "$lineNumber IF ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
+    }
+
+    val thenRelStart = thenNode.startOffset - stmtStart
+    val thenRelEnd = thenNode.startOffset + thenNode.textLength - stmtStart
+    val exprPart = stmtText.substring(ifNode.textLength, thenRelStart).trim()
+
+    return buildString {
+        append("$lineNumber IF")
+        if (exprPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))}")
+        append(" THEN")
+        if (elseNode != null) {
+            val elseRelStart = elseNode.startOffset - stmtStart
+            val elseRelEnd = elseNode.startOffset + elseNode.textLength - stmtStart
+            val thenLinePart = stmtText.substring(thenRelEnd, elseRelStart).trim()
+            val afterElsePart = stmtText.substring(elseRelEnd).trim()
+            if (thenLinePart.isNotEmpty()) append(" $thenLinePart")
+            append(" ELSE")
+            if (afterElsePart.isNotEmpty()) append(" $afterElsePart")
+        } else {
+            val afterThenPart = stmtText.substring(thenRelEnd).trim()
+            if (afterThenPart.isNotEmpty()) append(" $afterThenPart")
+        }
     }
 }
 

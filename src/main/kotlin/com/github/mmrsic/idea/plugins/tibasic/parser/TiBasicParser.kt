@@ -4,9 +4,11 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DELETE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIV_OP
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.ELSE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.END_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.EQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOTO_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.IF_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.ON_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GE_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
@@ -31,12 +33,14 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RPAREN
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STOP_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_VARIABLE
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.THEN_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.UNKNOWN_STATEMENT_TEXT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DELETE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.END_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOTO_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.IF_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LET_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
@@ -60,9 +64,10 @@ import com.intellij.psi.tree.IElementType
  * ```
  * file              ::= line*
  * line              ::= numberedLine | commentLine
- * numberedLine      ::= LINE_NUMBER WHITE_SPACE? (printStatement | endStatement | stopStatement | gotoStatement | onGotoStatement | ...)?
+ * numberedLine      ::= LINE_NUMBER WHITE_SPACE? (printStatement | endStatement | stopStatement | gotoStatement | onGotoStatement | ifStatement | ...)?
  * gotoStatement     ::= GOTO_KEYWORD WHITE_SPACE? NUMERIC_LITERAL
  * onGotoStatement   ::= ON_KEYWORD WHITE_SPACE? expression WHITE_SPACE? GOTO_KEYWORD (WHITE_SPACE? NUMERIC_LITERAL (COMMA NUMERIC_LITERAL)*)?
+ * ifStatement       ::= IF_KEYWORD WHITE_SPACE? expression WHITE_SPACE? THEN_KEYWORD WHITE_SPACE? NUMERIC_LITERAL (WHITE_SPACE? ELSE_KEYWORD WHITE_SPACE? NUMERIC_LITERAL)?
  * printStatement    ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
  * endStatement      ::= END_KEYWORD
  * stopStatement     ::= STOP_KEYWORD
@@ -119,6 +124,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             STOP_KEYWORD -> parseStopStatement(builder)
             GOTO_KEYWORD -> parseGotoStatement(builder)
             ON_KEYWORD -> parseOnGotoStatement(builder)
+            IF_KEYWORD -> parseIfStatement(builder)
             PRINT_KEYWORD -> parsePrintStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
@@ -173,6 +179,27 @@ class TiBasicParser : PsiParser, LightPsiParser {
         builder.advanceLexer() // consume GOTO_KEYWORD
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(GOTO_STATEMENT)
+    }
+
+    private fun parseIfStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume IF_KEYWORD
+        skipWhitespace(builder)
+        if (isExpressionStart(builder)) parseExpression(builder)
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == THEN_KEYWORD) {
+            builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == NUMERIC_LITERAL) builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == ELSE_KEYWORD) {
+                builder.advanceLexer()
+                skipIntraLineWhitespace(builder)
+                if (builder.tokenType == NUMERIC_LITERAL) builder.advanceLexer()
+            }
+        }
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(IF_STATEMENT)
     }
 
     private fun parseOnGotoStatement(builder: PsiBuilder) {

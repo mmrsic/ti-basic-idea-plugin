@@ -12,6 +12,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicEndStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicIfStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRemStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicStopStatement
@@ -55,6 +56,7 @@ class TiBasicParserDefinition : ParserDefinition {
             TiBasicNodeTypes.STOP_STATEMENT -> TiBasicStopStatement(node)
             TiBasicNodeTypes.GOTO_STATEMENT -> TiBasicGotoStatement(node)
             TiBasicNodeTypes.ON_GOTO_STATEMENT -> TiBasicOnGotoStatement(node)
+            TiBasicNodeTypes.IF_STATEMENT -> TiBasicIfStatement(node)
             TiBasicNodeTypes.UNKNOWN_STATEMENT -> TiBasicUnknownStatement(node)
             TiBasicNodeTypes.INVALID_LINE -> TiBasicInvalidLine(node)
             TiBasicNodeTypes.EXPRESSION -> TiBasicExpression(node)

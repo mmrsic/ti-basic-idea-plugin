@@ -1210,6 +1210,34 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(0, gotoStmts.size)
     }
 
+    fun testIfThenProducesIfStatement() {
+        val file = parseCode("100 IF X>0 THEN 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicIfStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testIfThenElseProducesIfStatement() {
+        val file = parseCode("100 IF X>0 THEN 200 ELSE 300\n200 PRINT \"A\"\n300 PRINT \"B\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicIfStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testIfStatementContainsExpression() {
+        val file = parseCode("100 IF X>0 THEN 200\n200 PRINT \"OK\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicIfStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testIfKeywordIsCaseInsensitive() {
+        val file = parseCode("100 if x>0 then 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicIfStatement>()
+        assertEquals(1, stmts.size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

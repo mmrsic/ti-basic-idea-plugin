@@ -39,6 +39,8 @@ statement         = printStatement
                   | endStatement
                   | stopStatement
                   | gotoStatement
+                  | onGotoStatement
+                  | ifStatement
                   | deleteStatement
                   | lineNumberListStatement
                   | unknownStatement ;
@@ -55,6 +57,9 @@ gotoStatement           = ( GOTO | GO whitespace TO ) lineNumber ;
                           (* transfers control to the given line; lineNumber must be in 1..32767 *)
 onGotoStatement         = ON whitespace numericExpression whitespace ( GOTO | GO whitespace TO ) whitespace lineNumberList ;
                           (* computed branch; expression must be numeric; at least one lineNumber required *)
+ifStatement             = IF whitespace numericExpression whitespace THEN whitespace lineNumber
+                          [ whitespace ELSE whitespace lineNumber ] ;
+                          (* conditional branch; expression must be numeric; non-zero = true → THEN target, zero → ELSE target *)
 deleteStatement         = DELETE    [ whitespace ] [ stringExpression ] ;
 lineNumberListStatement = listKeyword whitespace lineNumberList ;
 unknownStatement        = unknownText ;         (* annotated as error *)
@@ -110,6 +115,7 @@ Recognised as statement-starting keywords (case-insensitive):
 | `STOP`                                 | Halt program (mid-program by convention)    |
 | `GOTO` / `GO TO`                       | Unconditional branch to a line number       |
 | `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines     |
+| `IF … THEN` / `IF … THEN … ELSE`       | Conditional branch to a line number         |
 | `DELETE`                               | Delete string                               |
 | `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                 |
 
@@ -172,6 +178,8 @@ These identifiers are recognized by the annotator and produce a specific error:
 250 GO TO 100                  ✓ valid — unconditional branch (two-word form)
 260 ON X GOTO 100,200,300      ✓ valid — computed branch (numeric expression X)
 270 ON X GO TO 100,200         ✓ valid — computed branch (two-word GO TO form)
+280 IF X>0 THEN 100            ✓ valid — conditional branch
+290 IF X>0 THEN 100 ELSE 200   ✓ valid — conditional branch with else target
 220 PRINT A(1,2,3,4)           ✗ error — more than 3 subscript dimensions
 230 RUN                        ✗ error — command used as statement
 240 PRINT A$ + 1               ✗ error — String-Number-Mismatch
@@ -186,7 +194,7 @@ PRINT "no number"              ✗ error — line number expected
 
 - The plugin currently supports statements that are meaningful within a single source file.
   Multi-statement lines (`:` separator) are **not** supported.
-- `FOR`/`NEXT`, `IF`/`THEN`, `GOSUB`/`RETURN`, `INPUT`, `DATA`/`READ`, `CALL` and other TI Extended Basic statements
+- `FOR`/`NEXT`, `GOSUB`/`RETURN`, `INPUT`, `DATA`/`READ`, `CALL` and other TI Extended Basic statements
   are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
 - String literals use `""` to embed a literal double-quote character.
 - Scientific notation exponents may use `E` or `e` with an optional sign: `1.5E-3`, `2e+10`.

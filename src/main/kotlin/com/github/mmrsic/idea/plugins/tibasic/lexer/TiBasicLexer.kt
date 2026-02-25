@@ -21,7 +21,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -143,6 +143,7 @@ class TiBasicLexer : LexerBase() {
             "STOP" -> TiBasicTokenTypes.STOP_KEYWORD
             "GOTO", "GO TO" -> TiBasicTokenTypes.GOTO_KEYWORD
             "ON" -> TiBasicTokenTypes.ON_KEYWORD
+            "IF" -> TiBasicTokenTypes.IF_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         result.add(LineToken(offset, offset + printStr.length, keywordType))
@@ -370,6 +371,12 @@ class TiBasicLexer : LexerBase() {
                     when {
                         upperText == "GOTO" ->
                             result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.GOTO_KEYWORD))
+
+                        upperText == "THEN" ->
+                            result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.THEN_KEYWORD))
+
+                        upperText == "ELSE" ->
+                            result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.ELSE_KEYWORD))
 
                         upperText == "GO" -> {
                             val endOfGoTo = goToEnd(argStr, i)

@@ -1282,4 +1282,86 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting(true, false, false)
     }
+
+    fun testNoErrorForValidIfThen() {
+        myFixture.configureByText("test.tibasic", "100 IF X>0 THEN 200\n200 PRINT \"OK\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForValidIfThenElse() {
+        myFixture.configureByText("test.tibasic", "100 IF X>0 THEN 200 ELSE 300\n200 PRINT \"A\"\n300 PRINT \"B\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testWarningForIfThenWithUndefinedLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning>",
+        )
+        myFixture.checkHighlighting(false, false, true)
+    }
+
+    fun testWarningForIfThenElseWithUndefinedElseLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 IF X>0 THEN 200 ELSE <warning descr=\"Bad line number\">999</warning>\n200 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(false, false, true)
+    }
+
+    fun testErrorForIfWithoutThen() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">IF X>0</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForIfThenWithoutLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">IF X>0 THEN</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForIfThenWithElseButNoElseLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">IF X>0 THEN 200 ELSE</error>\n200 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForIfWithStringExpression() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 IF <error descr=\"String-number mismatch\">A$</error> THEN 200\n200 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForIfThenWithInvalidLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 IF X>0 THEN <error descr=\"Bad line number\">99999</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForIfThenElseWithInvalidElseLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 IF X>0 THEN 200 ELSE <error descr=\"Bad line number\">99999</error>\n200 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testWarningForIfThenElseWithUndefinedThenLineNumber() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning> ELSE 200\n200 PRINT \"OK\"",
+        )
+        myFixture.checkHighlighting(false, false, true)
+    }
 }

@@ -1,32 +1,11 @@
 package com.github.mmrsic.idea.plugins.tibasic.highlight
 
 import com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceQuickFix
-import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
-import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
-import com.github.mmrsic.idea.plugins.tibasic.ext.error
-import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
-import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildType
-import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
-import com.github.mmrsic.idea.plugins.tibasic.ext.warning
+import com.github.mmrsic.idea.plugins.tibasic.ext.*
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicEndStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicStopStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicUnknownStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
-import com.github.mmrsic.idea.plugins.tibasic.psi.VALID_LINE_NUMBER_RANGE
-import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.*
 import com.intellij.lang.ASTNode
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
@@ -53,6 +32,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
             is TiBasicGotoStatement -> annotateGotoStatement(element, holder)
             is TiBasicOnGotoStatement -> annotateOnGotoStatement(element, holder)
+            is TiBasicIfStatement -> annotateIfStatement(element, holder)
             is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
             is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
@@ -80,18 +60,13 @@ class TiBasicAnnotator : Annotator {
         }
         val lineNumberNode = contentNodes[0]
         val lineNumber = lineNumberNode.text.toLongOrNull()?.toInt()
-        if (lineNumber == null || lineNumber !in VALID_LINE_NUMBER_RANGE) {
-            holder.error("Bad line number", lineNumberNode.textRange)
-            return
-        }
-        val file = statement.containingTiBasicFile ?: return
-        val definedLineNumbers = file.lines()
-            .map { it.lineNumber() }
-            .filter { it in VALID_LINE_NUMBER_RANGE }
-            .toSet()
-        if (lineNumber !in definedLineNumbers) {
-            holder.warning("Bad line number", lineNumberNode.textRange)
-        }
+        val definedLineNumbers =
+            statement.containingTiBasicFile
+                ?.lines()
+                ?.map { it.lineNumber() }
+                ?.filter { it in VALID_LINE_NUMBER_RANGE }
+                ?.toSet()
+        validateBranchLineNumber(lineNumberNode, lineNumber, definedLineNumbers, holder)
     }
 
     private fun annotateOnGotoStatement(statement: TiBasicOnGotoStatement, holder: AnnotationHolder) {
@@ -160,6 +135,76 @@ class TiBasicAnnotator : Annotator {
         }
         if (trailingComma != null) {
             holder.error("Bad line number", trailingComma.textRange)
+        }
+    }
+
+    private fun annotateIfStatement(statement: TiBasicIfStatement, holder: AnnotationHolder) {
+        val children = statement.node.nonWhitespaceChildren
+        val expression = statement.firstChildOfType<TiBasicExpression>()
+
+        if (expression == null || statement.node.firstChildOfType(TiBasicTokenTypes.THEN_KEYWORD) == null) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
+        if (isStringExpression(expression)) {
+            holder.error("String-number mismatch", expression)
+        }
+
+        val afterThen = children.dropWhile { it.elementType != TiBasicTokenTypes.THEN_KEYWORD }.drop(1)
+        if (afterThen.isEmpty() || afterThen[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
+        val thenLineNumberNode = afterThen[0]
+        val thenLineNumber = thenLineNumberNode.text.toLongOrNull()?.toInt()
+        val elseIdx = afterThen.indexOfFirst { it.elementType == TiBasicTokenTypes.ELSE_KEYWORD }
+        val definedLineNumbers = statement.containingTiBasicFile
+            ?.lines()?.map { it.lineNumber() }?.filter { it in VALID_LINE_NUMBER_RANGE }?.toSet()
+
+        if (elseIdx < 0) {
+            if (afterThen.size > 1) {
+                holder.error("Incorrect statement", statement)
+            } else {
+                validateBranchLineNumber(thenLineNumberNode, thenLineNumber, definedLineNumbers, holder)
+            }
+            return
+        }
+
+        if (elseIdx != 1) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
+        val afterElse = afterThen.drop(elseIdx + 1)
+        if (afterElse.isEmpty() || afterElse[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+        if (afterElse.size > 1) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
+        val elseLineNumberNode = afterElse[0]
+        val elseLineNumber = elseLineNumberNode.text.toLongOrNull()?.toInt()
+        validateBranchLineNumber(thenLineNumberNode, thenLineNumber, definedLineNumbers, holder)
+        validateBranchLineNumber(elseLineNumberNode, elseLineNumber, definedLineNumbers, holder)
+    }
+
+    private fun validateBranchLineNumber(
+        lineNumberNode: ASTNode,
+        lineNumber: Int?,
+        definedLineNumbers: Set<Int>?,
+        holder: AnnotationHolder,
+    ) {
+        if (lineNumber == null || lineNumber !in VALID_LINE_NUMBER_RANGE) {
+            holder.error("Bad line number", lineNumberNode.textRange)
+            return
+        }
+        if (definedLineNumbers != null && lineNumber !in definedLineNumbers) {
+            holder.warning("Bad line number", lineNumberNode.textRange)
         }
     }
 
