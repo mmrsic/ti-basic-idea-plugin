@@ -21,7 +21,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|INPUT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -146,6 +146,7 @@ class TiBasicLexer : LexerBase() {
             "IF" -> TiBasicTokenTypes.IF_KEYWORD
             "FOR" -> TiBasicTokenTypes.FOR_KEYWORD
             "NEXT" -> TiBasicTokenTypes.NEXT_KEYWORD
+            "INPUT" -> TiBasicTokenTypes.INPUT_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         result.add(LineToken(offset, offset + printStr.length, keywordType))
@@ -340,6 +341,10 @@ class TiBasicLexer : LexerBase() {
 
                 ch == ',' -> {
                     result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COMMA)); i++
+                }
+
+                ch == ':' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COLON)); i++
                 }
 
                 ch.isDigit() -> {

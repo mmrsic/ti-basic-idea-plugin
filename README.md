@@ -18,6 +18,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 |----------------------------|-----------------------------------------------------------------------------|
 | `LET`                      | Assign a value to a variable (`LET` keyword is optional)                    |
 | `PRINT`                    | Output values or text                                                       |
+| `INPUT`                    | Read keyboard input into one or more variables (optional string prompt)     |
 | `REM`                      | Remark / comment                                                            |
 | `END`                      | Halt program execution (by convention the last line)                        |
 | `STOP`                     | Halt program execution (by convention used mid-program)                     |
@@ -73,6 +74,8 @@ The annotator inspects every file and highlights:
 | Error    | `FOR` initial value, limit, or step is a string expression (String-number mismatch)          |
 | Warning  | Unequal number of `FOR` and `NEXT` statements — surplus occurrences flagged (FOR-NEXT-ERROR) |
 | Error    | `NEXT` without a control variable (Incorrect statement)                                      |
+| Error    | `INPUT` without a variable list (Incorrect statement)                                        |
+| Error    | `INPUT` with a bad variable name (Bad variable name)                                         |
 
 ### Code actions
 

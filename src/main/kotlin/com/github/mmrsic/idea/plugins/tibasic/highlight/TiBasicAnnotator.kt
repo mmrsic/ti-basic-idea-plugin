@@ -38,6 +38,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicNextStatement -> annotateNextStatement(element, holder)
             is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
             is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
+            is TiBasicInputStatement -> annotateInputStatement(element, holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
             is TiBasicInvalidLine -> holder.error("Line number expected", element)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
@@ -52,6 +53,32 @@ class TiBasicAnnotator : Annotator {
         if (trailing.isEmpty()) return
         val range = TextRange(trailing.first().startOffset, trailing.last().startOffset + trailing.last().textLength)
         holder.warning("Everything after $stmtName statement is ignored", range)
+    }
+
+    private fun annotateInputStatement(statement: TiBasicInputStatement, holder: AnnotationHolder) {
+        val children = statement.node.nonWhitespaceChildren
+        val varAccessNodes = children.filter { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
+        val colonNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.COLON }
+        val expressionNode = children.firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
+
+        if (colonNode != null && expressionNode != null) {
+            val promptExpr = expressionNode.psi as? TiBasicExpression
+            if (promptExpr != null && !isStringExpression(promptExpr)) {
+                holder.error("String expression expected as INPUT prompt", expressionNode.textRange)
+            }
+        }
+
+        val expectedVarCount = if (colonNode != null) varAccessNodes.size else varAccessNodes.size
+        if (expectedVarCount == 0) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
+        varAccessNodes.forEach { varNode ->
+            if (varNode.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
+                holder.error("Bad variable name", varNode.textRange)
+            }
+        }
     }
 
     private fun annotateForStatement(statement: TiBasicForStatement, holder: AnnotationHolder) {

@@ -1326,6 +1326,54 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testInputStatementWithSingleVariable() {
+        val file = parseCode("100 INPUT A")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testInputStatementWithMultipleVariables() {
+        val file = parseCode("100 INPUT A,B,C")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testInputStatementWithStringVariable() {
+        val file = parseCode("100 INPUT A$")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testInputStatementWithPrompt() {
+        val file = parseCode("100 INPUT \"Enter value\": A")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testInputStatementWithPromptAndMultipleVariables() {
+        val file = parseCode("100 INPUT \"Name: \": A$,B")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testInputStatementLowercaseIsRecognized() {
+        val file = parseCode("100 input a,b$")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

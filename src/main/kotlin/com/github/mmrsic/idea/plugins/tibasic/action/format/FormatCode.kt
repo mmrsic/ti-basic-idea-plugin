@@ -39,6 +39,9 @@ private fun formattedLine(line: TiBasicLine): String {
     if (firstTokenType == TiBasicTokenTypes.NEXT_KEYWORD) {
         return formattedNextLine(line.lineNumber(), statement as TiBasicNextStatement)
     }
+    if (firstTokenType == TiBasicTokenTypes.INPUT_KEYWORD) {
+        return formattedInputLine(line.lineNumber(), statement as TiBasicInputStatement)
+    }
 
     val keywordMatch = TiBasicKeywords.getKeywords()
         .map { it.uppercase() }
@@ -148,6 +151,30 @@ private fun formattedNextLine(lineNumber: Int, statement: TiBasicNextStatement):
     val varPart = statement.text.drop(nextNode.textLength).trim()
     return if (varPart.isEmpty()) "$lineNumber NEXT"
     else "$lineNumber NEXT ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varPart))}"
+}
+
+private fun formattedInputLine(lineNumber: Int, statement: TiBasicInputStatement): String {
+    val stmtStart = statement.textRange.startOffset
+    val stmtText = statement.text
+    val inputNode = statement.node.firstChildNode!!
+    val colonNode = statement.node.firstChildOfType(TiBasicTokenTypes.COLON)
+
+    return if (colonNode == null) {
+        val varsPart = stmtText.drop(inputNode.textLength).trim()
+        if (varsPart.isEmpty()) "$lineNumber INPUT"
+        else "$lineNumber INPUT ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varsPart))}"
+    } else {
+        val colonRelStart = colonNode.startOffset - stmtStart
+        val colonRelEnd = colonRelStart + colonNode.textLength
+        val promptPart = stmtText.substring(inputNode.textLength, colonRelStart).trim()
+        val varsPart = stmtText.substring(colonRelEnd).trim()
+        buildString {
+            append("$lineNumber INPUT")
+            if (promptPart.isNotEmpty()) append(" ${uppercaseOutsideStrings(promptPart)}")
+            append(":")
+            if (varsPart.isNotEmpty()) append(removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varsPart)))
+        }
+    }
 }
 
 private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {

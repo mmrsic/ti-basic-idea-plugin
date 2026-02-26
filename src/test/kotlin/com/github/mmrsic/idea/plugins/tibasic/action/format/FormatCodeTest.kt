@@ -207,5 +207,35 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 FOR I = 1 TO 10\n200 next   i")
         assertEquals("100 FOR I=1 TO 10\n200 NEXT I", formattedText(file))
     }
+
+    fun testInputWithSingleVariableFormatted() {
+        val file = configureFile("100 INPUT A")
+        assertEquals("100 INPUT A", formattedText(file))
+    }
+
+    fun testInputWithMultipleVariablesSpacesRemoved() {
+        val file = configureFile("100 INPUT A , B , C")
+        assertEquals("100 INPUT A,B,C", formattedText(file))
+    }
+
+    fun testInputVariablesUppercased() {
+        val file = configureFile("100 input a,b$")
+        assertEquals("100 INPUT A,B$", formattedText(file))
+    }
+
+    fun testInputWithPromptFormatted() {
+        val file = configureFile("100 INPUT \"Enter\": A")
+        assertEquals("100 INPUT \"Enter\":A", formattedText(file))
+    }
+
+    fun testInputWithPromptSpacesNormalized() {
+        val file = configureFile("100 INPUT \"Enter\" :  A , B")
+        assertEquals("100 INPUT \"Enter\":A,B", formattedText(file))
+    }
+
+    fun testInputWithPromptVariablesUppercased() {
+        val file = configureFile("100 input \"Name: \" : a$")
+        assertEquals("100 INPUT \"Name: \":A$", formattedText(file))
+    }
 }
 

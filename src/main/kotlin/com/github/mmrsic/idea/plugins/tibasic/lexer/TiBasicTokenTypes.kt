@@ -45,6 +45,8 @@ object TiBasicTokenTypes {
     val LPAREN = TiBasicElementType("LPAREN")
     val RPAREN = TiBasicElementType("RPAREN")
     val COMMA = TiBasicElementType("COMMA")
+    val COLON = TiBasicElementType("COLON")
+    val INPUT_KEYWORD = TiBasicElementType("INPUT_KEYWORD")
 }
 
 class TiBasicElementType(debugName: String) : IElementType(debugName, TiBasicLanguage)

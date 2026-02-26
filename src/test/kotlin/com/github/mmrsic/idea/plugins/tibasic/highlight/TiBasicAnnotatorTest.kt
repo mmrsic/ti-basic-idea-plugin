@@ -1457,4 +1457,38 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText("test.tibasic", "110 FOR X= .1 TO 1 STEP .2\n120 NEXT X")
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun testInputWithValidVariablesNoError() {
+        myFixture.configureByText("test.tibasic", "100 INPUT A,B$")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testInputWithNoVariablesIsError() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">INPUT</error>"
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testInputWithInvalidVariableNameIsError() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 INPUT <error descr=\"Bad variable name\">AVERYLONGNAMES1\$</error>"
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testInputWithStringPromptNoError() {
+        myFixture.configureByText("test.tibasic", "100 INPUT \"Enter value\": A")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testInputWithNumericPromptResultsInIncorrectStatement() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">INPUT 42: A</error>"
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
 }

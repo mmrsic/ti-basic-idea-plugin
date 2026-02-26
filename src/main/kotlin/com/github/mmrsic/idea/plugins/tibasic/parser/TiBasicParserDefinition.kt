@@ -44,6 +44,7 @@ class TiBasicParserDefinition : ParserDefinition {
             TiBasicNodeTypes.IF_STATEMENT -> TiBasicIfStatement(node)
             TiBasicNodeTypes.FOR_STATEMENT -> TiBasicForStatement(node)
             TiBasicNodeTypes.NEXT_STATEMENT -> TiBasicNextStatement(node)
+            TiBasicNodeTypes.INPUT_STATEMENT -> TiBasicInputStatement(node)
             TiBasicNodeTypes.UNKNOWN_STATEMENT -> TiBasicUnknownStatement(node)
             TiBasicNodeTypes.INVALID_LINE -> TiBasicInvalidLine(node)
             TiBasicNodeTypes.EXPRESSION -> TiBasicExpression(node)

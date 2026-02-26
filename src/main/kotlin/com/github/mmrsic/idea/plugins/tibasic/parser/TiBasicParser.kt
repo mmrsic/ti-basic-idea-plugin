@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COLON
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DELETE_KEYWORD
@@ -12,6 +13,7 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GE_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOTO_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.IF_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INPUT_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INVALID_VARIABLE_NAME
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LET_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LE_OP
@@ -45,6 +47,7 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FOR_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.IF_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INPUT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LET_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
@@ -133,6 +136,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             IF_KEYWORD -> parseIfStatement(builder)
             FOR_KEYWORD -> parseForStatement(builder)
             NEXT_KEYWORD -> parseNextStatement(builder)
+            INPUT_KEYWORD -> parseInputStatement(builder)
             PRINT_KEYWORD -> parsePrintStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
@@ -249,6 +253,54 @@ class TiBasicParser : PsiParser, LightPsiParser {
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(NEXT_STATEMENT)
     }
+
+    private fun parseInputStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume INPUT_KEYWORD
+        skipWhitespace(builder)
+        val promptCheckpoint = builder.mark()
+        val hasPrompt = if (isStringOperand(builder)) {
+            parseStringExpr(builder)
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == COLON) {
+                promptCheckpoint.drop()
+                builder.advanceLexer() // consume COLON
+                true
+            } else {
+                promptCheckpoint.rollbackTo()
+                false
+            }
+        } else {
+            promptCheckpoint.drop()
+            false
+        }
+        if (hasPrompt) skipIntraLineWhitespace(builder)
+        parseInputVariableList(builder)
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(INPUT_STATEMENT)
+    }
+
+    private fun parseInputVariableList(builder: PsiBuilder) {
+        if (!isVariableStart(builder)) return
+        parseVariableAccess(builder)
+        while (true) {
+            val cp = builder.mark()
+            if (builder.tokenType != COMMA) {
+                cp.rollbackTo(); break
+            }
+            builder.advanceLexer()
+            if (!isVariableStart(builder)) {
+                cp.rollbackTo(); break
+            }
+            cp.drop()
+            parseVariableAccess(builder)
+        }
+    }
+
+    private fun isVariableStart(builder: PsiBuilder): Boolean =
+        builder.tokenType == NUMERIC_VARIABLE ||
+                builder.tokenType == STRING_VARIABLE ||
+                builder.tokenType == INVALID_VARIABLE_NAME
 
     private fun parseOnGotoStatement(builder: PsiBuilder) {
         val stmtMarker = builder.mark()

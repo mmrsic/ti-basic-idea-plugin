@@ -41,6 +41,8 @@ class TiBasicForStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicNextStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicInputStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicUnknownStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicInvalidLine(node: ASTNode) : ASTWrapperPsiElement(node)

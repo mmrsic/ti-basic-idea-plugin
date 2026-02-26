@@ -34,6 +34,7 @@ invalidLine       = noLineNumberText ;          (* annotated as error *)
 lineNumber        = digit { digit } ;           (* value must be in 1..32767 *)
 
 statement         = printStatement
+                  | inputStatement
                   | letStatement
                   | remStatement
                   | endStatement
@@ -48,6 +49,9 @@ statement         = printStatement
                   | unknownStatement ;
 
 printStatement          = PRINT     [ whitespace ] [ expression ] ;
+inputStatement          = INPUT     [ whitespace ] [ stringExpression whitespace? COLON whitespace? ] variablesList ;
+                          (* prompt is optional; if present it must be a string expression followed by a colon *)
+variablesList           = variableAccess { COMMA variableAccess } ;
 letStatement            = [ LET whitespace ] variableAccess EQ expression ;
                           (* LET keyword is optional; annotator checks type compatibility *)
 remStatement            = REM       [ whitespace ] [ remarkText ] ;
@@ -114,20 +118,21 @@ subscriptExpr         = numericComparison ;
 
 Recognised as statement-starting keywords (case-insensitive):
 
-| Token                                  | Statement kind                              |
-|----------------------------------------|---------------------------------------------|
-| `LET`                                  | Variable assignment                         |
-| `PRINT`                                | Print expression                            |
-| `REM`                                  | Remark/comment                              |
-| `END`                                  | Halt program (end of program by convention) |
-| `STOP`                                 | Halt program (mid-program by convention)    |
-| `GOTO` / `GO TO`                       | Unconditional branch to a line number       |
-| `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines     |
-| `IF … THEN` / `IF … THEN … ELSE`       | Conditional branch to a line number         |
-| `FOR … TO` / `FOR … TO … STEP`         | Counted loop — start, limit, optional step  |
-| `NEXT`                                 | End of counted loop body                    |
-| `DELETE`                               | Delete string                               |
-| `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                 |
+| Token                                  | Statement kind                               |
+|----------------------------------------|----------------------------------------------|
+| `LET`                                  | Variable assignment                          |
+| `PRINT`                                | Print expression                             |
+| `INPUT`                                | Keyboard input (with optional string prompt) |
+| `REM`                                  | Remark/comment                               |
+| `END`                                  | Halt program (end of program by convention)  |
+| `STOP`                                 | Halt program (mid-program by convention)     |
+| `GOTO` / `GO TO`                       | Unconditional branch to a line number        |
+| `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines      |
+| `IF … THEN` / `IF … THEN … ELSE`       | Conditional branch to a line number          |
+| `FOR … TO` / `FOR … TO … STEP`         | Counted loop — start, limit, optional step   |
+| `NEXT`                                 | End of counted loop body                     |
+| `DELETE`                               | Delete string                                |
+| `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                  |
 
 ### Commands (not valid as statements)
 
@@ -151,6 +156,8 @@ These identifiers are recognized by the annotator and produce a specific error:
 | `GT_OP`     | `>`    |
 | `LE_OP`     | `<=`   |
 | `GE_OP`     | `>=`   |
+
+| `COLON`           | `:`    |
 
 ### Variables
 
@@ -193,7 +200,9 @@ These identifiers are recognized by the annotator and produce a specific error:
 300 FOR I = 1 TO 10             ✓valid — counted loop, step defaults to 1
 310 FOR I = 1 TO 10 STEP 2     ✓ valid — counted loop, explicit step
 320 NEXT I                      ✓valid — end of loop body
-220 PRINT A(1,2,3,4)           ✗ error — more than 3 subscript dimensions
+400 INPUT A,B$                 ✓ valid — keyboard input, two variables
+410 INPUT "Enter name: ":A$    ✓ valid — keyboard input with string prompt (no space before variable)
+420 INPUT                       ✗ error — no variable list
 230 RUN                        ✗ error — command used as statement
 240 PRINT A$ + 1               ✗ error — String-Number-Mismatch
 250 LET A = "hello"            ✗ error — String-number mismatch (numeric variable, string expression)
@@ -210,7 +219,7 @@ PRINT "no number"              ✗ error — line number expected
 ## Scope and dialect notes
 
 - The plugin currently supports statements that are meaningful within a single source file.
-- `GOSUB`/`RETURN`, `INPUT`, `DATA`/`READ`, `CALL` and other TI Extended Basic statements
+- `GOSUB`/`RETURN`, `DATA`/`READ`, `CALL` and other TI Extended Basic statements
   are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
 - `FOR`/`NEXT` are implemented. The annotator checks FOR-NEXT balance by count (total in file);
   it does **not** check that the control variable in `NEXT` matches the preceding `FOR` variable.
