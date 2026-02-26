@@ -1,5 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DATA_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RESTORE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COLON
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CONCAT_OP
@@ -14,6 +16,7 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOTO_KEYWO
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.IF_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INPUT_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.READ_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INVALID_VARIABLE_NAME
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LET_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LE_OP
@@ -41,6 +44,8 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_VAR
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.THEN_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.TO_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.UNKNOWN_STATEMENT_TEXT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DATA_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RESTORE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DELETE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.END_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
@@ -48,6 +53,7 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FOR_STATEM
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.IF_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INPUT_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.READ_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LET_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
@@ -71,33 +77,50 @@ import com.intellij.psi.tree.IElementType
  *
  * Grammar (one iteration per source line):
  * ```
- * file              ::= line*
- * line              ::= numberedLine | commentLine
- * numberedLine      ::= LINE_NUMBER WHITE_SPACE? (printStatement | endStatement | stopStatement | gotoStatement | onGotoStatement | ifStatement | ...)?
- * gotoStatement     ::= GOTO_KEYWORD WHITE_SPACE? NUMERIC_LITERAL
- * onGotoStatement   ::= ON_KEYWORD WHITE_SPACE? expression WHITE_SPACE? GOTO_KEYWORD (WHITE_SPACE? NUMERIC_LITERAL (COMMA NUMERIC_LITERAL)*)?
- * ifStatement       ::= IF_KEYWORD WHITE_SPACE? expression WHITE_SPACE? THEN_KEYWORD WHITE_SPACE? NUMERIC_LITERAL (WHITE_SPACE? ELSE_KEYWORD WHITE_SPACE? NUMERIC_LITERAL)?
- * printStatement    ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
- * endStatement      ::= END_KEYWORD
- * stopStatement     ::= STOP_KEYWORD
- * expression        ::= numericCmp
- * stringExpr        ::= stringOperand (CONCAT_OP stringOperand)*
- * stringOperand     ::= STRING_LITERAL | variableAccess(STRING_VARIABLE)
- * numericExpr       ::= numericCmp
- * numericCmp        ::= comparable (cmpOp comparable)*   -- left-to-right; result always numeric
- * comparable        ::= stringExpr | numericAdd          -- string operands valid in comparisons
- * cmpOp             ::= '=' | '<' | '>' | '<>' | '<=' | '>='
- * numericAdd        ::= numericMul ( ('+' | '-') numericMul )*
- * numericMul        ::= numericPow ( ('*' | '/') numericPow )*
- * numericPow        ::= numericUnary ('^' numericUnary)*        -- right-associative
- * numericUnary      ::= ('+' | '-') numericUnary | numericPrimary
- * numericPrimary    ::= NUMERIC_LITERAL
- *                     | variableAccess
- *                     | STRING_LITERAL | variableAccess(STRING_VARIABLE)   -- mismatch, parsed for error reporting
- *                     | '(' numericCmp ')'
- * variableAccess    ::= (NUMERIC_VARIABLE | STRING_VARIABLE) ( '(' subscriptList ')' )?
- * subscriptList     ::= numericCmp (',' numericCmp)*           -- 1-3 validated by annotator
- * commentLine       ::= COMMENT
+ * file                    ::= line*
+ * line                    ::= numberedLine | invalidLine
+ * numberedLine            ::= LINE_NUMBER WHITE_SPACE? statement?
+ * statement               ::= printStatement | inputStatement | readStatement | dataStatement | restoreStatement | letStatement
+ *                           | gotoStatement | onGotoStatement | ifStatement
+ *                           | forStatement | nextStatement
+ *                           | deleteStatement | lineNumberListStatement | unknownStatement
+ * printStatement          ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
+ * inputStatement          ::= INPUT_KEYWORD (WHITE_SPACE? stringExpr COLON)? WHITE_SPACE? variablesList
+ * readStatement           ::= READ_KEYWORD WHITE_SPACE? variablesList
+ * dataStatement           ::= DATA_KEYWORD WHITE_SPACE? dataList
+ * dataList                ::= dataItem (COMMA dataItem)*
+ * dataItem                ::= STRING_LITERAL | NUMERIC_LITERAL | PRINT_ARGUMENT | ε
+ * restoreStatement        ::= RESTORE_KEYWORD (WHITE_SPACE NUMERIC_LITERAL)?
+ * letStatement            ::= LET_KEYWORD? WHITE_SPACE? variableAccess EQ expression
+ * remStatement            ::= REM_KEYWORD (WHITE_SPACE REM_TEXT)?
+ * endStatement            ::= END_KEYWORD
+ * stopStatement           ::= STOP_KEYWORD
+ * gotoStatement           ::= GOTO_KEYWORD WHITE_SPACE? NUMERIC_LITERAL
+ * onGotoStatement         ::= ON_KEYWORD WHITE_SPACE? expression WHITE_SPACE? GOTO_KEYWORD (WHITE_SPACE? NUMERIC_LITERAL (COMMA NUMERIC_LITERAL)*)?
+ * ifStatement             ::= IF_KEYWORD WHITE_SPACE? expression WHITE_SPACE? THEN_KEYWORD WHITE_SPACE? NUMERIC_LITERAL (WHITE_SPACE? ELSE_KEYWORD WHITE_SPACE? NUMERIC_LITERAL)?
+ * forStatement            ::= FOR_KEYWORD WHITE_SPACE? variableAccess EQ expression TO_KEYWORD expression (STEP_KEYWORD expression)?
+ * nextStatement           ::= NEXT_KEYWORD WHITE_SPACE? variableAccess
+ * deleteStatement         ::= DELETE_KEYWORD (WHITE_SPACE? expression)?
+ * lineNumberListStatement ::= LINE_NUMBER_LIST_KEYWORD (WHITE_SPACE? NUMERIC_LITERAL (COMMA NUMERIC_LITERAL)*)?
+ * unknownStatement        ::= UNKNOWN_STATEMENT_TEXT
+ * invalidLine             ::= NO_LINE_NUMBER_TEXT
+ * variablesList           ::= variableAccess (COMMA variableAccess)*
+ * expression              ::= numericCmp
+ * stringExpr              ::= stringOperand (CONCAT_OP stringOperand)*
+ * stringOperand           ::= STRING_LITERAL | variableAccess(STRING_VARIABLE)
+ * numericCmp              ::= comparable (cmpOp comparable)*   -- left-to-right; result always numeric
+ * comparable              ::= stringExpr | numericAdd          -- string operands valid in comparisons
+ * cmpOp                   ::= '=' | '<' | '>' | '<>' | '<=' | '>='
+ * numericAdd              ::= numericMul ( ('+' | '-') numericMul )*
+ * numericMul              ::= numericPow ( ('*' | '/') numericPow )*
+ * numericPow              ::= numericUnary ('^' numericUnary)*        -- right-associative
+ * numericUnary            ::= ('+' | '-') numericUnary | numericPrimary
+ * numericPrimary          ::= NUMERIC_LITERAL
+ *                           | variableAccess
+ *                           | STRING_LITERAL | variableAccess(STRING_VARIABLE)   -- mismatch, parsed for error reporting
+ *                           | '(' numericCmp ')'
+ * variableAccess          ::= (NUMERIC_VARIABLE | STRING_VARIABLE) ( '(' subscriptList ')' )?
+ * subscriptList           ::= numericCmp (',' numericCmp)*           -- 1-3 validated by annotator
  * ```
  */
 class TiBasicParser : PsiParser, LightPsiParser {
@@ -137,6 +160,9 @@ class TiBasicParser : PsiParser, LightPsiParser {
             FOR_KEYWORD -> parseForStatement(builder)
             NEXT_KEYWORD -> parseNextStatement(builder)
             INPUT_KEYWORD -> parseInputStatement(builder)
+            READ_KEYWORD -> parseReadStatement(builder)
+            DATA_KEYWORD -> parseDataStatement(builder)
+            RESTORE_KEYWORD -> parseRestoreStatement(builder)
             PRINT_KEYWORD -> parsePrintStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
@@ -278,6 +304,29 @@ class TiBasicParser : PsiParser, LightPsiParser {
         parseInputVariableList(builder)
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(INPUT_STATEMENT)
+    }
+
+    private fun parseReadStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume READ_KEYWORD
+        skipWhitespace(builder)
+        parseInputVariableList(builder)
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(READ_STATEMENT)
+    }
+
+    private fun parseDataStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume DATA_KEYWORD
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(DATA_STATEMENT)
+    }
+
+    private fun parseRestoreStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume RESTORE_KEYWORD
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(RESTORE_STATEMENT)
     }
 
     private fun parseInputVariableList(builder: PsiBuilder) {

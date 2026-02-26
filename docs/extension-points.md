@@ -132,9 +132,11 @@ Both actions extend `TiBasicFileAction`, which gates execution to TI-Basic files
 The plugin follows a convention of wrapping verbose IntelliJ API calls in Kotlin extension
 properties and functions. These are collected in `tibasic.ext`:
 
-| File                   | Extensions                                                                    |
-|------------------------|-------------------------------------------------------------------------------|
-| `ASTNodeExtensions.kt` | `val ASTNode.allChildren: Array<ASTNode>` — replaces `node.getChildren(null)` |
+| File                            | Type extended      | Extensions                                                                                                                                                                                                                                                                                                                 |
+|---------------------------------|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ASTNodeExtensions.kt`          | `ASTNode`          | `allChildren` — all child nodes; `nonWhitespaceChildren` — children excluding whitespace; `firstChildType` — element type of first child; `childrenOfType(type)` — children matching a type; `firstChildOfType(type)` — first child matching a type; `childrenAfter(type)` — children after the first node of a given type |
+| `AnnotationHolderExtensions.kt` | `AnnotationHolder` | `error(message, element)`, `error(message, range)` — create error annotations; `warning(message, element)`, `warning(message, range)` — create warning annotations                                                                                                                                                         |
+| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type                                                                                                                                                                                                                                                         |
 
 When you find yourself calling a raw framework method that is verbose or obscures intent,
 add an extension to the appropriate file in `tibasic.ext` and use it everywhere.

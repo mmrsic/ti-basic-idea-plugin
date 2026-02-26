@@ -35,6 +35,9 @@ lineNumber        = digit { digit } ;           (* value must be in 1..32767 *)
 
 statement         = printStatement
                   | inputStatement
+                  | readStatement
+                  | dataStatement
+                  | restoreStatement
                   | letStatement
                   | remStatement
                   | endStatement
@@ -51,6 +54,17 @@ statement         = printStatement
 printStatement          = PRINT     [ whitespace ] [ expression ] ;
 inputStatement          = INPUT     [ whitespace ] [ stringExpression whitespace? COLON whitespace? ] variablesList ;
                           (* prompt is optional; if present it must be a string expression followed by a colon *)
+readStatement           = READ      [ whitespace ] variablesList ;
+                          (* variable list is mandatory *)
+dataStatement           = DATA      [ whitespace ] dataList ;
+                          (* data list is mandatory; empty DATA is an error *)
+dataList                = dataItem { COMMA dataItem } ;
+dataItem                = STRING_LITERAL               (* quoted string; may contain comma, quote, leading/trailing spaces *)
+                        | NUMERIC_LITERAL              (* number *)
+                        | unquotedText                 (* unquoted string; leading/trailing spaces are stripped *)
+                        | ε ;                          (* empty item from consecutive commas *)
+                          (* whitespace around commas is ignored *)
+restoreStatement        = RESTORE   [ whitespace lineNumber ] ;
 variablesList           = variableAccess { COMMA variableAccess } ;
 letStatement            = [ LET whitespace ] variableAccess EQ expression ;
                           (* LET keyword is optional; annotator checks type compatibility *)
@@ -59,7 +73,7 @@ endStatement            = END ;
                           (* halts program; by convention placed as the last line, but may appear anywhere *)
 stopStatement           = STOP ;
                           (* halts program; by convention used within the program body, not at the end *)
-gotoStatement           = ( GOTO | GO whitespace TO ) lineNumber ;
+gotoStatement           = ( GOTO | GO whitespace TO ) [ whitespace ] lineNumber ;
                           (* transfers control to the given line; lineNumber must be in 1..32767 *)
 onGotoStatement         = ON whitespace numericExpression whitespace ( GOTO | GO whitespace TO ) whitespace lineNumberList ;
                           (* computed branch; expression must be numeric; at least one lineNumber required *)
@@ -118,21 +132,24 @@ subscriptExpr         = numericComparison ;
 
 Recognised as statement-starting keywords (case-insensitive):
 
-| Token                                  | Statement kind                               |
-|----------------------------------------|----------------------------------------------|
-| `LET`                                  | Variable assignment                          |
-| `PRINT`                                | Print expression                             |
-| `INPUT`                                | Keyboard input (with optional string prompt) |
-| `REM`                                  | Remark/comment                               |
-| `END`                                  | Halt program (end of program by convention)  |
-| `STOP`                                 | Halt program (mid-program by convention)     |
-| `GOTO` / `GO TO`                       | Unconditional branch to a line number        |
-| `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines      |
-| `IF … THEN` / `IF … THEN … ELSE`       | Conditional branch to a line number          |
-| `FOR … TO` / `FOR … TO … STEP`         | Counted loop — start, limit, optional step   |
-| `NEXT`                                 | End of counted loop body                     |
-| `DELETE`                               | Delete string                                |
-| `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                  |
+| Token                                  | Statement kind                                |
+|----------------------------------------|-----------------------------------------------|
+| `LET`                                  | Variable assignment                           |
+| `PRINT`                                | Print expression                              |
+| `INPUT`                                | Keyboard input (with optional string prompt)  |
+| `READ`                                 | Read values from DATA into variables          |
+| `DATA`                                 | Supply data values for READ statements        |
+| `RESTORE`                              | Reset DATA pointer (optionally to given line) |
+| `REM`                                  | Remark/comment                                |
+| `END`                                  | Halt program (end of program by convention)   |
+| `STOP`                                 | Halt program (mid-program by convention)      |
+| `GOTO` / `GO TO`                       | Unconditional branch to a line number         |
+| `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines       |
+| `IF … THEN` / `IF … THEN … ELSE`       | Conditional branch to a line number           |
+| `FOR … TO` / `FOR … TO … STEP`         | Counted loop — start, limit, optional step    |
+| `NEXT`                                 | End of counted loop body                      |
+| `DELETE`                               | Delete string                                 |
+| `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                   |
 
 ### Commands (not valid as statements)
 
@@ -202,24 +219,37 @@ These identifiers are recognized by the annotator and produce a specific error:
 320 NEXT I                      ✓valid — end of loop body
 400 INPUT A,B$                 ✓ valid — keyboard input, two variables
 410 INPUT "Enter name: ":A$    ✓ valid — keyboard input with string prompt (no space before variable)
-420 INPUT                       ✗ error — no variable list
-230 RUN                        ✗ error — command used as statement
-240 PRINT A$ + 1               ✗ error — String-Number-Mismatch
-250 LET A = "hello"            ✗ error — String-number mismatch (numeric variable, string expression)
-260 LET A$ = 5                 ✗ error — String-number mismatch (string variable, numeric expression)
-99999 PRINT "X"                ✗ error — line number out of range (> 32767)
-PRINT "no number"              ✗ error — line number expected
-270 FOOBAR                     ✗ error — unknown statement
-330 FOR A$ = 1 TO 10           ✗ error — string variable as FOR control variable
-340 NEXT A$                    ✗ error — string variable as NEXT control variable
-350 FOR I = "X" TO 10          ✗ error — string expression as initial value
-360 FOR I = 1 TO 10\n370 FOR J = 1 TO 5\n380 NEXT I  ✗ warning on line 370 — FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements
+420 READ A,B$                  ✓ valid — read into two variables
+430 DATA 42,"hello",world      ✓ valid — data list with number, quoted string, unquoted string
+435 DATA 1,,3                  ✓ valid — empty item from consecutive commas (second item is empty string)
+436 DATA "has,comma","has ""quote"""  ✓ valid — quotes required when item contains comma or quote
+440 INPUT                       ✗ error — no variable list
+450 READ                        ✗ error — no variable list
+460 DATA                        ✗ error — no data list
+470 RESTORE                     ✓ valid — reset DATA pointer to beginning
+480 RESTORE 200                 ✓ valid — reset DATA pointer to line 200
+490 RESTORE A                   ✗ error — argument must be a numeric literal
+500 RESTORE 100 200             ✗ error — only one line number allowed
+510 RUN                         ✗ error — command used as statement
+520 PRINT A$ + 1                ✗ error — String-Number-Mismatch
+530 LET A = "hello"             ✗ error — String-number mismatch (numeric variable, string expression)
+540 LET A$ = 5                  ✗ error — String-number mismatch (string variable, numeric expression)
+550 LET A = 5 EXTRA             ✗ error — Incorrect statement (trailing tokens after LET expression)
+99999 PRINT "X"                 ✗ error — line number out of range (> 32767)
+PRINT "no number"               ✗ error — line number expected
+560 FOOBAR                      ✗ error — unknown statement
+570 FOR A$ = 1 TO 10            ✗ error — string variable as FOR control variable
+580 NEXT A$                     ✗ error — string variable as NEXT control variable
+590 FOR I = "X" TO 10           ✗ error — string expression as initial value
+600 FOR I = 1 TO 10\n610 FOR J = 1 TO 5\n620 NEXT I  ✗ warning on line 610 — FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements
+630 GOTO 100                    ✗ warning — undefined line number (100 not in file)
+640 GOTO A                      ✗ error — argument must be a numeric literal (Incorrect statement)
 ```
 
 ## Scope and dialect notes
 
 - The plugin currently supports statements that are meaningful within a single source file.
-- `GOSUB`/`RETURN`, `DATA`/`READ`, `CALL` and other TI Extended Basic statements
+- `GOSUB`/`RETURN`, `CALL` and other TI Extended Basic statements
   are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
 - `FOR`/`NEXT` are implemented. The annotator checks FOR-NEXT balance by count (total in file);
   it does **not** check that the control variable in `NEXT` matches the preceding `FOR` variable.

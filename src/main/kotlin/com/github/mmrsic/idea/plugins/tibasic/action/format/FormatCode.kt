@@ -1,10 +1,12 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.format
 
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.*
 import com.intellij.psi.PsiElement
+import com.intellij.psi.TokenType
 
 fun formattedText(file: TiBasicFile): String = formattedText(
     file.children.filter { it is TiBasicLine || it is TiBasicInvalidLine }
@@ -41,6 +43,15 @@ private fun formattedLine(line: TiBasicLine): String {
     }
     if (firstTokenType == TiBasicTokenTypes.INPUT_KEYWORD) {
         return formattedInputLine(line.lineNumber(), statement as TiBasicInputStatement)
+    }
+    if (firstTokenType == TiBasicTokenTypes.READ_KEYWORD) {
+        return formattedReadLine(line.lineNumber(), statement as TiBasicReadStatement)
+    }
+    if (firstTokenType == TiBasicTokenTypes.DATA_KEYWORD) {
+        return formattedDataLine(line.lineNumber(), statement as TiBasicDataStatement)
+    }
+    if (firstTokenType == TiBasicTokenTypes.RESTORE_KEYWORD) {
+        return formattedRestoreLine(line.lineNumber(), statement as TiBasicRestoreStatement)
     }
 
     val keywordMatch = TiBasicKeywords.getKeywords()
@@ -175,6 +186,35 @@ private fun formattedInputLine(lineNumber: Int, statement: TiBasicInputStatement
             if (varsPart.isNotEmpty()) append(removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varsPart)))
         }
     }
+}
+
+private fun formattedReadLine(lineNumber: Int, statement: TiBasicReadStatement): String {
+    val readNode = statement.node.firstChildNode!!
+    val varsPart = statement.text.drop(readNode.textLength).trim()
+    return if (varsPart.isEmpty()) "$lineNumber READ"
+    else "$lineNumber READ ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varsPart))}"
+}
+
+private fun formattedDataLine(lineNumber: Int, statement: TiBasicDataStatement): String {
+    val dataItems = statement.node.allChildren
+        .dropWhile { it.elementType == TiBasicTokenTypes.DATA_KEYWORD }
+        .filter { it.elementType != TokenType.WHITE_SPACE }
+    if (dataItems.isEmpty()) return "$lineNumber DATA"
+    val itemsText = dataItems.joinToString("") { token ->
+        when (token.elementType) {
+            TiBasicTokenTypes.COMMA -> ","
+            TiBasicTokenTypes.STRING_LITERAL -> token.text
+            else -> token.text.uppercase()
+        }
+    }
+    return "$lineNumber DATA $itemsText"
+}
+
+private fun formattedRestoreLine(lineNumber: Int, statement: TiBasicRestoreStatement): String {
+    val restoreNode = statement.node.firstChildNode!!
+    val argText = statement.text.drop(restoreNode.textLength).trim()
+    return if (argText.isEmpty()) "$lineNumber RESTORE"
+    else "$lineNumber RESTORE $argText"
 }
 
 private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {

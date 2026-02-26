@@ -1056,6 +1056,14 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testErrorForImplicitLetWithTrailingTokens() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "190 <error descr=\"Incorrect statement\">p = i n t</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testNoErrorForEndStatement() {
         myFixture.configureByText("test.tibasic", "100 END")
         myFixture.checkHighlighting(true, false, false)
@@ -1474,7 +1482,7 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     fun testInputWithInvalidVariableNameIsError() {
         myFixture.configureByText(
             "test.tibasic",
-            "100 INPUT <error descr=\"Bad variable name\">AVERYLONGNAMES1\$</error>"
+            "100 INPUT <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -1488,6 +1496,102 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         myFixture.configureByText(
             "test.tibasic",
             "100 <error descr=\"Incorrect statement\">INPUT 42: A</error>"
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testReadWithValidVariablesNoError() {
+        myFixture.configureByText("test.tibasic", "100 READ A,B$,C")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testReadWithNoVariablesIsError() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">READ</error>"
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testReadWithInvalidVariableNameIsError() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 READ <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testDataWithNumericItemNoError() {
+        myFixture.configureByText("test.tibasic", "100 DATA 42")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testDataWithStringLiteralNoError() {
+        myFixture.configureByText("test.tibasic", "100 DATA \"hello\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testDataWithUnquotedStringNoError() {
+        myFixture.configureByText("test.tibasic", "100 DATA world")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testDataWithMixedItemsNoError() {
+        myFixture.configureByText("test.tibasic", "100 DATA 1,\"two\",three")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testDataWithConsecutiveCommasNoError() {
+        myFixture.configureByText("test.tibasic", "100 DATA 1,,3")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testDataWithNoItemsIsError() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">DATA</error>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreWithNoArgumentNoError() {
+        myFixture.configureByText("test.tibasic", "100 RESTORE")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreWithDefinedLineNumberNoError() {
+        myFixture.configureByText("test.tibasic", "100 RESTORE 200\n200 DATA 1,2,3")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreWithUndefinedLineNumberIsWarning() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 RESTORE <warning descr=\"Bad line number\">999</warning>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreWithOutOfRangeLineNumberIsError() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 RESTORE <error descr=\"Bad line number\">99999</error>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreWithNonNumericArgIsError() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">RESTORE A</error>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreWithMultipleNumbersIsError() {
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 <error descr=\"Incorrect statement\">RESTORE 100 200</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }

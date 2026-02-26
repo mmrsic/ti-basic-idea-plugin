@@ -39,6 +39,9 @@ class TiBasicAnnotator : Annotator {
             is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
             is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
             is TiBasicInputStatement -> annotateInputStatement(element, holder)
+            is TiBasicReadStatement -> annotateReadStatement(element, holder)
+            is TiBasicDataStatement -> annotateDataStatement(element, holder)
+            is TiBasicRestoreStatement -> annotateRestoreStatement(element, holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
             is TiBasicInvalidLine -> holder.error("Line number expected", element)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
@@ -81,6 +84,51 @@ class TiBasicAnnotator : Annotator {
         }
     }
 
+    private fun annotateReadStatement(statement: TiBasicReadStatement, holder: AnnotationHolder) {
+        val varAccessNodes = statement.node.nonWhitespaceChildren
+            .filter { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
+
+        if (varAccessNodes.isEmpty()) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
+        varAccessNodes.forEach { varNode ->
+            if (varNode.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
+                holder.error("Bad variable name", varNode.textRange)
+            }
+        }
+    }
+
+    private fun annotateDataStatement(statement: TiBasicDataStatement, holder: AnnotationHolder) {
+        val dataItemTypes = setOf(
+            TiBasicTokenTypes.STRING_LITERAL,
+            TiBasicTokenTypes.NUMERIC_LITERAL,
+            TiBasicTokenTypes.PRINT_ARGUMENT,
+            TiBasicTokenTypes.COMMA,
+        )
+        val hasDataContent = statement.node.nonWhitespaceChildren
+            .any { it.elementType in dataItemTypes }
+        if (!hasDataContent) {
+            holder.error("Incorrect statement", statement)
+        }
+    }
+
+    private fun annotateRestoreStatement(statement: TiBasicRestoreStatement, holder: AnnotationHolder) {
+        val contentNodes = statement.node.nonWhitespaceChildren
+            .filter { it.elementType != TiBasicTokenTypes.RESTORE_KEYWORD }
+        if (contentNodes.isEmpty()) return
+        if (contentNodes.size != 1 || contentNodes[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+        val lineNumberNode = contentNodes[0]
+        val lineNumber = lineNumberNode.text.toLongOrNull()?.toInt()
+        val definedLineNumbers = statement.containingTiBasicFile
+            ?.lines()?.map { it.lineNumber() }?.filter { it in VALID_LINE_NUMBER_RANGE }?.toSet()
+        validateBranchLineNumber(lineNumberNode, lineNumber, definedLineNumbers, holder)
+    }
+
     private fun annotateForStatement(statement: TiBasicForStatement, holder: AnnotationHolder) {
         val children = statement.node.nonWhitespaceChildren
         val varAccessNode = children.firstOrNull { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
@@ -95,12 +143,11 @@ class TiBasicAnnotator : Annotator {
             return
         }
 
-        val varFirstChild = varAccessNode.firstChildType
-        when {
-            varFirstChild == TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
+        when (varAccessNode.firstChildType) {
+            TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
                 holder.error("Bad variable name", varAccessNode.textRange)
 
-            varFirstChild == TiBasicTokenTypes.STRING_VARIABLE ->
+            TiBasicTokenTypes.STRING_VARIABLE ->
                 holder.error("Numeric variable expected", varAccessNode.textRange)
         }
 
@@ -121,13 +168,9 @@ class TiBasicAnnotator : Annotator {
             return
         }
 
-        val varFirstChild = varAccessNode.firstChildType
-        when {
-            varFirstChild == TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
-                holder.error("Bad variable name", varAccessNode.textRange)
-
-            varFirstChild == TiBasicTokenTypes.STRING_VARIABLE ->
-                holder.error("Numeric variable expected", varAccessNode.textRange)
+        when (varAccessNode.firstChildType) {
+            TiBasicTokenTypes.INVALID_VARIABLE_NAME -> holder.error("Bad variable name", varAccessNode.textRange)
+            TiBasicTokenTypes.STRING_VARIABLE -> holder.error("Numeric variable expected", varAccessNode.textRange)
         }
     }
 
@@ -318,6 +361,17 @@ class TiBasicAnnotator : Annotator {
         }
         val expression = statement.firstChildOfType<TiBasicExpression>() ?: return
         if (varAccessNode == null) return
+        val allowedLetStatementTypes = setOf(
+            TiBasicTokenTypes.LET_KEYWORD,
+            TiBasicNodeTypes.VARIABLE_ACCESS,
+            TiBasicTokenTypes.EQ_OP,
+            TiBasicNodeTypes.EXPRESSION,
+            TokenType.WHITE_SPACE,
+        )
+        if (statement.node.allChildren.any { it.elementType !in allowedLetStatementTypes }) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
         val isStringVar = varAccessNode.firstChildType == TiBasicTokenTypes.STRING_VARIABLE
         val isStringExpr = isStringExpression(expression)
         if (isStringVar != isStringExpr) {

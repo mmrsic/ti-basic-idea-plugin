@@ -1374,6 +1374,94 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testReadStatementWithSingleVariable() {
+        val file = parseCode("100 READ A")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicReadStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testReadStatementWithMultipleVariables() {
+        val file = parseCode("100 READ A,B,C")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicReadStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testReadStatementWithMixedVariables() {
+        val file = parseCode("100 READ A,B$,C")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicReadStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testReadStatementLowercaseIsRecognized() {
+        val file = parseCode("100 read a,b$")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicReadStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testDataStatementWithNumericItem() {
+        val file = parseCode("100 DATA 42")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicDataStatement>().size)
+    }
+
+    fun testDataStatementWithStringLiteral() {
+        val file = parseCode("100 DATA \"hello\"")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicDataStatement>().size)
+    }
+
+    fun testDataStatementWithMixedItems() {
+        val file = parseCode("100 DATA 1,\"two\",three")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicDataStatement>().size)
+    }
+
+    fun testDataStatementWithEmptyItemsFromConsecutiveCommas() {
+        val file = parseCode("100 DATA 1,,3")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicDataStatement>().size)
+    }
+
+    fun testDataStatementLowercaseIsRecognized() {
+        val file = parseCode("100 data 42")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicDataStatement>().size)
+    }
+
+    fun testRestoreStatementWithNoArgument() {
+        val file = parseCode("100 RESTORE")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicRestoreStatement>().size)
+    }
+
+    fun testRestoreStatementWithLineNumber() {
+        val file = parseCode("100 RESTORE 200")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicRestoreStatement>().size)
+    }
+
+    fun testRestoreStatementLowercaseIsRecognized() {
+        val file = parseCode("100 restore 200")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        assertEquals(1, lines[0].children.filterIsInstance<TiBasicRestoreStatement>().size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

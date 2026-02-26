@@ -34,9 +34,11 @@ TiBasicLexer          (tibasic.lexer)
     ▼
 TiBasicParser         (tibasic.parser)
     Driven by PsiBuilder; builds a composite AST.
-    Produces nodes: LINE, PRINT_STATEMENT, LET_STATEMENT, DELETE_STATEMENT,
-    REM_STATEMENT, LINE_NUMBER_LIST_STATEMENT, UNKNOWN_STATEMENT,
-    FOR_STATEMENT, NEXT_STATEMENT,
+    Produces nodes: LINE, PRINT_STATEMENT, INPUT_STATEMENT, READ_STATEMENT,
+    DATA_STATEMENT, RESTORE_STATEMENT, LET_STATEMENT, REM_STATEMENT,
+    END_STATEMENT, STOP_STATEMENT, GOTO_STATEMENT, ON_GOTO_STATEMENT,
+    IF_STATEMENT, FOR_STATEMENT, NEXT_STATEMENT, DELETE_STATEMENT,
+    LINE_NUMBER_LIST_STATEMENT, UNKNOWN_STATEMENT,
     INVALID_LINE, EXPRESSION, VARIABLE_ACCESS.
     │
     ▼
@@ -70,8 +72,14 @@ PSI tree              (tibasic.psi)
 |----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `TiBasicFile`                    | Duplicate line numbers (error + quick-fix), non-ascending line numbers (warning + quick-fix), variable-name conflicts (scalar vs. array), FOR-NEXT balance (warning on surplus occurrences)     |
 | `TiBasicLine`                    | Line number out of `VALID_LINE_NUMBER_RANGE` (1–32767)                                                                                                                                          |
-| `TiBasicLetStatement`            | Invalid variable name; type mismatch between variable and expression (highlighted over `variable = expression`)                                                                                 |
+| `TiBasicLetStatement`            | Invalid variable name (Bad variable name); trailing tokens after expression (Incorrect statement); type mismatch between variable and expression (String-number mismatch)                       |
 | `TiBasicPrintStatement`          | Invalid variable names, type mismatches (string vs. numeric)                                                                                                                                    |
+| `TiBasicEndStatement`            | Trailing non-whitespace content after END keyword (Incorrect statement)                                                                                                                         |
+| `TiBasicStopStatement`           | Trailing non-whitespace content after STOP keyword (Incorrect statement)                                                                                                                        |
+| `TiBasicInputStatement`          | No variable list (Incorrect statement); invalid variable name (Bad variable name)                                                                                                               |
+| `TiBasicReadStatement`           | No variable list (Incorrect statement); invalid variable name (Bad variable name)                                                                                                               |
+| `TiBasicDataStatement`           | Empty data list — no items and no commas (Incorrect statement)                                                                                                                                  |
+| `TiBasicRestoreStatement`        | Argument is not a single numeric literal (Incorrect statement); target line undefined in file (warning)                                                                                         |
 | `TiBasicDeleteStatement`         | Numeric literal/variable where string expression is required                                                                                                                                    |
 | `TiBasicLineNumberListStatement` | Missing line numbers, extra tokens, trailing comma, undefined line number references (warning)                                                                                                  |
 | `TiBasicGotoStatement`           | Missing or non-numeric line number; line number out of range or undefined                                                                                                                       |

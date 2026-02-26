@@ -237,5 +237,75 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 input \"Name: \" : a$")
         assertEquals("100 INPUT \"Name: \":A$", formattedText(file))
     }
+
+    fun testReadWithSingleVariableFormatted() {
+        val file = configureFile("100 READ A")
+        assertEquals("100 READ A", formattedText(file))
+    }
+
+    fun testReadWithMultipleVariablesSpacesRemoved() {
+        val file = configureFile("100 READ A , B , C")
+        assertEquals("100 READ A,B,C", formattedText(file))
+    }
+
+    fun testReadVariablesUppercased() {
+        val file = configureFile("100 read a,b$")
+        assertEquals("100 READ A,B$", formattedText(file))
+    }
+
+    fun testDataWithSingleNumericItemFormatted() {
+        val file = configureFile("100 DATA 42")
+        assertEquals("100 DATA 42", formattedText(file))
+    }
+
+    fun testDataWithStringLiteralPreserved() {
+        val file = configureFile("100 DATA \"hello\"")
+        assertEquals("100 DATA \"hello\"", formattedText(file))
+    }
+
+    fun testDataWithSpacesAroundCommasRemoved() {
+        val file = configureFile("100 DATA 1 , 2 , 3")
+        assertEquals("100 DATA 1,2,3", formattedText(file))
+    }
+
+    fun testDataUnquotedItemUppercased() {
+        val file = configureFile("100 DATA hello")
+        assertEquals("100 DATA HELLO", formattedText(file))
+    }
+
+    fun testDataWithMixedItemsFormatted() {
+        val file = configureFile("100 data  \"World\" , 42 , hello")
+        assertEquals("100 DATA \"World\",42,HELLO", formattedText(file))
+    }
+
+    fun testDataWithConsecutiveCommasPreserved() {
+        val file = configureFile("100 DATA 1,,3")
+        assertEquals("100 DATA 1,,3", formattedText(file))
+    }
+
+    fun testDataSpacesBetweenConsecutiveCommasRemoved() {
+        val file = configureFile("100 DATA , , ")
+        assertEquals("100 DATA ,,", formattedText(file))
+    }
+
+    fun testDataWithQuotedStringContainingComma() {
+        val file = configureFile("100 DATA \"a,b\"")
+        assertEquals("100 DATA \"a,b\"", formattedText(file))
+    }
+
+    fun testRestoreWithNoArgumentFormatted() {
+        val file = configureFile("100 RESTORE")
+        assertEquals("100 RESTORE", formattedText(file))
+    }
+
+    fun testRestoreWithLineNumberFormatted() {
+        val file = configureFile("100 RESTORE 200")
+        assertEquals("100 RESTORE 200", formattedText(file))
+    }
+
+    fun testRestoreKeywordUppercased() {
+        val file = configureFile("100 restore  200")
+        assertEquals("100 RESTORE 200", formattedText(file))
+    }
 }
 
