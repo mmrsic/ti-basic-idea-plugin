@@ -33,6 +33,12 @@ private fun formattedLine(line: TiBasicLine): String {
     if (firstTokenType == TiBasicTokenTypes.IF_KEYWORD) {
         return formattedIfLine(line.lineNumber(), statement as TiBasicIfStatement)
     }
+    if (firstTokenType == TiBasicTokenTypes.FOR_KEYWORD) {
+        return formattedForLine(line.lineNumber(), statement as TiBasicForStatement)
+    }
+    if (firstTokenType == TiBasicTokenTypes.NEXT_KEYWORD) {
+        return formattedNextLine(line.lineNumber(), statement as TiBasicNextStatement)
+    }
 
     val keywordMatch = TiBasicKeywords.getKeywords()
         .map { it.uppercase() }
@@ -93,6 +99,55 @@ private fun formattedIfLine(lineNumber: Int, statement: TiBasicIfStatement): Str
             if (afterThenPart.isNotEmpty()) append(" $afterThenPart")
         }
     }
+}
+
+private fun formattedForLine(lineNumber: Int, statement: TiBasicForStatement): String {
+    val stmtStart = statement.textRange.startOffset
+    val stmtText = statement.text
+    val forNode = statement.node.firstChildNode!!
+    val eqNode = statement.node.firstChildOfType(TiBasicTokenTypes.EQ_OP)
+    val toNode = statement.node.firstChildOfType(TiBasicTokenTypes.TO_KEYWORD)
+    val stepNode = statement.node.firstChildOfType(TiBasicTokenTypes.STEP_KEYWORD)
+
+    if (eqNode == null || toNode == null) {
+        val argText = stmtText.drop(forNode.textLength).trim()
+        return if (argText.isEmpty()) "$lineNumber FOR"
+        else "$lineNumber FOR ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
+    }
+
+    val eqRelStart = eqNode.startOffset - stmtStart
+    val eqRelEnd = eqRelStart + eqNode.textLength
+    val toRelStart = toNode.startOffset - stmtStart
+    val toRelEnd = toRelStart + toNode.textLength
+    val varPart = stmtText.substring(forNode.textLength, eqRelStart).trim()
+    val initialPart = stmtText.substring(eqRelEnd, toRelStart).trim()
+
+    return buildString {
+        append("$lineNumber FOR")
+        if (varPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varPart))}")
+        append("=")
+        if (initialPart.isNotEmpty()) append(removeWhitespaceOutsideStrings(uppercaseOutsideStrings(initialPart)))
+        append(" TO")
+        if (stepNode != null) {
+            val stepRelStart = stepNode.startOffset - stmtStart
+            val stepRelEnd = stepRelStart + stepNode.textLength
+            val limitPart = stmtText.substring(toRelEnd, stepRelStart).trim()
+            val stepPart = stmtText.substring(stepRelEnd).trim()
+            if (limitPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(limitPart))}")
+            append(" STEP")
+            if (stepPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(stepPart))}")
+        } else {
+            val limitPart = stmtText.substring(toRelEnd).trim()
+            if (limitPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(limitPart))}")
+        }
+    }
+}
+
+private fun formattedNextLine(lineNumber: Int, statement: TiBasicNextStatement): String {
+    val nextNode = statement.node.firstChildNode!!
+    val varPart = statement.text.drop(nextNode.textLength).trim()
+    return if (varPart.isEmpty()) "$lineNumber NEXT"
+    else "$lineNumber NEXT ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varPart))}"
 }
 
 private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {

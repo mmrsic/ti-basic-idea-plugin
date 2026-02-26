@@ -182,5 +182,30 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 ON X + Y GOTO 200\n200 PRINT \"OK\"")
         assertEquals("100 ON X+Y GOTO 200\n200 PRINT \"OK\"", formattedText(file))
     }
+
+    fun testForToFormattedCorrectly() {
+        val file = configureFile("100 for i = 1 to 10\n200 next i")
+        assertEquals("100 FOR I=1 TO 10\n200 NEXT I", formattedText(file))
+    }
+
+    fun testForToStepFormattedCorrectly() {
+        val file = configureFile("100 for i = 1 to 10 step 2\n200 next i")
+        assertEquals("100 FOR I=1 TO 10 STEP 2\n200 NEXT I", formattedText(file))
+    }
+
+    fun testForExtraSpacesNormalized() {
+        val file = configureFile("100 FOR   I   =   1   TO   10\n200 NEXT I")
+        assertEquals("100 FOR I=1 TO 10\n200 NEXT I", formattedText(file))
+    }
+
+    fun testForExpressionInLimitFormatted() {
+        val file = configureFile("100 FOR I = 1 TO N + 1\n200 NEXT I")
+        assertEquals("100 FOR I=1 TO N+1\n200 NEXT I", formattedText(file))
+    }
+
+    fun testNextVariableUppercased() {
+        val file = configureFile("100 FOR I = 1 TO 10\n200 next   i")
+        assertEquals("100 FOR I=1 TO 10\n200 NEXT I", formattedText(file))
+    }
 }
 

@@ -21,7 +21,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -144,6 +144,8 @@ class TiBasicLexer : LexerBase() {
             "GOTO", "GO TO" -> TiBasicTokenTypes.GOTO_KEYWORD
             "ON" -> TiBasicTokenTypes.ON_KEYWORD
             "IF" -> TiBasicTokenTypes.IF_KEYWORD
+            "FOR" -> TiBasicTokenTypes.FOR_KEYWORD
+            "NEXT" -> TiBasicTokenTypes.NEXT_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         result.add(LineToken(offset, offset + printStr.length, keywordType))
@@ -378,6 +380,12 @@ class TiBasicLexer : LexerBase() {
                         upperText == "ELSE" ->
                             result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.ELSE_KEYWORD))
 
+                        upperText == "TO" ->
+                            result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.TO_KEYWORD))
+
+                        upperText == "STEP" ->
+                            result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.STEP_KEYWORD))
+
                         upperText == "GO" -> {
                             val endOfGoTo = goToEnd(argStr, i)
                             if (endOfGoTo >= 0) {
@@ -390,6 +398,17 @@ class TiBasicLexer : LexerBase() {
 
                         else -> result.add(LineToken(offset + start, offset + i, classifyIdentifierToken(text)))
                     }
+                }
+
+                ch == '.' && i + 1 < argStr.length && argStr[i + 1].isDigit() -> {
+                    val start = i++
+                    while (i < argStr.length && argStr[i].isDigit()) i++
+                    if (i < argStr.length && (argStr[i] == 'E' || argStr[i] == 'e')) {
+                        i++
+                        if (i < argStr.length && (argStr[i] == '+' || argStr[i] == '-')) i++
+                        while (i < argStr.length && argStr[i].isDigit()) i++
+                    }
+                    result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.NUMERIC_LITERAL))
                 }
 
                 else -> {

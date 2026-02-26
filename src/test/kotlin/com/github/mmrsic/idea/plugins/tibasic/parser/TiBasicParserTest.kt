@@ -1238,6 +1238,94 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testForProducesForStatement() {
+        val file = parseCode("100 FOR I = 1 TO 10")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(1, line.children.filterIsInstance<TiBasicForStatement>().size)
+    }
+
+    fun testForWithStepProducesForStatement() {
+        val file = parseCode("100 FOR I = 1 TO 10 STEP 2")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(1, line.children.filterIsInstance<TiBasicForStatement>().size)
+    }
+
+    fun testForContainsVariableAccess() {
+        val file = parseCode("100 FOR I = 1 TO 10")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicForStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicVariableAccess>().size)
+    }
+
+    fun testForContainsTwoExpressions() {
+        val file = parseCode("100 FOR I = 1 TO 10")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicForStatement>()[0]
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testForWithStepContainsThreeExpressions() {
+        val file = parseCode("100 FOR I = 1 TO 10 STEP 2")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicForStatement>()[0]
+        assertEquals(3, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testForKeywordIsCaseInsensitive() {
+        val file = parseCode("100 for i = 1 to 10")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(1, line.children.filterIsInstance<TiBasicForStatement>().size)
+    }
+
+    fun testForDoesNotProducePrintStatement() {
+        val file = parseCode("100 FOR I = 1 TO 10")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(0, line.children.filterIsInstance<TiBasicPrintStatement>().size)
+    }
+
+    fun testNextProducesNextStatement() {
+        val file = parseCode("100 NEXT I")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(1, line.children.filterIsInstance<TiBasicNextStatement>().size)
+    }
+
+    fun testNextContainsVariableAccess() {
+        val file = parseCode("100 NEXT I")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicNextStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicVariableAccess>().size)
+    }
+
+    fun testNextKeywordIsCaseInsensitive() {
+        val file = parseCode("100 next i")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(1, line.children.filterIsInstance<TiBasicNextStatement>().size)
+    }
+
+    fun testNextDoesNotProducePrintStatement() {
+        val file = parseCode("100 NEXT I")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(0, line.children.filterIsInstance<TiBasicPrintStatement>().size)
+    }
+
+    fun testForAndNextInFile() {
+        val file = parseCode("100 FOR I = 1 TO 10\n200 NEXT I")
+        assertEquals(1, file.forStatements().size)
+        assertEquals(1, file.nextStatements().size)
+    }
+
+    fun testForWithLeadingDotInitialValue() {
+        val file = parseCode("110 FOR X = .1 TO 1")
+        val stmts = file.forStatements()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testForWithLeadingDotStepValue() {
+        val file = parseCode("110 FOR X = .1 TO 1 STEP .2")
+        val stmts = file.forStatements()
+        assertEquals(1, stmts.size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

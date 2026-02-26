@@ -10,5 +10,7 @@ class TiBasicFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, Ti
     override fun getFileType(): FileType = TiBasicFileType
     override fun toString(): String = "TI-Basic File"
     fun lines(): List<TiBasicLine> = children.filterIsInstance<TiBasicLine>()
+    fun forStatements(): List<TiBasicForStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicForStatement>() }
+    fun nextStatements(): List<TiBasicNextStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicNextStatement>() }
 }
 

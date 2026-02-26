@@ -14,19 +14,21 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 
 ### Supported statements
 
-| Statement                  | Description                                               |
-|----------------------------|-----------------------------------------------------------|
-| `LET`                      | Assign a value to a variable (`LET` keyword is optional)  |
-| `PRINT`                    | Output values or text                                     |
-| `REM`                      | Remark / comment                                          |
-| `END`                      | Halt program execution (by convention the last line)      |
-| `STOP`                     | Halt program execution (by convention used mid-program)   |
-| `GOTO` / `GO TO`           | Unconditional branch to the given line number             |
-| `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers            |
-| `IF … THEN [… ELSE …]`     | Conditional branch; numeric expression selects target     |
-| `DELETE`                   | Delete a string expression                                |
-| `BREAK` / `UNBREAK`        | Set or clear breakpoints at given line numbers            |
-| `TRACE` / `UNTRACE`        | Enable or disable execution tracing at given line numbers |
+| Statement                  | Description                                                                 |
+|----------------------------|-----------------------------------------------------------------------------|
+| `LET`                      | Assign a value to a variable (`LET` keyword is optional)                    |
+| `PRINT`                    | Output values or text                                                       |
+| `REM`                      | Remark / comment                                                            |
+| `END`                      | Halt program execution (by convention the last line)                        |
+| `STOP`                     | Halt program execution (by convention used mid-program)                     |
+| `GOTO` / `GO TO`           | Unconditional branch to the given line number                               |
+| `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers                              |
+| `IF … THEN … [ELSE …]`     | Conditional branch; numeric expression selects target                       |
+| `FOR … TO … [STEP …]`      | Counted loop with numeric control variable, start, limit, and optional step |
+| `NEXT`                     | Marks the end of the counted loop body                                      |
+| `DELETE`                   | Delete a string expression                                                  |
+| `BREAK` / `UNBREAK`        | Set or clear breakpoints at given line numbers                              |
+| `TRACE` / `UNTRACE`        | Enable or disable execution tracing at given line numbers                   |
 
 Lines whose keyword is not one of the above are flagged as unknown statements.
 
@@ -45,27 +47,32 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 
 The annotator inspects every file and highlights:
 
-| Severity | Check                                                                                   |
-|----------|-----------------------------------------------------------------------------------------|
-| Error    | Line number out of range (< 1 or > 32767)                                               |
-| Error    | Duplicate line numbers                                                                  |
-| Warning  | Line numbers not in ascending order                                                     |
-| Error    | Line without a line number                                                              |
-| Error    | Unknown statement keyword                                                               |
-| Error    | Variable name that is a reserved keyword or command                                     |
-| Error    | Conflicting variable usage (scalar vs. array)                                           |
-| Error    | Empty subscript or more than 3 subscript dimensions                                     |
-| Error    | Type mismatch (numeric value where string is required, or vice versa)                   |
-| Error    | String-number mismatch in LET assignment (variable type differs from expression)        |
-| Warning  | Reference to an undefined line number in BREAK/UNBREAK/TRACE/UNTRACE                    |
-| Error    | `ON … GOTO` with string expression (String-number mismatch)                             |
-| Error    | `ON … GOTO` missing expression, GOTO keyword, or line numbers (Incorrect statement)     |
-| Error    | `ON … GOTO` line number out of range 1–32767 (Bad line number)                          |
-| Warning  | `ON … GOTO` reference to an undefined line number                                       |
-| Error    | `IF … THEN` with string expression (String-number mismatch)                             |
-| Error    | `IF … THEN` missing expression, THEN keyword, or THEN line number (Incorrect statement) |
-| Error    | `IF … THEN` / `ELSE` line number out of range 1–32767 (Bad line number)                 |
-| Warning  | `IF … THEN` / `ELSE` reference to an undefined line number                              |
+| Severity | Check                                                                                        |
+|----------|----------------------------------------------------------------------------------------------|
+| Error    | Line number out of range (< 1 or > 32767)                                                    |
+| Error    | Duplicate line numbers                                                                       |
+| Warning  | Line numbers not in ascending order                                                          |
+| Error    | Line without a line number                                                                   |
+| Error    | Unknown statement keyword                                                                    |
+| Error    | Variable name that is a reserved keyword or command                                          |
+| Error    | Conflicting variable usage (scalar vs. array)                                                |
+| Error    | Empty subscript or more than 3 subscript dimensions                                          |
+| Error    | Type mismatch (numeric value where string is required, or vice versa)                        |
+| Error    | String-number mismatch in LET assignment (variable type differs from expression)             |
+| Warning  | Reference to an undefined line number in BREAK/UNBREAK/TRACE/UNTRACE                         |
+| Error    | `ON … GOTO` with string expression (String-number mismatch)                                  |
+| Error    | `ON … GOTO` missing expression, GOTO keyword, or line numbers (Incorrect statement)          |
+| Error    | `ON … GOTO` line number out of range 1–32767 (Bad line number)                               |
+| Warning  | `ON … GOTO` reference to an undefined line number                                            |
+| Error    | `IF … THEN` with string expression (String-number mismatch)                                  |
+| Error    | `IF … THEN` missing expression, THEN keyword, or THEN line number (Incorrect statement)      |
+| Error    | `IF … THEN` / `ELSE` line number out of range 1–32767 (Bad line number)                      |
+| Warning  | `IF … THEN` / `ELSE` reference to an undefined line number                                   |
+| Error    | `FOR` missing `=`, `TO`, control variable, or a required expression (Incorrect statement)    |
+| Error    | `FOR` or `NEXT` control variable is a string variable (Numeric variable expected)            |
+| Error    | `FOR` initial value, limit, or step is a string expression (String-number mismatch)          |
+| Warning  | Unequal number of `FOR` and `NEXT` statements — surplus occurrences flagged (FOR-NEXT-ERROR) |
+| Error    | `NEXT` without a control variable (Incorrect statement)                                      |
 
 ### Code actions
 
@@ -107,7 +114,9 @@ src/
 │   │   │   ├── TiBasicCompletionContributor.kt Keyword completion
 │   │   │   └── TiBasicShiftEnterHandler.kt     Shift+Enter new-line handler
 │   │   ├── ext/
-│   │   │   └── ASTNodeExtensions.kt            Kotlin extensions on framework classes
+│   │   │   ├── ASTNodeExtensions.kt            Kotlin extensions on ASTNode
+│   │   │   ├── AnnotationHolderExtensions.kt   Kotlin extensions on AnnotationHolder
+│   │   │   └── PsiElementExtensions.kt         Kotlin extensions on PsiElement
 │   │   ├── highlight/
 │   │   │   ├── TiBasicAnnotator.kt             Semantic error/warning annotations
 │   │   │   ├── TiBasicSyntaxHighlighter.kt     Token-based syntax colours

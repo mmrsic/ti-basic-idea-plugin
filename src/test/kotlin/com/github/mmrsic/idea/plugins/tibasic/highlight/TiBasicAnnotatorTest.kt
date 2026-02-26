@@ -1364,4 +1364,97 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
         )
         myFixture.checkHighlighting(false, false, true)
     }
+
+    fun testNoErrorForValidFor() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT") })
+    }
+
+    fun testNoErrorForValidForWithStep() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10 STEP 2\n200 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT") })
+    }
+
+    fun testErrorForForWithStringControlVariable() {
+        myFixture.configureByText("test.tibasic", "100 FOR A$ = 1 TO 10\n200 NEXT A$")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "Numeric variable expected" })
+    }
+
+    fun testErrorForNextWithStringControlVariable() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 NEXT A$")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "Numeric variable expected" })
+    }
+
+    fun testErrorForForWithStringInitialValue() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = A$ TO 10\n200 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "String-number mismatch" })
+    }
+
+    fun testErrorForForWithStringLimit() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO A$\n200 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "String-number mismatch" })
+    }
+
+    fun testErrorForForWithStringStep() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10 STEP A$\n200 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "String-number mismatch" })
+    }
+
+    fun testErrorForForMissingTo() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 10\n200 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "Incorrect statement" })
+    }
+
+    fun testErrorForForMissingEquals() {
+        myFixture.configureByText("test.tibasic", "100 FOR I 1 TO 10\n200 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "Incorrect statement" })
+    }
+
+    fun testErrorForNextWithoutVariable() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 NEXT")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "Incorrect statement" })
+    }
+
+    fun testWarningForMoreForsThanNexts() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 FOR J = 1 TO 5\n300 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements" })
+    }
+
+    fun testWarningForMoreNextsThanFors() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 NEXT I\n300 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "FOR-NEXT-ERROR: 1 FOR statements and 2 NEXT statements" })
+    }
+
+    fun testBalanceWarningOnSurplusForNotFirst() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 5\n200 FOR J = 1 TO 5\n300 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        val balanceWarnings = annotations.filter {
+            it.description == "FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements"
+        }
+        assertEquals(1, balanceWarnings.size)
+        assertTrue(balanceWarnings[0].startOffset > 0)
+    }
+
+    fun testNoBalanceWarningForBalancedForNext() {
+        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 FOR J = 1 TO 5\n300 NEXT J\n400 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT") })
+    }
+
+    fun testForWithLeadingDotValuesNoError() {
+        myFixture.configureByText("test.tibasic", "110 FOR X= .1 TO 1 STEP .2\n120 NEXT X")
+        myFixture.checkHighlighting(true, false, true)
+    }
 }

@@ -268,6 +268,21 @@ class TiBasicSyntaxHighlightingTest : BasePlatformTestCase() {
         }
     }
 
+    fun testSyntaxHighlighterReturnsKeywordAttributeForForNextToStep() {
+        val highlighter = TiBasicSyntaxHighlighter()
+        val forNextKeywords = listOf(
+            TiBasicTokenTypes.FOR_KEYWORD,
+            TiBasicTokenTypes.NEXT_KEYWORD,
+            TiBasicTokenTypes.TO_KEYWORD,
+            TiBasicTokenTypes.STEP_KEYWORD,
+        )
+        for (kw in forNextKeywords) {
+            val attributes = highlighter.getTokenHighlights(kw)
+            assertTrue("$kw must map to at least one TextAttributesKey", attributes.isNotEmpty())
+            assertEquals("$kw must map to KEYWORD", TiBasicSyntaxHighlighter.KEYWORD, attributes[0])
+        }
+    }
+
     private fun assertNotEquals(unexpected: IElementType, actual: IElementType?) {
         assertFalse("Expected token type to differ from $unexpected", actual == unexpected)
     }

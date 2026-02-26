@@ -41,12 +41,21 @@ Framework class improvements via Kotlin extensions
   verbose, requires a dummy argument, or obscures intent, wrap it in a Kotlin extension. Example:
   `node.getChildren(null)` → `node.allChildren` as `val ASTNode.allChildren: Array<ASTNode> get() = getChildren(null)`.
 - **Group extensions by the framework type they extend**: place all extensions on `ASTNode` in
-  `ASTNodeExtensions.kt`, extensions on `PsiElement` in `PsiElementExtensions.kt`, and so on. Never scatter
-  extensions on the same type across multiple files.
+  `ASTNodeExtensions.kt`, extensions on `PsiElement` in `PsiElementExtensions.kt`, extensions on
+  `AnnotationHolder` in `AnnotationHolderExtensions.kt`. Never scatter extensions on the same framework type
+  across multiple files — with one exception: domain-specific convenience properties that are inseparable from the
+  PSI types they return (e.g., `val PsiElement.containingTiBasicFile`) may live in `tibasic.psi` alongside those
+  types.
+- **Current `tibasic.ext` files**:
+  - `ASTNodeExtensions.kt` — `allChildren`, `nonWhitespaceChildren`, `firstChildType`, `childrenOfType`,
+    `firstChildOfType`, `childrenAfter`
+  - `PsiElementExtensions.kt` — `firstChildOfType<T>()`
+  - `AnnotationHolderExtensions.kt` — `error(message, element/range, quickFix?)`,
+    `warning(message, element/range, quickFix?)`
 - **Extensions go in the main source set** (`src/main/kotlin/.../tibasic/`) unless they are exclusively needed in
   tests, in which case they belong in the test source set.
-- **Check the extensions file before calling a raw framework method**: if `ASTNodeExtensions.kt` (or the appropriate
-  file) already wraps the method, use the extension instead.
+- **Check the extensions file before calling a raw framework method**: if `ASTNodeExtensions.kt`,
+  `PsiElementExtensions.kt`, or `AnnotationHolderExtensions.kt` already wraps the method, use the extension instead.
 
 Project structure & build
 
@@ -89,6 +98,9 @@ Tests, quality assurance & debugging
 - Use the IntelliJ Plugin Test Framework for unit and integration tests (light and heavy test setups).
 - At minimum provide: a parsing happy-path test, an annotator test (error detection), and a line marker/action test.
 - Run local tests before committing: `./gradlew test` and `./gradlew runIde` for manual sandbox testing.
+- Run a single test class: `./gradlew test --tests "*.TiBasicParserTest"` (short form) or fully-qualified
+  `./gradlew test --tests "com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicParserTest"`.
+- Run a single test method: `./gradlew test --tests "*.TiBasicParserTest.test valid print line"`.
 - Use the Plugin Verifier (`./gradlew verifyPlugin`) only in CI for the target IDE versions.
 
 Documentation maintenance

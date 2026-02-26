@@ -23,6 +23,7 @@ class TiBasicAnnotator : Annotator {
                 annotateDuplicateLineNumbers(duplicates, holder)
                 annotateNonAscendingLineNumbers(lines, duplicates, holder)
                 annotateVariableNameConflicts(element, holder)
+                annotateForNextBalance(element, holder)
             }
 
             is TiBasicLine -> annotateLineNumber(element, holder)
@@ -33,6 +34,8 @@ class TiBasicAnnotator : Annotator {
             is TiBasicGotoStatement -> annotateGotoStatement(element, holder)
             is TiBasicOnGotoStatement -> annotateOnGotoStatement(element, holder)
             is TiBasicIfStatement -> annotateIfStatement(element, holder)
+            is TiBasicForStatement -> annotateForStatement(element, holder)
+            is TiBasicNextStatement -> annotateNextStatement(element, holder)
             is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
             is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
@@ -49,6 +52,70 @@ class TiBasicAnnotator : Annotator {
         if (trailing.isEmpty()) return
         val range = TextRange(trailing.first().startOffset, trailing.last().startOffset + trailing.last().textLength)
         holder.warning("Everything after $stmtName statement is ignored", range)
+    }
+
+    private fun annotateForStatement(statement: TiBasicForStatement, holder: AnnotationHolder) {
+        val children = statement.node.nonWhitespaceChildren
+        val varAccessNode = children.firstOrNull { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
+        val eqNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.EQ_OP }
+        val toNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.TO_KEYWORD }
+        val expressions = children.filter { it.elementType == TiBasicNodeTypes.EXPRESSION }
+        val stepNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.STEP_KEYWORD }
+        val expectedExprCount = if (stepNode != null) 3 else 2
+
+        if (varAccessNode == null || eqNode == null || toNode == null || expressions.size < expectedExprCount) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
+        val varFirstChild = varAccessNode.firstChildType
+        when {
+            varFirstChild == TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
+                holder.error("Bad variable name", varAccessNode.textRange)
+
+            varFirstChild == TiBasicTokenTypes.STRING_VARIABLE ->
+                holder.error("Numeric variable expected", varAccessNode.textRange)
+        }
+
+        expressions.forEach { exprNode ->
+            val expr = exprNode.psi as? TiBasicExpression ?: return@forEach
+            if (isStringExpression(expr)) {
+                holder.error("String-number mismatch", exprNode.textRange)
+            }
+        }
+    }
+
+    private fun annotateNextStatement(statement: TiBasicNextStatement, holder: AnnotationHolder) {
+        val varAccessNode = statement.node.nonWhitespaceChildren
+            .firstOrNull { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
+
+        if (varAccessNode == null) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
+        val varFirstChild = varAccessNode.firstChildType
+        when {
+            varFirstChild == TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
+                holder.error("Bad variable name", varAccessNode.textRange)
+
+            varFirstChild == TiBasicTokenTypes.STRING_VARIABLE ->
+                holder.error("Numeric variable expected", varAccessNode.textRange)
+        }
+    }
+
+    private fun annotateForNextBalance(file: TiBasicFile, holder: AnnotationHolder) {
+        val forStatements = file.forStatements()
+        val nextStatements = file.nextStatements()
+        val nFor = forStatements.size
+        val nNext = nextStatements.size
+        if (nFor == nNext) return
+        val message = "FOR-NEXT-ERROR: $nFor FOR statements and $nNext NEXT statements"
+        if (nFor > nNext) {
+            forStatements.takeLast(nFor - nNext).forEach { holder.warning(message, it) }
+        } else {
+            nextStatements.takeLast(nNext - nFor).forEach { holder.warning(message, it) }
+        }
     }
 
     private fun annotateGotoStatement(statement: TiBasicGotoStatement, holder: AnnotationHolder) {

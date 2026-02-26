@@ -41,6 +41,8 @@ statement         = printStatement
                   | gotoStatement
                   | onGotoStatement
                   | ifStatement
+                  | forStatement
+                  | nextStatement
                   | deleteStatement
                   | lineNumberListStatement
                   | unknownStatement ;
@@ -60,6 +62,12 @@ onGotoStatement         = ON whitespace numericExpression whitespace ( GOTO | GO
 ifStatement             = IF whitespace numericExpression whitespace THEN whitespace lineNumber
                           [ whitespace ELSE whitespace lineNumber ] ;
                           (* conditional branch; expression must be numeric; non-zero = true → THEN target, zero → ELSE target *)
+forStatement            = FOR whitespace numericVariable whitespace EQ whitespace numericExpression
+                          whitespace TO whitespace numericExpression
+                          [ whitespace STEP whitespace numericExpression ] ;
+                          (* numericVariable must be a scalar numeric variable; expressions must be numeric *)
+nextStatement           = NEXT whitespace numericVariable ;
+                          (* control variable must match a preceding FOR variable *)
 deleteStatement         = DELETE    [ whitespace ] [ stringExpression ] ;
 lineNumberListStatement = listKeyword whitespace lineNumberList ;
 unknownStatement        = unknownText ;         (* annotated as error *)
@@ -116,6 +124,8 @@ Recognised as statement-starting keywords (case-insensitive):
 | `GOTO` / `GO TO`                       | Unconditional branch to a line number       |
 | `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines     |
 | `IF … THEN` / `IF … THEN … ELSE`       | Conditional branch to a line number         |
+| `FOR … TO` / `FOR … TO … STEP`         | Counted loop — start, limit, optional step  |
+| `NEXT`                                 | End of counted loop body                    |
 | `DELETE`                               | Delete string                               |
 | `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                 |
 
@@ -180,6 +190,9 @@ These identifiers are recognized by the annotator and produce a specific error:
 270 ON X GO TO 100,200         ✓ valid — computed branch (two-word GO TO form)
 280 IF X>0 THEN 100            ✓ valid — conditional branch
 290 IF X>0 THEN 100 ELSE 200   ✓ valid — conditional branch with else target
+300 FOR I = 1 TO 10             ✓valid — counted loop, step defaults to 1
+310 FOR I = 1 TO 10 STEP 2     ✓ valid — counted loop, explicit step
+320 NEXT I                      ✓valid — end of loop body
 220 PRINT A(1,2,3,4)           ✗ error — more than 3 subscript dimensions
 230 RUN                        ✗ error — command used as statement
 240 PRINT A$ + 1               ✗ error — String-Number-Mismatch
@@ -188,13 +201,18 @@ These identifiers are recognized by the annotator and produce a specific error:
 99999 PRINT "X"                ✗ error — line number out of range (> 32767)
 PRINT "no number"              ✗ error — line number expected
 270 FOOBAR                     ✗ error — unknown statement
+330 FOR A$ = 1 TO 10           ✗ error — string variable as FOR control variable
+340 NEXT A$                    ✗ error — string variable as NEXT control variable
+350 FOR I = "X" TO 10          ✗ error — string expression as initial value
+360 FOR I = 1 TO 10\n370 FOR J = 1 TO 5\n380 NEXT I  ✗ warning on line 370 — FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements
 ```
 
 ## Scope and dialect notes
 
 - The plugin currently supports statements that are meaningful within a single source file.
-  Multi-statement lines (`:` separator) are **not** supported.
-- `FOR`/`NEXT`, `GOSUB`/`RETURN`, `INPUT`, `DATA`/`READ`, `CALL` and other TI Extended Basic statements
+- `GOSUB`/`RETURN`, `INPUT`, `DATA`/`READ`, `CALL` and other TI Extended Basic statements
   are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
+- `FOR`/`NEXT` are implemented. The annotator checks FOR-NEXT balance by count (total in file);
+  it does **not** check that the control variable in `NEXT` matches the preceding `FOR` variable.
 - String literals use `""` to embed a literal double-quote character.
 - Scientific notation exponents may use `E` or `e` with an optional sign: `1.5E-3`, `2e+10`.

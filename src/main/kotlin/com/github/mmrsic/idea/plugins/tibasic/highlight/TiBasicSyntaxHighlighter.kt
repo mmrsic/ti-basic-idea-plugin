@@ -49,7 +49,11 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.ON_KEYWORD,
             TiBasicTokenTypes.IF_KEYWORD,
             TiBasicTokenTypes.THEN_KEYWORD,
-            TiBasicTokenTypes.ELSE_KEYWORD -> arrayOf(KEYWORD)
+            TiBasicTokenTypes.ELSE_KEYWORD,
+            TiBasicTokenTypes.FOR_KEYWORD,
+            TiBasicTokenTypes.NEXT_KEYWORD,
+            TiBasicTokenTypes.TO_KEYWORD,
+            TiBasicTokenTypes.STEP_KEYWORD -> arrayOf(KEYWORD)
 
             TiBasicTokenTypes.REM_TEXT -> arrayOf(COMMENT)
             TiBasicTokenTypes.LINE_NUMBER -> arrayOf(LINE_NUMBER)

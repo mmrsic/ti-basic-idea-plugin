@@ -36,6 +36,7 @@ TiBasicParser         (tibasic.parser)
     Driven by PsiBuilder; builds a composite AST.
     Produces nodes: LINE, PRINT_STATEMENT, LET_STATEMENT, DELETE_STATEMENT,
     REM_STATEMENT, LINE_NUMBER_LIST_STATEMENT, UNKNOWN_STATEMENT,
+    FOR_STATEMENT, NEXT_STATEMENT,
     INVALID_LINE, EXPRESSION, VARIABLE_ACCESS.
     │
     ▼
@@ -65,18 +66,23 @@ PSI tree              (tibasic.psi)
 
 `TiBasicAnnotator` dispatches on the PSI element type and applies the following checks:
 
-| Element type                     | Checks                                                                                                                                   |
-|----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `TiBasicFile`                    | Duplicate line numbers (error + quick-fix), non-ascending line numbers (warning + quick-fix), variable-name conflicts (scalar vs. array) |
-| `TiBasicLine`                    | Line number out of `VALID_LINE_NUMBER_RANGE` (1–32767)                                                                                   |
-| `TiBasicLetStatement`            | Invalid variable name; type mismatch between variable and expression (highlighted over `variable = expression`)                          |
-| `TiBasicPrintStatement`          | Invalid variable names, type mismatches (string vs. numeric)                                                                             |
-| `TiBasicDeleteStatement`         | Numeric literal/variable where string expression is required                                                                             |
-| `TiBasicLineNumberListStatement` | Missing line numbers, extra tokens, trailing comma, undefined line number references (warning)                                           |
-| `TiBasicUnknownStatement`        | Command used as statement vs. fully unknown identifier                                                                                   |
-| `TiBasicInvalidLine`             | Line without a leading line number                                                                                                       |
-| `TiBasicVariableAccess`          | Empty subscript parens, subscript count > 3                                                                                              |
-| `TiBasicExpression`              | Numeric literal/variable in string-only position                                                                                         |
+| Element type                     | Checks                                                                                                                                                                                          |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TiBasicFile`                    | Duplicate line numbers (error + quick-fix), non-ascending line numbers (warning + quick-fix), variable-name conflicts (scalar vs. array), FOR-NEXT balance (warning on surplus occurrences)     |
+| `TiBasicLine`                    | Line number out of `VALID_LINE_NUMBER_RANGE` (1–32767)                                                                                                                                          |
+| `TiBasicLetStatement`            | Invalid variable name; type mismatch between variable and expression (highlighted over `variable = expression`)                                                                                 |
+| `TiBasicPrintStatement`          | Invalid variable names, type mismatches (string vs. numeric)                                                                                                                                    |
+| `TiBasicDeleteStatement`         | Numeric literal/variable where string expression is required                                                                                                                                    |
+| `TiBasicLineNumberListStatement` | Missing line numbers, extra tokens, trailing comma, undefined line number references (warning)                                                                                                  |
+| `TiBasicGotoStatement`           | Missing or non-numeric line number; line number out of range or undefined                                                                                                                       |
+| `TiBasicOnGotoStatement`         | Missing expression or GOTO keyword; string expression (error); bad/undefined line numbers                                                                                                       |
+| `TiBasicIfStatement`             | Missing expression, THEN keyword, or THEN line number; string expression; line numbers out of range or undefined                                                                                |
+| `TiBasicForStatement`            | Missing `=`, `TO`, variable, or required expressions (Incorrect statement); string control variable (Numeric variable expected); string expression in numeric position (String-number mismatch) |
+| `TiBasicNextStatement`           | Missing control variable (Incorrect statement); string control variable (Numeric variable expected)                                                                                             |
+| `TiBasicUnknownStatement`        | Command used as statement vs. fully unknown identifier                                                                                                                                          |
+| `TiBasicInvalidLine`             | Line without a leading line number                                                                                                                                                              |
+| `TiBasicVariableAccess`          | Empty subscript parens, subscript count > 3                                                                                                                                                     |
+| `TiBasicExpression`              | Numeric literal/variable in string-only position                                                                                                                                                |
 
 ## Threading model
 
