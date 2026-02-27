@@ -72,10 +72,7 @@ private fun formattedLine(line: TiBasicLine): String {
     return if (trimmedArgument.isEmpty()) {
         "${line.lineNumber()} $keywordMatch"
     } else {
-        val formattedArg = if (statement is TiBasicLetStatement)
-            removeWhitespaceOutsideStrings(uppercaseOutsideStrings(trimmedArgument))
-        else
-            removeWhitespaceOutsideStrings(trimmedArgument)
+        val formattedArg = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(trimmedArgument))
         "${line.lineNumber()} $keywordMatch $formattedArg"
     }
 }
