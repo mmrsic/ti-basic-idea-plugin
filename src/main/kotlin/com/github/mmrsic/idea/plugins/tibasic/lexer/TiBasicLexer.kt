@@ -148,14 +148,17 @@ class TiBasicLexer : LexerBase() {
         offset = appendToken(result, offset, printStr, keywordType)
         offset = appendOptionalWhitespace(result, offset, ws2)
         if (argStr.isNotEmpty()) {
-            if (normalizedKeyword == "REM") {
-                offset = appendToken(result, offset, argStr, TiBasicTokenTypes.REM_TEXT)
-            } else if (normalizedKeyword == "DATA") {
-                result.addAll(tokenizeDataContent(offset, argStr))
-                offset += argStr.length
-            } else {
-                result.addAll(tokenizeArgument(offset, argStr))
-                offset += argStr.length
+            when (normalizedKeyword) {
+                "REM" -> offset = appendToken(result, offset, argStr, TiBasicTokenTypes.REM_TEXT)
+                "DATA" -> {
+                    result.addAll(tokenizeDataContent(offset, argStr))
+                    offset += argStr.length
+                }
+
+                else -> {
+                    result.addAll(tokenizeArgument(offset, argStr))
+                    offset += argStr.length
+                }
             }
         }
         appendOptionalWhitespace(result, offset, afterPrint.takeLast(trailingWsLength))
@@ -211,39 +214,97 @@ class TiBasicLexer : LexerBase() {
                     while (i < argStr.length && argStr[i].isWhitespace()) i++
                     result.add(LineToken(offset + start, offset + i, TokenType.WHITE_SPACE))
                 }
+
                 ch == '"' -> {
                     val token = tokenizeStringLiteral(argStr, offset, i)
                     result.add(token); i = token.end - offset
                 }
-                ch == '&' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.CONCAT_OP)); i++ }
-                ch == '+' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PLUS_OP)); i++ }
-                ch == '-' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MINUS_OP)); i++ }
-                ch == '*' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MUL_OP)); i++ }
-                ch == '/' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.DIV_OP)); i++ }
-                ch == '^' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.POW_OP)); i++ }
-                ch == '=' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.EQ_OP)); i++ }
+
+                ch == '&' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.CONCAT_OP)); i++
+                }
+
+                ch == '+' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PLUS_OP)); i++
+                }
+
+                ch == '-' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MINUS_OP)); i++
+                }
+
+                ch == '*' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MUL_OP)); i++
+                }
+
+                ch == '/' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.DIV_OP)); i++
+                }
+
+                ch == '^' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.POW_OP)); i++
+                }
+
+                ch == '=' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.EQ_OP)); i++
+                }
+
                 ch == '<' -> when {
-                    i + 1 < argStr.length && argStr[i + 1] == '>' -> { result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.NEQ_OP)); i += 2 }
-                    i + 1 < argStr.length && argStr[i + 1] == '=' -> { result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.LE_OP)); i += 2 }
-                    else -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LT_OP)); i++ }
+                    i + 1 < argStr.length && argStr[i + 1] == '>' -> {
+                        result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.NEQ_OP)); i += 2
+                    }
+
+                    i + 1 < argStr.length && argStr[i + 1] == '=' -> {
+                        result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.LE_OP)); i += 2
+                    }
+
+                    else -> {
+                        result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LT_OP)); i++
+                    }
                 }
+
                 ch == '>' -> when {
-                    i + 1 < argStr.length && argStr[i + 1] == '=' -> { result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.GE_OP)); i += 2 }
-                    else -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.GT_OP)); i++ }
+                    i + 1 < argStr.length && argStr[i + 1] == '=' -> {
+                        result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.GE_OP)); i += 2
+                    }
+
+                    else -> {
+                        result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.GT_OP)); i++
+                    }
                 }
-                ch == '(' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LPAREN)); i++ }
-                ch == ')' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.RPAREN)); i++ }
-                ch == ',' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COMMA)); i++ }
-                ch == ':' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COLON)); i++ }
+
+                ch == '(' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LPAREN)); i++
+                }
+
+                ch == ')' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.RPAREN)); i++
+                }
+
+                ch == ',' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COMMA)); i++
+                }
+
+                ch == ':' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COLON)); i++
+                }
+
+                ch == ';' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.SEMICOLON)); i++
+                }
+
                 ch.isDigit() || (ch == '.' && i + 1 < argStr.length && argStr[i + 1].isDigit()) -> {
                     val token = tokenizeNumber(argStr, offset, i)
                     result.add(token); i = token.end - offset
                 }
+
                 isVariableFirstChar(ch) -> {
                     val token = tokenizeIdentifier(argStr, offset, i)
                     result.add(token); i = token.end - offset
                 }
-                else -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PRINT_ARGUMENT)); i++ }
+
+                else -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PRINT_ARGUMENT)); i++
+                }
             }
         }
         return result
@@ -255,7 +316,10 @@ class TiBasicLexer : LexerBase() {
         while (i < s.length) {
             when {
                 s[i] == '"' && i + 1 < s.length && s[i + 1] == '"' -> i += 2
-                s[i] == '"' -> { i++; closed = true; break }
+                s[i] == '"' -> {
+                    i++; closed = true; break
+                }
+
                 else -> i++
             }
         }
@@ -300,12 +364,31 @@ class TiBasicLexer : LexerBase() {
         val end: Int
         val type: IElementType
         when (text.uppercase()) {
-            "GOTO" -> { end = i; type = TiBasicTokenTypes.GOTO_KEYWORD }
-            "THEN" -> { end = i; type = TiBasicTokenTypes.THEN_KEYWORD }
-            "ELSE" -> { end = i; type = TiBasicTokenTypes.ELSE_KEYWORD }
-            "TO"   -> { end = i; type = TiBasicTokenTypes.TO_KEYWORD }
-            "STEP" -> { end = i; type = TiBasicTokenTypes.STEP_KEYWORD }
-            "GO"   -> {
+            "GOTO" -> {
+                end = i; type = TiBasicTokenTypes.GOTO_KEYWORD
+            }
+
+            "THEN" -> {
+                end = i; type = TiBasicTokenTypes.THEN_KEYWORD
+            }
+
+            "ELSE" -> {
+                end = i; type = TiBasicTokenTypes.ELSE_KEYWORD
+            }
+
+            "TAB" -> {
+                end = i; type = TiBasicTokenTypes.TAB_KEYWORD
+            }
+
+            "TO" -> {
+                end = i; type = TiBasicTokenTypes.TO_KEYWORD
+            }
+
+            "STEP" -> {
+                end = i; type = TiBasicTokenTypes.STEP_KEYWORD
+            }
+
+            "GO" -> {
                 val endOfGoTo = goToEnd(s, i)
                 if (endOfGoTo >= 0) {
                     end = endOfGoTo; type = TiBasicTokenTypes.GOTO_KEYWORD
@@ -313,7 +396,10 @@ class TiBasicLexer : LexerBase() {
                     end = i; type = classifyIdentifierToken(text)
                 }
             }
-            else -> { end = i; type = classifyIdentifierToken(text) }
+
+            else -> {
+                end = i; type = classifyIdentifierToken(text)
+            }
         }
         return LineToken(offset + start, offset + end, type)
     }
@@ -331,11 +417,13 @@ class TiBasicLexer : LexerBase() {
                     result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COMMA))
                     i++
                 }
+
                 content[i] == '"' -> {
                     val token = tokenizeStringLiteral(content, offset, i)
                     result.add(token)
                     i = token.end - offset
                 }
+
                 else -> {
                     val start = i
                     while (i < content.length && content[i] != ',') i++

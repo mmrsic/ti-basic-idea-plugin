@@ -27,4 +27,5 @@ object TiBasicNodeTypes {
     val INVALID_LINE = TiBasicElementType("INVALID_LINE")
     val EXPRESSION = TiBasicElementType("EXPRESSION")
     val VARIABLE_ACCESS = TiBasicElementType("VARIABLE_ACCESS")
+    val TAB_FUNCTION = TiBasicElementType("TAB_FUNCTION")
 }

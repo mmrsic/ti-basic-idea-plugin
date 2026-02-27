@@ -39,7 +39,7 @@ TiBasicParser         (tibasic.parser)
     END_STATEMENT, STOP_STATEMENT, GOTO_STATEMENT, ON_GOTO_STATEMENT,
     IF_STATEMENT, FOR_STATEMENT, NEXT_STATEMENT, DELETE_STATEMENT,
     LINE_NUMBER_LIST_STATEMENT, UNKNOWN_STATEMENT,
-    INVALID_LINE, EXPRESSION, VARIABLE_ACCESS.
+    INVALID_LINE, EXPRESSION, VARIABLE_ACCESS, TAB_FUNCTION.
     │
     ▼
 PSI tree              (tibasic.psi)
@@ -73,7 +73,8 @@ PSI tree              (tibasic.psi)
 | `TiBasicFile`                    | Duplicate line numbers (error + quick-fix), non-ascending line numbers (warning + quick-fix), variable-name conflicts (scalar vs. array), FOR-NEXT balance (warning on surplus occurrences)     |
 | `TiBasicLine`                    | Line number out of `VALID_LINE_NUMBER_RANGE` (1–32767)                                                                                                                                          |
 | `TiBasicLetStatement`            | Invalid variable name (Bad variable name); trailing tokens after expression (Incorrect statement); type mismatch between variable and expression (String-number mismatch)                       |
-| `TiBasicPrintStatement`          | Invalid variable names, type mismatches (string vs. numeric)                                                                                                                                    |
+| `TiBasicPrintStatement`          | Invalid variable names, type mismatches (string vs. numeric); consecutive expressions or TAB functions without separator (Separator expected between expressions) |
+| `TiBasicTabFunction`             | Missing parentheses and argument (TAB requires a numeric argument in parentheses); missing argument inside parens (TAB requires a numeric argument); TAB outside PRINT (TAB is only valid in a PRINT statement — detected via leaf token check) |
 | `TiBasicEndStatement`            | Trailing non-whitespace content after END keyword (Incorrect statement)                                                                                                                         |
 | `TiBasicStopStatement`           | Trailing non-whitespace content after STOP keyword (Incorrect statement)                                                                                                                        |
 | `TiBasicInputStatement`          | No variable list (Incorrect statement); invalid variable name (Bad variable name)                                                                                                               |

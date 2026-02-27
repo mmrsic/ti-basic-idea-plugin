@@ -52,6 +52,7 @@ class TiBasicParserDefinition : ParserDefinition {
             TiBasicNodeTypes.INVALID_LINE -> TiBasicInvalidLine(node)
             TiBasicNodeTypes.EXPRESSION -> TiBasicExpression(node)
             TiBasicNodeTypes.VARIABLE_ACCESS -> TiBasicVariableAccess(node)
+            TiBasicNodeTypes.TAB_FUNCTION -> TiBasicTabFunction(node)
             else -> throw IllegalArgumentException("Unknown element type: ${node.elementType}")
         }
 

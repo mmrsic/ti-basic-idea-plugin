@@ -29,6 +29,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicLine -> annotateLineNumber(element, holder)
             is TiBasicLetStatement -> annotateLetStatement(element, holder)
             is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
+            is TiBasicTabFunction -> annotateTabFunction(element, holder)
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
             is TiBasicGotoStatement -> annotateGotoStatement(element, holder)
@@ -46,13 +47,17 @@ class TiBasicAnnotator : Annotator {
             is TiBasicInvalidLine -> holder.error("Line number expected", element)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
             is TiBasicExpression -> annotateExpression(element, holder)
+            else -> if (element.node.elementType == TiBasicTokenTypes.TAB_KEYWORD && element.parent !is TiBasicTabFunction) {
+                holder.error("TAB is only valid in a PRINT statement", element)
+            }
         }
     }
 
     private fun annotateTrailingContent(stmtNode: ASTNode, stmtName: String, holder: AnnotationHolder) {
-        val trailing = stmtNode.allChildren
-            .dropWhile { it.elementType == TiBasicTokenTypes.END_KEYWORD || it.elementType == TiBasicTokenTypes.STOP_KEYWORD }
-            .filter { it.elementType != TokenType.WHITE_SPACE }
+        val trailing =
+            stmtNode.allChildren
+                .dropWhile { it.elementType == TiBasicTokenTypes.END_KEYWORD || it.elementType == TiBasicTokenTypes.STOP_KEYWORD }
+                .filter { it.elementType != TokenType.WHITE_SPACE }
         if (trailing.isEmpty()) return
         val range = TextRange(trailing.first().startOffset, trailing.last().startOffset + trailing.last().textLength)
         holder.warning("Everything after $stmtName statement is ignored", range)
@@ -62,14 +67,12 @@ class TiBasicAnnotator : Annotator {
         val children = statement.node.nonWhitespaceChildren
         val colonNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.COLON }
         val expressionNode = children.firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
-
         if (colonNode != null && expressionNode != null) {
             val promptExpr = expressionNode.psi as? TiBasicExpression
             if (promptExpr != null && !isStringExpression(promptExpr)) {
                 holder.error("String expression expected as INPUT prompt", expressionNode.textRange)
             }
         }
-
         annotateVariableList(
             children.filter { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS },
             statement,
@@ -123,7 +126,7 @@ class TiBasicAnnotator : Annotator {
         val lineNumber = lineNumberNode.text.toLongOrNull()?.toInt()
         val definedLineNumbers = statement.containingTiBasicFile
             ?.lines()?.map { it.lineNumber() }?.filter { it in VALID_LINE_NUMBER_RANGE }?.toSet()
-        validateBranchLineNumber(lineNumberNode, lineNumber, definedLineNumbers, holder)
+        validateLineNumberExists(lineNumberNode, lineNumber, definedLineNumbers, holder)
     }
 
     private fun annotateForStatement(statement: TiBasicForStatement, holder: AnnotationHolder) {
@@ -186,8 +189,7 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateGotoStatement(statement: TiBasicGotoStatement, holder: AnnotationHolder) {
-        val contentNodes = statement.node.nonWhitespaceChildren
-            .filter { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD }
+        val contentNodes = statement.node.nonWhitespaceChildren.filter { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD }
         if (contentNodes.size != 1 || contentNodes[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
             holder.error("Incorrect statement", statement)
             return
@@ -200,7 +202,7 @@ class TiBasicAnnotator : Annotator {
                 ?.map { it.lineNumber() }
                 ?.filter { it in VALID_LINE_NUMBER_RANGE }
                 ?.toSet()
-        validateBranchLineNumber(lineNumberNode, lineNumber, definedLineNumbers, holder)
+        validateLineNumberExists(lineNumberNode, lineNumber, definedLineNumbers, holder)
     }
 
     private fun annotateOnGotoStatement(statement: TiBasicOnGotoStatement, holder: AnnotationHolder) {
@@ -301,7 +303,7 @@ class TiBasicAnnotator : Annotator {
             if (afterThen.size > 1) {
                 holder.error("Incorrect statement", statement)
             } else {
-                validateBranchLineNumber(thenLineNumberNode, thenLineNumber, definedLineNumbers, holder)
+                validateLineNumberExists(thenLineNumberNode, thenLineNumber, definedLineNumbers, holder)
             }
             return
         }
@@ -323,16 +325,11 @@ class TiBasicAnnotator : Annotator {
 
         val elseLineNumberNode = afterElse[0]
         val elseLineNumber = elseLineNumberNode.text.toLongOrNull()?.toInt()
-        validateBranchLineNumber(thenLineNumberNode, thenLineNumber, definedLineNumbers, holder)
-        validateBranchLineNumber(elseLineNumberNode, elseLineNumber, definedLineNumbers, holder)
+        validateLineNumberExists(thenLineNumberNode, thenLineNumber, definedLineNumbers, holder)
+        validateLineNumberExists(elseLineNumberNode, elseLineNumber, definedLineNumbers, holder)
     }
 
-    private fun validateBranchLineNumber(
-        lineNumberNode: ASTNode,
-        lineNumber: Int?,
-        definedLineNumbers: Set<Int>?,
-        holder: AnnotationHolder,
-    ) {
+    private fun validateLineNumberExists(lineNumberNode: ASTNode, lineNumber: Int?, definedLineNumbers: Set<Int>?, holder: AnnotationHolder) {
         if (lineNumber == null || lineNumber !in VALID_LINE_NUMBER_RANGE) {
             holder.error("Bad line number", lineNumberNode.textRange)
             return
@@ -378,24 +375,61 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateInvalidPrintArgument(statement: TiBasicPrintStatement, holder: AnnotationHolder) {
-        val validChildren = setOf(TiBasicTokenTypes.PRINT_KEYWORD, TokenType.WHITE_SPACE, TiBasicNodeTypes.EXPRESSION)
-        val expression = statement.firstChildOfType<TiBasicExpression>()
-        val isNumericExpr = expression != null && !isStringExpression(expression)
-        val isStringExpr = expression != null && isStringExpression(expression)
-        statement.node.allChildren
-            .filter { it.elementType !in validChildren }
-            .forEach { child ->
-                val message = when {
-                    child.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME -> "Bad variable name"
-                    isNumericExpr && child.elementType in STRING_MISMATCH_TYPES -> "String-number mismatch"
-                    isNumericExpr && child.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-                            child.firstChildType == TiBasicTokenTypes.STRING_VARIABLE -> "String-number mismatch"
-
-                    isStringExpr && child.elementType in NUMERIC_MISMATCH_TYPES -> "String-number mismatch"
-                    else -> "PRINT argument must be an expression"
+        var previousWasExpression = false
+        for (child in statement.node.allChildren) {
+            when (child.elementType) {
+                TiBasicNodeTypes.EXPRESSION -> {
+                    if (previousWasExpression) {
+                        holder.error("Separator expected between expressions", child.textRange)
+                    }
+                    previousWasExpression = true
                 }
-                holder.error(message, child.textRange)
+
+                TiBasicNodeTypes.TAB_FUNCTION -> {
+                    if (previousWasExpression) {
+                        holder.error("Separator expected between expressions", child.textRange)
+                    }
+                    previousWasExpression = true
+                }
+
+                in TiBasicTokenTypes.PRINT_SEPARATORS -> previousWasExpression = false
+
+                TokenType.WHITE_SPACE -> { /* whitespace does not break the chain */
+                }
+
+                TiBasicTokenTypes.PRINT_KEYWORD -> { /* skip */
+                }
+
+                else -> {
+                    previousWasExpression = false // invalid token breaks the consecutive-expression chain
+                    val expression = statement.firstChildOfType<TiBasicExpression>()
+                    val isNumericExpr = expression != null && !isStringExpression(expression)
+                    val isStringExpr = expression != null && isStringExpression(expression)
+                    val message = when {
+                        child.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME -> "Bad variable name"
+                        isNumericExpr && child.elementType in STRING_MISMATCH_TYPES -> "String-number mismatch"
+                        isNumericExpr && child.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
+                                child.firstChildType == TiBasicTokenTypes.STRING_VARIABLE -> "String-number mismatch"
+
+                        isStringExpr && child.elementType in NUMERIC_MISMATCH_TYPES -> "String-number mismatch"
+                        else -> "PRINT argument must be an expression"
+                    }
+                    holder.error(message, child.textRange)
+                }
             }
+        }
+    }
+
+    private fun annotateTabFunction(tabFunction: TiBasicTabFunction, holder: AnnotationHolder) {
+        val hasLParen = tabFunction.node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
+        if (!hasLParen) {
+            holder.error("TAB requires a numeric argument in parentheses", tabFunction)
+            return
+        }
+        val hasExpression = tabFunction.node.firstChildOfType(TiBasicNodeTypes.EXPRESSION) != null
+        if (!hasExpression) {
+            holder.error("TAB requires a numeric argument", tabFunction)
+        }
     }
 
     private fun annotateLineNumberListStatement(statement: TiBasicLineNumberListStatement, holder: AnnotationHolder) {

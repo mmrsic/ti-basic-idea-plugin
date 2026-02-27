@@ -53,6 +53,8 @@ class TiBasicUnknownStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicInvalidLine(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicTabFunction(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {

@@ -92,10 +92,43 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForInvalidSeparatorBetweenStringLiterals() {
-        configureFile("100 PRINT \"a\"<error descr=\"PRINT argument must be an expression\">;</error>" +
-                    "<error descr=\"PRINT argument must be an expression\">\"b\"</error>",
-        )
+    fun testNoErrorForSemicolonSeparatedStringLiterals() {
+        configureFile("100 PRINT \"a\";\"b\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForCommaSeparatedVariables() {
+        configureFile("100 PRINT A,B")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForColonSeparatedVariables() {
+        configureFile("100 PRINT X:Y")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForMixedSeparators() {
+        configureFile("100 PRINT \"X=\";X,\" Y=\";Y")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForLeadingSeparator() {
+        configureFile("100 PRINT ,\"RECHTS\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForTrailingSeparator() {
+        configureFile("100 PRINT \"HALLO\";")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForMultipleSeparatorsOnly() {
+        configureFile("100 PRINT :;,")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForTwoExpressionsWithoutSeparator() {
+        configureFile("100 PRINT \"a\" <error descr=\"Separator expected between expressions\">\"b\"</error>")
         myFixture.checkHighlighting(true, false, false)
     }
 
@@ -107,7 +140,7 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     fun testErrorForConcatWithNonStringRightOperand() {
         configureFile("100 PRINT \"a\" " +
                     "<error descr=\"PRINT argument must be an expression\">&</error> " +
-                    "<error descr=\"String-number mismatch\">42</error>",
+                    "42",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -128,8 +161,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForDigitAsFirstCharInVariableName() {
-        // 1 is a numeric literal, A$ is a string variable after numeric expr → String-number mismatch
-        configureFile("100 PRINT 1<error descr=\"String-number mismatch\">A$</error>",
+        // 1 is a numeric literal, A$ is a string variable after numeric expr → separator expected
+        configureFile("100 PRINT 1<error descr=\"Separator expected between expressions\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -310,8 +343,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForTokenStartingWithDigitNotNumericLiteral() {
-        // 1 is a numeric literal expression; A is a trailing token
-        configureFile("100 PRINT 1<error descr=\"PRINT argument must be an expression\">A</error>",
+        // 1 is a numeric literal expression; A is a second expression without separator
+        configureFile("100 PRINT 1<error descr=\"Separator expected between expressions\">A</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -668,19 +701,19 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testStringNumberMismatchStringVarAfterNumericExpression() {
-        configureFile("100 PRINT 1<error descr=\"String-number mismatch\">A$</error>",
+        configureFile("100 PRINT 1<error descr=\"Separator expected between expressions\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchConcatOpAfterNumericExpression() {
-        configureFile("100 PRINT A<error descr=\"String-number mismatch\">&</error><error descr=\"PRINT argument must be an expression\">B</error>",
+        configureFile("100 PRINT A<error descr=\"String-number mismatch\">&</error>B",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchNumericLiteralAfterStringExpression() {
-        configureFile("100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> <error descr=\"String-number mismatch\">42</error>",
+        configureFile("100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> 42",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -1345,6 +1378,51 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     fun testRestoreWithMultipleNumbersIsError() {
         configureFile("100 <error descr=\"Incorrect statement\">RESTORE 100 200</error>",
         )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoErrorForTabWithNumericLiteralArgument() {
+        configureFile("100 PRINT TAB(5);\"TEXT\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoErrorForTabAloneInPrint() {
+        configureFile("100 PRINT TAB(5)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoErrorForMultipleTabsWithSeparators() {
+        configureFile("100 PRINT TAB(5);\"A\";TAB(10);\"B\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoErrorForTabWithVariableArgument() {
+        configureFile("100 PRINT TAB(N)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForTabWithoutParentheses() {
+        configureFile("100 PRINT <error descr=\"TAB requires a numeric argument in parentheses\">TAB</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForTabWithEmptyParentheses() {
+        configureFile("100 PRINT <error descr=\"TAB requires a numeric argument\">TAB()</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForTabOutsidePrintInLetStatement() {
+        configureFile("100 LET X = <error descr=\"TAB is only valid in a PRINT statement\">TAB</error>(5)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoErrorForTabAfterSeparatorInPrint() {
+        configureFile("100 PRINT ;TAB(5);\"X\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForTwoTabsWithoutSeparator() {
+        configureFile("100 PRINT TAB(5)<error descr=\"Separator expected between expressions\">TAB(10)</error>")
         myFixture.checkHighlighting(true, false, true)
     }
 }

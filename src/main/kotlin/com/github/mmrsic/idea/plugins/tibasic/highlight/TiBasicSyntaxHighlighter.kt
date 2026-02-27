@@ -56,6 +56,7 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.READ_KEYWORD,
             TiBasicTokenTypes.DATA_KEYWORD,
             TiBasicTokenTypes.RESTORE_KEYWORD,
+            TiBasicTokenTypes.TAB_KEYWORD,
             TiBasicTokenTypes.TO_KEYWORD,
             TiBasicTokenTypes.STEP_KEYWORD -> arrayOf(KEYWORD)
 
@@ -76,7 +77,10 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.GT_OP,
             TiBasicTokenTypes.NEQ_OP,
             TiBasicTokenTypes.LE_OP,
-            TiBasicTokenTypes.GE_OP -> arrayOf(ARITH_OP)
+            TiBasicTokenTypes.GE_OP,
+            TiBasicTokenTypes.SEMICOLON,
+            TiBasicTokenTypes.COLON,
+            TiBasicTokenTypes.COMMA -> arrayOf(ARITH_OP)
 
             TiBasicTokenTypes.LPAREN,
             TiBasicTokenTypes.RPAREN -> arrayOf(PAREN)

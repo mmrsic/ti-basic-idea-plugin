@@ -1,10 +1,10 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DATA_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RESTORE_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COLON
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CONCAT_OP
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DATA_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DELETE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIV_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.ELSE_KEYWORD
@@ -16,10 +16,9 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOTO_KEYWO
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.IF_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INPUT_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.READ_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INVALID_VARIABLE_NAME
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LET_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LE_OP
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LET_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LINE_NUMBER
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LPAREN
@@ -35,7 +34,9 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.ON_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.PLUS_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.POW_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.PRINT_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.READ_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.REM_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RESTORE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RPAREN
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STEP_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STOP_KEYWORD
@@ -45,7 +46,6 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.THEN_KEYWO
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.TO_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.UNKNOWN_STATEMENT_TEXT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DATA_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RESTORE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DELETE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.END_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
@@ -53,7 +53,6 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FOR_STATEM
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.IF_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INPUT_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.READ_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LET_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
@@ -61,10 +60,14 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE_NUMBE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.NEXT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.PRINT_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.READ_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.REM_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RESTORE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.STOP_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.TAB_FUNCTION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.UNKNOWN_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.VARIABLE_ACCESS
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.TAB_KEYWORD
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -84,7 +87,10 @@ import com.intellij.psi.tree.IElementType
  *                           | gotoStatement | onGotoStatement | ifStatement
  *                           | forStatement | nextStatement
  *                           | deleteStatement | lineNumberListStatement | unknownStatement
- * printStatement          ::= PRINT_KEYWORD (WHITE_SPACE expression?)?
+ * printStatement          ::= PRINT_KEYWORD (WHITE_SPACE printArgList)?
+ * printArgList            ::= (printSep | WHITE_SPACE | tabFunction | expression)*
+ * tabFunction             ::= TAB_KEYWORD (LPAREN expression? RPAREN)?
+ * printSep                ::= COLON | SEMICOLON | COMMA
  * inputStatement          ::= INPUT_KEYWORD (WHITE_SPACE? stringExpr COLON)? WHITE_SPACE? variablesList
  * readStatement           ::= READ_KEYWORD WHITE_SPACE? variablesList
  * dataStatement           ::= DATA_KEYWORD WHITE_SPACE? dataList
@@ -395,13 +401,36 @@ class TiBasicParser : PsiParser, LightPsiParser {
 
     private fun parsePrintStatement(builder: PsiBuilder) {
         val stmtMarker = builder.mark()
-        if (builder.tokenType == PRINT_KEYWORD) builder.advanceLexer()
+        builder.advanceLexer() // consume PRINT_KEYWORD
         skipWhitespace(builder)
-        while (!isLineEnd(builder) && !isExpressionStart(builder)) builder.advanceLexer()
-        if (isExpressionStart(builder)) parseExpression(builder)
-        while (!isLineEnd(builder)) builder.advanceLexer()
+        while (!isLineEnd(builder)) {
+            when {
+                isPrintSeparator(builder) -> builder.advanceLexer()
+                builder.tokenType == TokenType.WHITE_SPACE -> builder.advanceLexer()
+                builder.tokenType == TAB_KEYWORD -> parseTabFunction(builder)
+                isExpressionStart(builder) -> parseExpression(builder)
+                else -> builder.advanceLexer() // unexpected token — consume to prevent infinite loop
+            }
+        }
         stmtMarker.done(PRINT_STATEMENT)
     }
+
+    private fun parseTabFunction(builder: PsiBuilder) {
+        val marker = builder.mark()
+        builder.advanceLexer() // consume TAB_KEYWORD
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == LPAREN) {
+            builder.advanceLexer() // consume (
+            skipIntraLineWhitespace(builder)
+            if (isExpressionStart(builder)) parseExpression(builder)
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == RPAREN) builder.advanceLexer()
+        }
+        marker.done(TAB_FUNCTION)
+    }
+
+    private fun isPrintSeparator(builder: PsiBuilder): Boolean =
+        builder.tokenType in TiBasicTokenTypes.PRINT_SEPARATORS
 
     private fun parseExpression(builder: PsiBuilder) {
         val exprMarker = builder.mark()

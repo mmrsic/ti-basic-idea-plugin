@@ -46,10 +46,14 @@ object TiBasicTokenTypes {
     val RPAREN = TiBasicElementType("RPAREN")
     val COMMA = TiBasicElementType("COMMA")
     val COLON = TiBasicElementType("COLON")
+    val SEMICOLON = TiBasicElementType("SEMICOLON")
+
+    val PRINT_SEPARATORS = setOf(COLON, SEMICOLON, COMMA)
     val INPUT_KEYWORD = TiBasicElementType("INPUT_KEYWORD")
     val READ_KEYWORD = TiBasicElementType("READ_KEYWORD")
     val DATA_KEYWORD = TiBasicElementType("DATA_KEYWORD")
     val RESTORE_KEYWORD = TiBasicElementType("RESTORE_KEYWORD")
+    val TAB_KEYWORD = TiBasicElementType("TAB_KEYWORD")
 }
 
 class TiBasicElementType(debugName: String) : IElementType(debugName, TiBasicLanguage)

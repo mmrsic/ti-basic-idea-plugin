@@ -44,6 +44,7 @@ object TiBasicKeywords {
             "REM",
             "STOP",
             "STEP",
+            "TAB",
             "THEN",
             "TO",
             "TRACE",

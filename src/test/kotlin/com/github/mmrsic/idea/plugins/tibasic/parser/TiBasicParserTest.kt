@@ -213,14 +213,56 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals("\"a\"", expressions[0].text)
     }
 
-    fun testPrintWithInvalidSeparatorCreatesPartialExpression() {
-        // "a";"b" – semicolon is not & → EXPRESSION for "a" only
+    fun testPrintWithSemicolonSeparatorCreatesTwoExpressions() {
         val file = parseCode("100 PRINT \"a\";\"b\"")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
         val expressions = stmt.children.filterIsInstance<TiBasicExpression>()
-        assertEquals(1, expressions.size)
+        assertEquals(2, expressions.size)
         assertEquals("\"a\"", expressions[0].text)
+        assertEquals("\"b\"", expressions[1].text)
+    }
+
+    fun testPrintWithCommaSeparatorCreatesTwoExpressions() {
+        val file = parseCode("100 PRINT A,B")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithColonSeparatorCreatesTwoExpressions() {
+        val file = parseCode("100 PRINT X:Y")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithMixedSeparatorsCreatesThreeExpressions() {
+        val file = parseCode("100 PRINT \"X=\";X,\" Y=\";Y")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(4, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithLeadingSeparatorCreatesOneExpression() {
+        val file = parseCode("100 PRINT ,\"RECHTS\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithTrailingSeparatorCreatesOneExpression() {
+        val file = parseCode("100 PRINT \"HALLO\";")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testPrintWithOnlySeparatorsCreatesNoExpression() {
+        val file = parseCode("100 PRINT :;,")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(0, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
     fun testPrintWithEmptyStringLiteralCreatesExpression() {
@@ -371,12 +413,12 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
-    fun testStringVariableWithDigitAsFirstCharIsNotExpression() {
-        // 1 is a numeric literal, A$ is a string variable — two separate tokens
+    fun testStringVariableWithDigitAsFirstCharCreatesTwoExpressions() {
+        // 1 is a numeric literal, A$ is a string variable — two separate expressions without separator
         val file = parseCode("100 PRINT 1A$")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
-        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
     fun testStringVariableWithLowercaseInMiddleCreatesExpression() {
@@ -393,12 +435,12 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
-    fun testStringVariableWithBracketInMiddleIsNotExpression() {
-        // A is a numeric var; [ starts a new identifier [$; two separate tokens → 1 expr with remainder
+    fun testStringVariableWithBracketInMiddleCreatesTwoExpressions() {
+        // A is a numeric var; [$ is a string variable — two separate expressions without separator
         val file = parseCode("100 PRINT A[$")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
-        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
     fun testStringVariableOneDimensionalArrayCreatesExpression() {
@@ -532,12 +574,13 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
-    fun testNumericLiteralDoesNotConcatenateWithString() {
+    fun testNumericLiteralAndStringLiteralWithInvalidOpCreateTwoExpressions() {
+        // 42 & "hello": & is invalid (not a separator), "hello" becomes a second expression
         val file = parseCode("100 PRINT 42 & \"hello\"")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
         val exprs = stmt.children.filterIsInstance<TiBasicExpression>()
-        assertEquals(1, exprs.size)
+        assertEquals(2, exprs.size)
         assertEquals("42", exprs[0].text)
     }
 
@@ -610,12 +653,12 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals("A$", exprs[0].text)
     }
 
-    fun testNumericVariableStartingWithDigitIsNotExpression() {
-        // 1 is a numeric literal, A is a separate numeric variable — expression created for literal
+    fun testNumericVariableStartingWithDigitCreatesTwoExpressions() {
+        // 1 is a numeric literal, A is a separate numeric variable — two expressions without separator
         val file = parseCode("100 PRINT 1A")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
-        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
     fun testNumericVariableWithHyphenIsNowSubtraction() {
@@ -626,12 +669,13 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
-    fun testNumericVariableDoesNotConcatenateWithString() {
+    fun testNumericVariableAndStringLiteralWithInvalidOpCreateTwoExpressions() {
+        // A & "hello": & is invalid (not a separator), "hello" becomes a second expression
         val file = parseCode("100 PRINT A & \"hello\"")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
         val exprs = stmt.children.filterIsInstance<TiBasicExpression>()
-        assertEquals(1, exprs.size)
+        assertEquals(2, exprs.size)
         assertEquals("A", exprs[0].text)
     }
 
@@ -882,15 +926,16 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
     }
 
-    fun testParenthesizedStringConcatComparedToStringLiteralCreatesExpression() {
-        // (A4&B4) – A4 and B4 are numeric variables; & stops the numeric parse inside the paren,
-        // so the parser produces one expression covering "(A4" and consumes the rest as invalid tokens.
+    fun testParenthesizedNumericVarConcatBreaksIntoMultipleExpressions() {
+        // (A4&B4)="HI!": A4 and B4 are numeric variables; & stops the numeric parse inside the paren,
+        // producing three separate expressions: "(A4", "B4", and "\"HI!\""
         val file = parseCode("100 PRINT (A4&B4)=\"HI!\"")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
             .children.filterIsInstance<TiBasicPrintStatement>()[0]
-        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
-        val expr = stmt.children.filterIsInstance<TiBasicExpression>()[0]
-        assertEquals("(A4", expr.text)
+        assertEquals(3, stmt.children.filterIsInstance<TiBasicExpression>().size)
+        val exprs = stmt.children.filterIsInstance<TiBasicExpression>()
+        assertEquals("(A4", exprs[0].text)
+        assertEquals("B4", exprs[1].text)
     }
 
     fun testParenthesizedStringVarConcatComparedToStringLiteralCreatesExpression() {
@@ -1460,6 +1505,50 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         val lines = file.children.filterIsInstance<TiBasicLine>()
         assertEquals(1, lines.size)
         assertEquals(1, lines[0].children.filterIsInstance<TiBasicRestoreStatement>().size)
+    }
+
+    fun testPrintWithTabFunctionCreatesTabFunction() {
+        val file = parseCode("100 PRINT TAB(5);\"TEXT\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicTabFunction>().size)
+    }
+
+    fun testPrintWithTabFunctionAloneIsValid() {
+        val file = parseCode("100 PRINT TAB(5)")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicTabFunction>().size)
+    }
+
+    fun testPrintWithMultipleTabFunctionsCreatesMultipleTabFunctions() {
+        val file = parseCode("100 PRINT TAB(5);\"A\";TAB(10);\"B\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicTabFunction>().size)
+    }
+
+    fun testTabFunctionContainsExpression() {
+        val file = parseCode("100 PRINT TAB(5)")
+        val tab = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+            .children.filterIsInstance<TiBasicTabFunction>()[0]
+        assertEquals(1, tab.children.filterIsInstance<TiBasicExpression>().size)
+        assertEquals("5", tab.children.filterIsInstance<TiBasicExpression>()[0].text)
+    }
+
+    fun testTabWithVariableExpressionCreatesTabFunction() {
+        val file = parseCode("100 PRINT TAB(N)")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicTabFunction>().size)
+    }
+
+    fun testTabWithoutParenthesesInPrintCreatesTabFunction() {
+        val file = parseCode("100 PRINT TAB")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicTabFunction>().size)
     }
 
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile

@@ -51,7 +51,14 @@ statement         = printStatement
                   | lineNumberListStatement
                   | unknownStatement ;
 
-printStatement          = PRINT     [ whitespace ] [ expression ] ;
+printStatement          = PRINT     [ whitespace ] [ printArgList ] ;
+printArgList            = { printItem } ;
+printItem               = printSep | tabFunction | expression ;
+                          (* expressions must be separated by at least one separator;
+                             separators may appear any number of times before, between, and after expressions;
+                             tabFunction may appear in any position where an expression is allowed *)
+printSep                = COLON | SEMICOLON | COMMA ;
+tabFunction             = TAB LPAREN numericExpression RPAREN ;
 inputStatement          = INPUT     [ whitespace ] [ stringExpression whitespace? COLON whitespace? ] variablesList ;
                           (* prompt is optional; if present it must be a string expression followed by a colon *)
 readStatement           = READ      [ whitespace ] variablesList ;
@@ -136,6 +143,7 @@ Recognised as statement-starting keywords (case-insensitive):
 |----------------------------------------|-----------------------------------------------|
 | `LET`                                  | Variable assignment                           |
 | `PRINT`                                | Print expression                              |
+| `TAB`                                  | Column-positioning function (PRINT only)      |
 | `INPUT`                                | Keyboard input (with optional string prompt)  |
 | `READ`                                 | Read values from DATA into variables          |
 | `DATA`                                 | Supply data values for READ statements        |
@@ -173,8 +181,9 @@ These identifiers are recognized by the annotator and produce a specific error:
 | `GT_OP`     | `>`    |
 | `LE_OP`     | `<=`   |
 | `GE_OP`     | `>=`   |
-
-| `COLON`           | `:`    |
+| `COLON`     | `:`    |
+| `SEMICOLON` | `;`    |
+| `COMMA`     | `,`    |
 
 ### Variables
 
@@ -197,6 +206,14 @@ These identifiers are recognized by the annotator and produce a specific error:
 100 PRINT "HELLO"              ✓ valid
 110 PRINT A + B * 2            ✓ valid — numeric expression
 120 PRINT A$ & " WORLD"        ✓ valid — string concatenation
+125 PRINT "X=";X," Y=";Y       ✓ valid — mixed separators: semicolon and comma
+126 PRINT TAB(5);"TEXT"         ✓ valid — position cursor at column 5, then print
+127 PRINT TAB(N);"TEXT"         ✓ valid — TAB argument may be any numeric expression
+128 PRINT TAB(5)                ✓ valid — TAB without following output
+129 PRINT TAB(5);"A";TAB(10);"B" ✓ valid — multiple TAB calls in one PRINT
+127 PRINT :;,                  ✓ valid — separators without expressions
+128 PRINT ,"RIGHT ZONE"        ✓ valid — leading comma jumps to right screen zone
+129 PRINT "CONT";              ✓ valid — trailing semicolon, cursor stays on same line
 130 PRINT A(1,2)               ✓ valid — 2-D array subscript
 140 REM this is a remark       ✓ valid
 150 DELETE A$                  ✓ valid
@@ -232,6 +249,9 @@ These identifiers are recognized by the annotator and produce a specific error:
 500 RESTORE 100 200             ✗ error — only one line number allowed
 510 RUN                         ✗ error — command used as statement
 520 PRINT A$ + 1                ✗ error — String-Number-Mismatch
+525 PRINT TAB                   ✗ error — TAB requires a numeric argument in parentheses
+526 PRINT TAB()                 ✗ error — TAB requires a numeric argument
+527 LET X = TAB(5)              ✗ error — TAB is only valid in a PRINT statement
 530 LET A = "hello"             ✗ error — String-number mismatch (numeric variable, string expression)
 540 LET A$ = 5                  ✗ error — String-number mismatch (string variable, numeric expression)
 550 LET A = 5 EXTRA             ✗ error — Incorrect statement (trailing tokens after LET expression)
@@ -253,5 +273,10 @@ PRINT "no number"               ✗ error — line number expected
   are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
 - `FOR`/`NEXT` are implemented. The annotator checks FOR-NEXT balance by count (total in file);
   it does **not** check that the control variable in `NEXT` matches the preceding `FOR` variable.
+- `TAB(n)` is a column-positioning function valid **only** inside `PRINT` statements.
+  The argument is a numeric expression in the range −32767..32767; float values are rounded to an integer.
+  The effective column is computed as `n mod width` (1-based), where `width` = 28 for screen output and
+  32 for printer/file output. If the cursor is already at or past the target column, it advances to the
+  next line before moving to the column.
 - String literals use `""` to embed a literal double-quote character.
 - Scientific notation exponents may use `E` or `e` with an optional sign: `1.5E-3`, `2e+10`.
