@@ -26,32 +26,25 @@ private fun formattedLine(line: TiBasicLine): String {
     val statementText = statement.text.trim()
 
     val firstTokenType = statement.node.firstChildNode?.elementType
-    if (firstTokenType == TiBasicTokenTypes.GOTO_KEYWORD) {
-        return formattedGotoLine(line.lineNumber(), statement.node.firstChildNode!!.text, statementText)
-    }
-    if (firstTokenType == TiBasicTokenTypes.ON_KEYWORD) {
-        return formattedOnGotoLine(line.lineNumber(), statement as TiBasicOnGotoStatement)
-    }
-    if (firstTokenType == TiBasicTokenTypes.IF_KEYWORD) {
-        return formattedIfLine(line.lineNumber(), statement as TiBasicIfStatement)
-    }
-    if (firstTokenType == TiBasicTokenTypes.FOR_KEYWORD) {
-        return formattedForLine(line.lineNumber(), statement as TiBasicForStatement)
-    }
-    if (firstTokenType == TiBasicTokenTypes.NEXT_KEYWORD) {
-        return formattedNextLine(line.lineNumber(), statement as TiBasicNextStatement)
-    }
-    if (firstTokenType == TiBasicTokenTypes.INPUT_KEYWORD) {
-        return formattedInputLine(line.lineNumber(), statement as TiBasicInputStatement)
-    }
-    if (firstTokenType == TiBasicTokenTypes.READ_KEYWORD) {
-        return formattedReadLine(line.lineNumber(), statement as TiBasicReadStatement)
-    }
-    if (firstTokenType == TiBasicTokenTypes.DATA_KEYWORD) {
-        return formattedDataLine(line.lineNumber(), statement as TiBasicDataStatement)
-    }
-    if (firstTokenType == TiBasicTokenTypes.RESTORE_KEYWORD) {
-        return formattedRestoreLine(line.lineNumber(), statement as TiBasicRestoreStatement)
+    when (firstTokenType) {
+        TiBasicTokenTypes.GOTO_KEYWORD ->
+            return formattedGotoLine(line.lineNumber(), statement.node.firstChildNode!!.text, statementText)
+        TiBasicTokenTypes.ON_KEYWORD ->
+            return formattedOnGotoLine(line.lineNumber(), statement as TiBasicOnGotoStatement)
+        TiBasicTokenTypes.IF_KEYWORD ->
+            return formattedIfLine(line.lineNumber(), statement as TiBasicIfStatement)
+        TiBasicTokenTypes.FOR_KEYWORD ->
+            return formattedForLine(line.lineNumber(), statement as TiBasicForStatement)
+        TiBasicTokenTypes.NEXT_KEYWORD ->
+            return formattedNextLine(line.lineNumber(), statement as TiBasicNextStatement)
+        TiBasicTokenTypes.INPUT_KEYWORD ->
+            return formattedInputLine(line.lineNumber(), statement as TiBasicInputStatement)
+        TiBasicTokenTypes.READ_KEYWORD ->
+            return formattedReadLine(line.lineNumber(), statement as TiBasicReadStatement)
+        TiBasicTokenTypes.DATA_KEYWORD ->
+            return formattedDataLine(line.lineNumber(), statement as TiBasicDataStatement)
+        TiBasicTokenTypes.RESTORE_KEYWORD ->
+            return formattedRestoreLine(line.lineNumber(), statement as TiBasicRestoreStatement)
     }
 
     val keywordMatch = TiBasicKeywords.getKeywords()

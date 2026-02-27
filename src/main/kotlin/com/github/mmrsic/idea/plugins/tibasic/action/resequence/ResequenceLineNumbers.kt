@@ -39,10 +39,6 @@ private fun collectLineNumberTargetReplacements(
     replacements: MutableList<Replacement>,
 ) {
     when (element) {
-        is TiBasicGotoStatement ->
-            element.node.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
-                .forEach { replaceIfMapped(it, oldToNew, replacements) }
-
         is TiBasicOnGotoStatement ->
             element.node.childrenAfter(TiBasicTokenTypes.GOTO_KEYWORD)
                 .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
@@ -53,7 +49,9 @@ private fun collectLineNumberTargetReplacements(
                 .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
                 .forEach { replaceIfMapped(it, oldToNew, replacements) }
 
-        is TiBasicLineNumberListStatement ->
+        is TiBasicLineNumberListStatement,
+        is TiBasicGotoStatement,
+        is TiBasicRestoreStatement ->
             element.node.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
                 .forEach { replaceIfMapped(it, oldToNew, replacements) }
     }

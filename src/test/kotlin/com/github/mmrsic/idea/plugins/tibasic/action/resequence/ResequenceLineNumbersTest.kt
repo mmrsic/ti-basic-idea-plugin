@@ -81,4 +81,22 @@ class ResequenceLineNumbersTest : TiBasicTestBase() {
         val result = resequencedText(file)
         assertEquals("100 GOTO 999\n110 PRINT \"OK\"", result)
     }
+
+    fun testResequenceUpdatesRestoreTarget() {
+        val file = configureFile("100 DATA 1,2\n200 RESTORE 100\n300 END")
+        val result = resequencedText(file)
+        assertEquals("100 DATA 1,2\n110 RESTORE 100\n120 END", result)
+    }
+
+    fun testResequenceUpdatesRestoreTargetWhenLineNumberChanges() {
+        val file = configureFile("10 DATA 1,2\n20 RESTORE 10\n30 END")
+        val result = resequencedText(file)
+        assertEquals("100 DATA 1,2\n110 RESTORE 100\n120 END", result)
+    }
+
+    fun testResequenceRestoreWithoutLineNumberIsUnchanged() {
+        val file = configureFile("100 DATA 1,2\n200 RESTORE\n300 END")
+        val result = resequencedText(file)
+        assertEquals("100 DATA 1,2\n110 RESTORE\n120 END", result)
+    }
 }

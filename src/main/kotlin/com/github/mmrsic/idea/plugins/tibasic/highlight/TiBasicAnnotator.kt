@@ -60,7 +60,6 @@ class TiBasicAnnotator : Annotator {
 
     private fun annotateInputStatement(statement: TiBasicInputStatement, holder: AnnotationHolder) {
         val children = statement.node.nonWhitespaceChildren
-        val varAccessNodes = children.filter { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
         val colonNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.COLON }
         val expressionNode = children.firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
 
@@ -71,28 +70,26 @@ class TiBasicAnnotator : Annotator {
             }
         }
 
-        val expectedVarCount = if (colonNode != null) varAccessNodes.size else varAccessNodes.size
-        if (expectedVarCount == 0) {
-            holder.error("Incorrect statement", statement)
-            return
-        }
-
-        varAccessNodes.forEach { varNode ->
-            if (varNode.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
-                holder.error("Bad variable name", varNode.textRange)
-            }
-        }
+        annotateVariableList(
+            children.filter { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS },
+            statement,
+            holder,
+        )
     }
 
     private fun annotateReadStatement(statement: TiBasicReadStatement, holder: AnnotationHolder) {
-        val varAccessNodes = statement.node.nonWhitespaceChildren
-            .filter { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
+        annotateVariableList(
+            statement.node.nonWhitespaceChildren.filter { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS },
+            statement,
+            holder,
+        )
+    }
 
+    private fun annotateVariableList(varAccessNodes: List<ASTNode>, statement: PsiElement, holder: AnnotationHolder) {
         if (varAccessNodes.isEmpty()) {
             holder.error("Incorrect statement", statement)
             return
         }
-
         varAccessNodes.forEach { varNode ->
             if (varNode.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
                 holder.error("Bad variable name", varNode.textRange)

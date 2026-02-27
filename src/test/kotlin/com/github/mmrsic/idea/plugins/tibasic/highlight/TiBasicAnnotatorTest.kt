@@ -1,131 +1,111 @@
 package com.github.mmrsic.idea.plugins.tibasic.highlight
 
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
 
-class TiBasicAnnotatorTest : BasePlatformTestCase() {
+class TiBasicAnnotatorTest : TiBasicTestBase() {
 
     fun testNoWarningForAscendingLineNumbers() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\n200 PRINT \"B\"\n300 PRINT \"C\"")
+        configureFile("100 PRINT \"A\"\n200 PRINT \"B\"\n300 PRINT \"C\"")
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testWarningForEqualLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
+        configureFile("100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForDescendingLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "200 PRINT \"A\"\n<warning descr=\"Line number 100 does not follow ascending order (previous: 200)\">100 PRINT \"B\"</warning>"
+        configureFile("200 PRINT \"A\"\n<warning descr=\"Line number 100 does not follow ascending order (previous: 200)\">100 PRINT \"B\"</warning>"
         )
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testWarningOnlyForNonAscendingLineInSequence() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT \"A\"\n200 PRINT \"B\"\n<warning descr=\"Line number 150 does not follow ascending order (previous: 200)\">150 PRINT \"C\"</warning>"
+        configureFile("100 PRINT \"A\"\n200 PRINT \"B\"\n<warning descr=\"Line number 150 does not follow ascending order (previous: 200)\">150 PRINT \"C\"</warning>"
         )
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testNoWarningForSingleLine() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"")
+        configureFile("100 PRINT \"A\"")
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testErrorForDuplicateLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
+        configureFile("100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testErrorForTriplicateLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>\n<error descr=\"Duplicate line number 100\">100 PRINT \"C\"</error>"
+        configureFile("100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>\n<error descr=\"Duplicate line number 100\">100 PRINT \"C\"</error>"
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorAndWarningForDuplicateNonAscendingLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "200 PRINT \"A\"\n<error descr=\"Duplicate line number 200\">200 PRINT \"B\"</error>"
+        configureFile("200 PRINT \"A\"\n<error descr=\"Duplicate line number 200\">200 PRINT \"B\"</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testNoErrorForStringLiteralPrintArgument() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"hello\"")
+        configureFile("100 PRINT \"hello\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStringWithEscapedQuote() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"say \"\"hi\"\"\"")
+        configureFile("100 PRINT \"say \"\"hi\"\"\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForEmptyStringLiteral() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"\"")
+        configureFile("100 PRINT \"\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForPrintWithoutArgument() {
-        myFixture.configureByText("test.tibasic", "100 PRINT")
+        configureFile("100 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForConcatenationOfTwoStringLiterals() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"hello\" & \"world\"")
+        configureFile("100 PRINT \"hello\" & \"world\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForConcatenationOfThreeStringLiterals() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"a\" & \"b\" & \"c\"")
+        configureFile("100 PRINT \"a\" & \"b\" & \"c\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForTrailingConcatOpWithNoRightOperand() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT \"a\" <error descr=\"PRINT argument must be an expression\">&</error>",
+        configureFile("100 PRINT \"a\" <error descr=\"PRINT argument must be an expression\">&</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForLeadingConcatOpWithNoLeftOperand() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"PRINT argument must be an expression\">&</error> \"b\"",
+        configureFile("100 PRINT <error descr=\"PRINT argument must be an expression\">&</error> \"b\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForInvalidSeparatorBetweenStringLiterals() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT \"a\"<error descr=\"PRINT argument must be an expression\">;</error>" +
+        configureFile("100 PRINT \"a\"<error descr=\"PRINT argument must be an expression\">;</error>" +
                     "<error descr=\"PRINT argument must be an expression\">\"b\"</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericLiteralPrintArgument() {
-        myFixture.configureByText("test.tibasic", "100 PRINT 42")
+        configureFile("100 PRINT 42")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForConcatWithNonStringRightOperand() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT \"a\" " +
+        configureFile("100 PRINT \"a\" " +
                     "<error descr=\"PRINT argument must be an expression\">&</error> " +
                     "<error descr=\"String-number mismatch\">42</error>",
         )
@@ -133,90 +113,76 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     }
 
     fun testNoErrorForStringVariable() {
-        myFixture.configureByText("test.tibasic", "100 PRINT Y$")
+        configureFile("100 PRINT Y$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStringVariableArray() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A$(1)")
+        configureFile("100 PRINT A$(1)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStringVariableWithSpacesAroundSubscript() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A$ ( 1 , 2 )")
+        configureFile("100 PRINT A$ ( 1 , 2 )")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForDigitAsFirstCharInVariableName() {
         // 1 is a numeric literal, A$ is a string variable after numeric expr → String-number mismatch
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT 1<error descr=\"String-number mismatch\">A$</error>",
+        configureFile("100 PRINT 1<error descr=\"String-number mismatch\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForTooLongVariableName() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Bad variable name\">TOOLONGVARIABLE$</error>",
+        configureFile("100 PRINT <error descr=\"Bad variable name\">TOOLONGVARIABLE$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForFourDimensionalSubscript() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Bad subscript definition\">A$(1,2,3,4)</error>",
+        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A$(1,2,3,4)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForEmptySubscript() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Bad subscript definition\">A$()</error>",
+        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A$()</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoConflictForSameSimpleVariableUsedTwice() {
-        myFixture.configureByText("test.tibasic", "100 PRINT Y$\n200 PRINT Y$")
+        configureFile("100 PRINT Y$\n200 PRINT Y$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoConflictForSameArrayUsedTwice() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A$(1)\n200 PRINT A$(2)")
+        configureFile("100 PRINT A$(1)\n200 PRINT A$(2)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoConflictForSameTwoDimensionalArrayUsedTwice() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A$(1,2)\n200 PRINT A$(3,4)")
+        configureFile("100 PRINT A$(1,2)\n200 PRINT A$(3,4)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testConflictBetweenSimpleVariableAndArray() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
+        configureFile("100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A$(1)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testConflictBetweenArraysWithDifferentDimensions() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Name conflict\">A$(1)</error>\n" +
+        configureFile("100 PRINT <error descr=\"Name conflict\">A$(1)</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A$(1,2)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testConflictAnnotatedOnAllThreeOccurrences() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
+        configureFile("100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A$(1)</error>\n" +
                     "300 PRINT <error descr=\"Name conflict\">A$</error>",
         )
@@ -224,235 +190,209 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     }
 
     fun testNoConflictBetweenDifferentVariableNames() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A$\n200 PRINT B$(1)")
+        configureFile("100 PRINT A$\n200 PRINT B$(1)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForLineNumberOne() {
-        myFixture.configureByText("test.tibasic", "1 PRINT")
+        configureFile("1 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForLineNumberMax() {
-        myFixture.configureByText("test.tibasic", "32767 PRINT")
+        configureFile("32767 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForLineNumberWithLeadingZeros() {
-        myFixture.configureByText("test.tibasic", "0100 PRINT")
+        configureFile("0100 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForLineNumberWithManyLeadingZeros() {
-        myFixture.configureByText("test.tibasic", "000000100 PRINT")
+        configureFile("000000100 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForLineNumberZero() {
-        myFixture.configureByText("test.tibasic", "<error descr=\"Bad line number\">000</error> PRINT")
+        configureFile("<error descr=\"Bad line number\">000</error> PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForLineNumberAboveMax() {
-        myFixture.configureByText("test.tibasic", "<error descr=\"Bad line number\">32768</error> PRINT")
+        configureFile("<error descr=\"Bad line number\">32768</error> PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForVeryLargeLineNumber() {
-        myFixture.configureByText("test.tibasic", "<error descr=\"Bad line number\">99999</error> PRINT")
+        configureFile("<error descr=\"Bad line number\">99999</error> PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testBadLineNumberDoesNotTriggerDuplicateError() {
         // Two lines with out-of-range numbers should not be flagged as duplicates of each other
-        myFixture.configureByText(
-            "test.tibasic",
-            "<error descr=\"Bad line number\">32768</error> PRINT\n" +
+        configureFile("<error descr=\"Bad line number\">32768</error> PRINT\n" +
                     "<error descr=\"Bad line number\">32769</error> PRINT",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithValidLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">CALL CLEAR</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">CALL CLEAR</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLeadingZerosLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "0100 <error descr=\"Incorrect statement\">CALL CLEAR</error>",
+        configureFile("0100 <error descr=\"Incorrect statement\">CALL CLEAR</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLineNumberAboveMax() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "<error descr=\"Bad line number\">32768</error> <error descr=\"Incorrect statement\">CALL CLEAR</error>",
+        configureFile("<error descr=\"Bad line number\">32768</error> <error descr=\"Incorrect statement\">CALL CLEAR</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLineNumberZero() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "<error descr=\"Bad line number\">0</error> <error descr=\"Incorrect statement\">CALL CLEAR</error>",
+        configureFile("<error descr=\"Bad line number\">0</error> <error descr=\"Incorrect statement\">CALL CLEAR</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForLineWithNoLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "<error descr=\"Line number expected\">this is not valid</error>",
+        configureFile("<error descr=\"Line number expected\">this is not valid</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForLineWithLeadingWhitespaceAndNoLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "<error descr=\"Line number expected\">   NOT A LINE</error>",
+        configureFile("<error descr=\"Line number expected\">   NOT A LINE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForRemWithoutText() {
-        myFixture.configureByText("test.tibasic", "100 REM")
+        configureFile("100 REM")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForRemWithText() {
-        myFixture.configureByText("test.tibasic", "100 REM This is a comment")
+        configureFile("100 REM This is a comment")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForLineNumberOnly() {
-        myFixture.configureByText("test.tibasic", "100")
+        configureFile("100")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableInPrint() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A")
+        configureFile("100 PRINT A")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableWithMixedCase() {
-        myFixture.configureByText("test.tibasic", "100 PRINT myVar")
+        configureFile("100 PRINT myVar")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableWithDigitsAndSpecialFirstChars() {
-        myFixture.configureByText("test.tibasic", "100 PRINT _A1@B")
+        configureFile("100 PRINT _A1@B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableWithHyphen() {
         // A-B is valid subtraction
-        myFixture.configureByText("test.tibasic", "100 PRINT A-B")
+        configureFile("100 PRINT A-B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForTokenStartingWithDigitNotNumericLiteral() {
         // 1 is a numeric literal expression; A is a trailing token
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT 1<error descr=\"PRINT argument must be an expression\">A</error>",
+        configureFile("100 PRINT 1<error descr=\"PRINT argument must be an expression\">A</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDollarSignOnlyInStringVariable() {
         // A$ is a valid string variable ($ only at end)
-        myFixture.configureByText("test.tibasic", "100 PRINT A$")
+        configureFile("100 PRINT A$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableWithValidSubscript1D() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A(1)")
+        configureFile("100 PRINT A(1)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableWithValidSubscript2D() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A(1,2)")
+        configureFile("100 PRINT A(1,2)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableWithValidSubscript3D() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A(1,2,3)")
+        configureFile("100 PRINT A(1,2,3)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableWithSpacesAroundSubscript() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A ( 1 , 2 )")
+        configureFile("100 PRINT A ( 1 , 2 )")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableWithTooManySubscripts() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Bad subscript definition\">A(1,2,3,4)</error>",
+        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A(1,2,3,4)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableWithEmptySubscript() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Bad subscript definition\">A()</error>",
+        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A()</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableTooLong() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Bad variable name\">ABCDEFGHIJKLMNOP</error>",
+        configureFile("100 PRINT <error descr=\"Bad variable name\">ABCDEFGHIJKLMNOP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForNumericVariableExactly15Chars() {
-        myFixture.configureByText("test.tibasic", "100 PRINT ABCDEFGHIJKLMNO")
+        configureFile("100 PRINT ABCDEFGHIJKLMNO")
         myFixture.checkHighlighting(true, false, false)
     }
 
     // --- Numeric variable name conflict tests ---
 
     fun testNameConflictSimpleNumericAndArraySameName() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Name conflict\">A</error>\n" +
+        configureFile("100 PRINT <error descr=\"Name conflict\">A</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A(1)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNameConflictTwoNumericArraysDifferentDims() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Name conflict\">A(1)</error>\n" +
+        configureFile("100 PRINT <error descr=\"Name conflict\">A(1)</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A(1,2)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoNameConflictTwoNumericSimpleVarsWithSameName() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A\n200 PRINT A")
+        configureFile("100 PRINT A\n200 PRINT A")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoNameConflictTwoNumericArraysSameDimCount() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A(1)\n200 PRINT A(2)")
+        configureFile("100 PRINT A(1)\n200 PRINT A(2)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoNameConflictNumericAndStringVarSameName() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A\n200 PRINT A$")
+        configureFile("100 PRINT A\n200 PRINT A$")
         myFixture.checkHighlighting(true, false, false)
     }
 
@@ -461,263 +401,203 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     // --- Command-as-statement tests ---
 
     fun testErrorForCommandByeUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">BYE</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">BYE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandListUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">LIST</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">LIST</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandNewUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">NEW</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">NEW</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandRunUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">RUN</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">RUN</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandNumberUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">NUMBER</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">NUMBER</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandNumUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">NUM</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">NUM</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandCaseInsensitiveUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">bye</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">bye</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForPrintUsedAsStatement() {
-        myFixture.configureByText("test.tibasic", "100 PRINT")
+        configureFile("100 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     // --- Keyword conflict tests ---
 
     fun testErrorForNumericVariableMatchingKeyword() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT</error>",
+        configureFile("100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStringVariableWithSameNameAsKeywordButDifferentSuffix() {
-        myFixture.configureByText("test.tibasic", "100 PRINT PRINT$")
+        configureFile("100 PRINT PRINT$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordCaseInsensitive() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">print</error>",
+        configureFile("100 PRINT <error descr=\"Keyword cannot be used as variable name\">print</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForVariableWithKeywordAsPrefix() {
-        myFixture.configureByText("test.tibasic", "100 PRINT PRINTER")
+        configureFile("100 PRINT PRINTER")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForVariableWithKeywordAsSuffix() {
-        myFixture.configureByText("test.tibasic", "100 PRINT APRINT")
+        configureFile("100 PRINT APRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericArrayMatchingKeyword() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT(1)</error>",
+        configureFile("100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT(1)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordNew() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">NEW</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">NEW</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordList() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">LIST</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">LIST</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordRun() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">RUN</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">RUN</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordBye() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">BYE</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">BYE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">NUMBER</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">NUMBER</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandNum() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">NUM</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">NUM</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandRes() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">RES</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">RES</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandResequence() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">RESEQUENCE</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">RESEQUENCE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandCon() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">CON</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">CON</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandContinue() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">CONTINUE</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">CONTINUE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandEdit() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">EDIT</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">EDIT</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandSave() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">SAVE</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">SAVE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandOld() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT <error descr=\"Command must not be used as variable name\">OLD</error>",
+        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">OLD</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandResUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">RES</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">RES</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandResequenceUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">RESEQUENCE</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">RESEQUENCE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandConUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">CON</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">CON</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandContinueUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">CONTINUE</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">CONTINUE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandEditUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">EDIT</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">EDIT</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandSaveUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">SAVE</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">SAVE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandOldUsedAsStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Command must not be used as statement\">OLD</error>",
+        configureFile("100 <error descr=\"Command must not be used as statement\">OLD</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -725,728 +605,620 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     // --- Arithmetic operator tests ---
 
     fun testNoErrorForAddition() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A+B")
+        configureFile("100 PRINT A+B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForSubtraction() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A-B")
+        configureFile("100 PRINT A-B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForMultiplication() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A*B")
+        configureFile("100 PRINT A*B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDivision() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A/B")
+        configureFile("100 PRINT A/B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForPower() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A^B")
+        configureFile("100 PRINT A^B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForUnaryMinus() {
-        myFixture.configureByText("test.tibasic", "100 PRINT -A")
+        configureFile("100 PRINT -A")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForMultipleUnaryPrefixes() {
-        myFixture.configureByText("test.tibasic", "100 PRINT +-+-1")
+        configureFile("100 PRINT +-+-1")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForParenthesizedExpression() {
-        myFixture.configureByText("test.tibasic", "100 PRINT (A+B)")
+        configureFile("100 PRINT (A+B)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForComplexArithmeticExpression() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A+B*C-D/E^F")
+        configureFile("100 PRINT A+B*C-D/E^F")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForSubscriptWithExpression() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A(B+1)")
+        configureFile("100 PRINT A(B+1)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     // --- String-number mismatch tests ---
 
     fun testStringNumberMismatchNumericVarInNumericExpressionIsNotMismatch() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A+B")
+        configureFile("100 PRINT A+B")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchStringLiteralInNumericExpression() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT A+<error descr=\"String-number mismatch\">\"hello\"</error>",
+        configureFile("100 PRINT A+<error descr=\"String-number mismatch\">\"hello\"</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchStringVarAfterNumericExpression() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT 1<error descr=\"String-number mismatch\">A$</error>",
+        configureFile("100 PRINT 1<error descr=\"String-number mismatch\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchConcatOpAfterNumericExpression() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT A<error descr=\"String-number mismatch\">&</error><error descr=\"PRINT argument must be an expression\">B</error>",
+        configureFile("100 PRINT A<error descr=\"String-number mismatch\">&</error><error descr=\"PRINT argument must be an expression\">B</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchNumericLiteralAfterStringExpression() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> <error descr=\"String-number mismatch\">42</error>",
+        configureFile("100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> <error descr=\"String-number mismatch\">42</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStringVariableComparedToStringLiteral() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A$=\"HI!\"")
+        configureFile("100 PRINT A$=\"HI!\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStringVariablesComparedWithNotEqual() {
-        myFixture.configureByText("test.tibasic", "100 PRINT A$<>B$")
+        configureFile("100 PRINT A$<>B$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForParenthesizedStringConcatComparedToStringLiteral() {
-        myFixture.configureByText("test.tibasic", "100 PRINT (A$&B$)=\"HI!\"")
+        configureFile("100 PRINT (A$&B$)=\"HI!\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForBreakWithoutArgument() {
-        myFixture.configureByText("test.tibasic", "100 BREAK")
+        configureFile("100 BREAK")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForUnbreakWithoutArgument() {
-        myFixture.configureByText("test.tibasic", "100 UNBREAK")
+        configureFile("100 UNBREAK")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForTraceWithoutArgument() {
-        myFixture.configureByText("test.tibasic", "100 TRACE")
+        configureFile("100 TRACE")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForUntraceWithoutArgument() {
-        myFixture.configureByText("test.tibasic", "100 UNTRACE")
+        configureFile("100 UNTRACE")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForBreakWithSingleLineNumber() {
-        myFixture.configureByText("test.tibasic", "100 BREAK 200\n200 PRINT")
+        configureFile("100 BREAK 200\n200 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForBreakWithMultipleLineNumbers() {
-        myFixture.configureByText("test.tibasic", "100 BREAK 100,200,300\n200 PRINT\n300 PRINT")
+        configureFile("100 BREAK 100,200,300\n200 PRINT\n300 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForBreakWithMinLineNumber() {
-        myFixture.configureByText("test.tibasic", "1 PRINT\n100 BREAK 1")
+        configureFile("1 PRINT\n100 BREAK 1")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForBreakWithMaxLineNumber() {
-        myFixture.configureByText("test.tibasic", "100 BREAK 32767\n32767 PRINT")
+        configureFile("100 BREAK 32767\n32767 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForTraceWithMultipleLineNumbers() {
-        myFixture.configureByText("test.tibasic", "100 TRACE 100,200\n200 PRINT")
+        configureFile("100 TRACE 100,200\n200 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForUntraceWithMultipleLineNumbers() {
-        myFixture.configureByText("test.tibasic", "100 UNTRACE 100,200\n200 PRINT")
+        configureFile("100 UNTRACE 100,200\n200 PRINT")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForBreakWithLineNumberZero() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK <error descr=\"Line number must be between 1 and 32767\">0</error>",
+        configureFile("100 BREAK <error descr=\"Line number must be between 1 and 32767\">0</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForBreakWithLineNumberAboveMax() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK <error descr=\"Line number must be between 1 and 32767\">32768</error>",
+        configureFile("100 BREAK <error descr=\"Line number must be between 1 and 32767\">32768</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForBreakWithNonNumericArgument() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK <error descr=\"Line number expected\">A</error>",
+        configureFile("100 BREAK <error descr=\"Line number expected\">A</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForBreakWithLeadingComma() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK <error descr=\"Line number expected\">,</error>200",
+        configureFile("100 BREAK <error descr=\"Line number expected\">,</error>200",
         )
         myFixture.checkHighlighting(false, false, false)
     }
 
     fun testErrorForBreakWithTrailingComma() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK 200<error descr=\"Line number expected\">,</error>",
+        configureFile("100 BREAK 200<error descr=\"Line number expected\">,</error>",
         )
         myFixture.checkHighlighting(false, false, false)
     }
 
     fun testErrorForBreakWithConsecutiveCommas() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK 200,<error descr=\"Line number expected\">,</error>",
+        configureFile("100 BREAK 200,<error descr=\"Line number expected\">,</error>",
         )
         myFixture.checkHighlighting(false, false, false)
     }
 
     fun testErrorForBreakWithMissingComma() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK 200 <error descr=\"Comma expected\">300</error>",
+        configureFile("100 BREAK 200 <error descr=\"Comma expected\">300</error>",
         )
         myFixture.checkHighlighting(false, false, false)
     }
 
     fun testWarningForBreakWithUndefinedLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK <warning descr=\"Bad line number\">200</warning>",
+        configureFile("100 BREAK <warning descr=\"Bad line number\">200</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testNoWarningForBreakWithDefinedLineNumber() {
-        myFixture.configureByText("test.tibasic", "100 BREAK 200\n200 PRINT")
+        configureFile("100 BREAK 200\n200 PRINT")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningOnlyForUndefinedLineNumbersInList() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 BREAK 200,<warning descr=\"Bad line number\">300</warning>\n200 PRINT",
+        configureFile("100 BREAK 200,<warning descr=\"Bad line number\">300</warning>\n200 PRINT",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForTraceWithUndefinedLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 TRACE <warning descr=\"Bad line number\">500</warning>",
+        configureFile("100 TRACE <warning descr=\"Bad line number\">500</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testNoErrorForDeleteWithEmptyStringLiteral() {
-        myFixture.configureByText("test.tibasic", "100 DELETE \"\"")
+        configureFile("100 DELETE \"\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDeleteWithStringVariable() {
-        myFixture.configureByText("test.tibasic", "100 DELETE A$")
+        configureFile("100 DELETE A$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDeleteWithStringConcatenation() {
-        myFixture.configureByText("test.tibasic", "100 DELETE A$&B$")
+        configureFile("100 DELETE A$&B$")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDeleteWithParenthesizedConcatenation() {
-        myFixture.configureByText("test.tibasic", "100 DELETE (A$&B$)")
+        configureFile("100 DELETE (A$&B$)")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDeleteWithParenthesizedStringLiteral() {
-        myFixture.configureByText("test.tibasic", "100 DELETE (\"CS1\")")
+        configureFile("100 DELETE (\"CS1\")")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForDeleteWithStringLiteral() {
-        myFixture.configureByText("test.tibasic", "100 DELETE \"DSK1.STAR\"")
+        configureFile("100 DELETE \"DSK1.STAR\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForDeleteWithoutArgument() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"String expression expected\">DELETE</error>",
+        configureFile("100 <error descr=\"String expression expected\">DELETE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForDeleteWithNumericLiteral() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 DELETE <error descr=\"String expression expected\">42</error>",
+        configureFile("100 DELETE <error descr=\"String expression expected\">42</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForDeleteWithNumericVariable() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 DELETE <error descr=\"String expression expected\">X</error>",
+        configureFile("100 DELETE <error descr=\"String expression expected\">X</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForExplicitLetWithNumericAssignment() {
-        myFixture.configureByText("test.tibasic", "100 LET A = 5")
+        configureFile("100 LET A = 5")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForImplicitLetWithNumericAssignment() {
-        myFixture.configureByText("test.tibasic", "100 A = 5")
+        configureFile("100 A = 5")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForImplicitLetWithStringAssignment() {
-        myFixture.configureByText("test.tibasic", "100 A$ = \"hello\"")
+        configureFile("100 A$ = \"hello\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForStringExpressionAssignedToNumericVariable() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"String-number mismatch\">A = \"hello\"</error>",
+        configureFile("100 <error descr=\"String-number mismatch\">A = \"hello\"</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericExpressionAssignedToStringVariable() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"String-number mismatch\">A$ = 5</error>",
+        configureFile("100 <error descr=\"String-number mismatch\">A$ = 5</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForStringExpressionAssignedToNumericVariableWithLetKeyword() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 LET <error descr=\"String-number mismatch\">A = \"hello\"</error>",
+        configureFile("100 LET <error descr=\"String-number mismatch\">A = \"hello\"</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForImplicitLetWithTrailingTokens() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "190 <error descr=\"Incorrect statement\">p = i n t</error>",
+        configureFile("190 <error descr=\"Incorrect statement\">p = i n t</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForEndStatement() {
-        myFixture.configureByText("test.tibasic", "100 END")
+        configureFile("100 END")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForEndAsLastLine() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"OK\"\n200 END")
+        configureFile("100 PRINT \"OK\"\n200 END")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForMultipleEndStatements() {
-        myFixture.configureByText("test.tibasic", "100 END\n200 END")
+        configureFile("100 END\n200 END")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStopStatement() {
-        myFixture.configureByText("test.tibasic", "100 STOP")
+        configureFile("100 STOP")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForStopInMiddleOfProgram() {
-        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\n200 STOP\n300 PRINT \"B\"")
+        configureFile("100 PRINT \"A\"\n200 STOP\n300 PRINT \"B\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testWarningForTrailingContentAfterEnd() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 END<warning descr=\"Everything after END statement is ignored\">=5</warning>",
+        configureFile("100 END<warning descr=\"Everything after END statement is ignored\">=5</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForTrailingContentAfterEndWithSpace() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 END <warning descr=\"Everything after END statement is ignored\">X</warning>",
+        configureFile("100 END <warning descr=\"Everything after END statement is ignored\">X</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForTrailingContentAfterStop() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 STOP<warning descr=\"Everything after STOP statement is ignored\">*3</warning>",
+        configureFile("100 STOP<warning descr=\"Everything after STOP statement is ignored\">*3</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForTrailingContentAfterStopWithSpace() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 STOP <warning descr=\"Everything after STOP statement is ignored\">A</warning>",
+        configureFile("100 STOP <warning descr=\"Everything after STOP statement is ignored\">A</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testNoErrorForGotoWithExistingLineNumber() {
-        myFixture.configureByText("test.tibasic", "100 GOTO 200\n200 PRINT \"OK\"")
+        configureFile("100 GOTO 200\n200 PRINT \"OK\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForGoToTwoWordsWithExistingLineNumber() {
-        myFixture.configureByText("test.tibasic", "100 GO TO 200\n200 PRINT \"OK\"")
+        configureFile("100 GO TO 200\n200 PRINT \"OK\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testWarningForGotoWithUndefinedLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 GOTO <warning descr=\"Bad line number\">999</warning>",
+        configureFile("100 GOTO <warning descr=\"Bad line number\">999</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForGoToTwoWordsWithUndefinedLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 GO TO <warning descr=\"Bad line number\">999</warning>",
+        configureFile("100 GO TO <warning descr=\"Bad line number\">999</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testErrorForGotoWithLineNumberZero() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 GOTO <error descr=\"Bad line number\">0</error>",
+        configureFile("100 GOTO <error descr=\"Bad line number\">0</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGotoWithLineNumberTooLarge() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 GOTO <error descr=\"Bad line number\">99999</error>",
+        configureFile("100 GOTO <error descr=\"Bad line number\">99999</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGotoWithoutLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">GOTO</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">GOTO</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGotoWithNonNumericArgument() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">GOTO ABC</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">GOTO ABC</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGotoWithMultipleLineNumbers() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">GOTO 200 300</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">GOTO 200 300</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGoWithoutTo() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">GO 200</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">GO 200</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForOnGotoWithExistingLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 ON X GOTO 200\n200 PRINT \"OK\"",
+        configureFile("100 ON X GOTO 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForOnGoToTwoWordsWithExistingLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 ON X GO TO 200\n200 PRINT \"OK\"",
+        configureFile("100 ON X GO TO 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForOnGotoWithMultipleExistingLineNumbers() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 ON X GOTO 200,300,400\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 PRINT \"C\"",
+        configureFile("100 ON X GOTO 200,300,400\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 PRINT \"C\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testWarningForOnGotoWithUndefinedLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,300\n300 PRINT \"OK\"",
+        configureFile("100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,300\n300 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForEachUndefinedLineNumberInOnGoto() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,<warning descr=\"Bad line number\">300</warning>",
+        configureFile("100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,<warning descr=\"Bad line number\">300</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testErrorForOnGotoWithLineNumberZero() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 ON X GOTO <error descr=\"Bad line number\">0</error>",
+        configureFile("100 ON X GOTO <error descr=\"Bad line number\">0</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithLineNumberTooLarge() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 ON X GOTO <error descr=\"Bad line number\">32768</error>",
+        configureFile("100 ON X GOTO <error descr=\"Bad line number\">32768</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithoutExpression() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">ON GOTO 200</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">ON GOTO 200</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithoutGotoKeyword() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">ON X 200</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">ON X 200</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithoutLineNumbers() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">ON X GOTO</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">ON X GOTO</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithStringExpression() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 ON <error descr=\"String-number mismatch\">A$</error> GOTO 200\n200 PRINT \"OK\"",
+        configureFile("100 ON <error descr=\"String-number mismatch\">A$</error> GOTO 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithTrailingComma() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">ON X GOTO ,</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">ON X GOTO ,</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForValidIfThen() {
-        myFixture.configureByText("test.tibasic", "100 IF X>0 THEN 200\n200 PRINT \"OK\"")
+        configureFile("100 IF X>0 THEN 200\n200 PRINT \"OK\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForValidIfThenElse() {
-        myFixture.configureByText("test.tibasic", "100 IF X>0 THEN 200 ELSE 300\n200 PRINT \"A\"\n300 PRINT \"B\"")
+        configureFile("100 IF X>0 THEN 200 ELSE 300\n200 PRINT \"A\"\n300 PRINT \"B\"")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testWarningForIfThenWithUndefinedLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning>",
+        configureFile("100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning>",
         )
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testWarningForIfThenElseWithUndefinedElseLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 IF X>0 THEN 200 ELSE <warning descr=\"Bad line number\">999</warning>\n200 PRINT \"OK\"",
+        configureFile("100 IF X>0 THEN 200 ELSE <warning descr=\"Bad line number\">999</warning>\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testErrorForIfWithoutThen() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">IF X>0</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">IF X>0</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfThenWithoutLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">IF X>0 THEN</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">IF X>0 THEN</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfThenWithElseButNoElseLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">IF X>0 THEN 200 ELSE</error>\n200 PRINT \"OK\"",
+        configureFile("100 <error descr=\"Incorrect statement\">IF X>0 THEN 200 ELSE</error>\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfWithStringExpression() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 IF <error descr=\"String-number mismatch\">A$</error> THEN 200\n200 PRINT \"OK\"",
+        configureFile("100 IF <error descr=\"String-number mismatch\">A$</error> THEN 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfThenWithInvalidLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 IF X>0 THEN <error descr=\"Bad line number\">99999</error>",
+        configureFile("100 IF X>0 THEN <error descr=\"Bad line number\">99999</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfThenElseWithInvalidElseLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 IF X>0 THEN 200 ELSE <error descr=\"Bad line number\">99999</error>\n200 PRINT \"OK\"",
+        configureFile("100 IF X>0 THEN 200 ELSE <error descr=\"Bad line number\">99999</error>\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testWarningForIfThenElseWithUndefinedThenLineNumber() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning> ELSE 200\n200 PRINT \"OK\"",
+        configureFile("100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning> ELSE 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testNoErrorForValidFor() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 NEXT I")
+        configureFile("100 FOR I = 1 TO 10\n200 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT") })
     }
 
     fun testNoErrorForValidForWithStep() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10 STEP 2\n200 NEXT I")
+        configureFile("100 FOR I = 1 TO 10 STEP 2\n200 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT") })
     }
 
     fun testErrorForForWithStringControlVariable() {
-        myFixture.configureByText("test.tibasic", "100 FOR A$ = 1 TO 10\n200 NEXT A$")
+        configureFile("100 FOR A$ = 1 TO 10\n200 NEXT A$")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "Numeric variable expected" })
     }
 
     fun testErrorForNextWithStringControlVariable() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 NEXT A$")
+        configureFile("100 FOR I = 1 TO 10\n200 NEXT A$")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "Numeric variable expected" })
     }
 
     fun testErrorForForWithStringInitialValue() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = A$ TO 10\n200 NEXT I")
+        configureFile("100 FOR I = A$ TO 10\n200 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "String-number mismatch" })
     }
 
     fun testErrorForForWithStringLimit() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO A$\n200 NEXT I")
+        configureFile("100 FOR I = 1 TO A$\n200 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "String-number mismatch" })
     }
 
     fun testErrorForForWithStringStep() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10 STEP A$\n200 NEXT I")
+        configureFile("100 FOR I = 1 TO 10 STEP A$\n200 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "String-number mismatch" })
     }
 
     fun testErrorForForMissingTo() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 10\n200 NEXT I")
+        configureFile("100 FOR I = 1 10\n200 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "Incorrect statement" })
     }
 
     fun testErrorForForMissingEquals() {
-        myFixture.configureByText("test.tibasic", "100 FOR I 1 TO 10\n200 NEXT I")
+        configureFile("100 FOR I 1 TO 10\n200 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "Incorrect statement" })
     }
 
     fun testErrorForNextWithoutVariable() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 NEXT")
+        configureFile("100 FOR I = 1 TO 10\n200 NEXT")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "Incorrect statement" })
     }
 
     fun testWarningForMoreForsThanNexts() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 FOR J = 1 TO 5\n300 NEXT I")
+        configureFile("100 FOR I = 1 TO 10\n200 FOR J = 1 TO 5\n300 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements" })
     }
 
     fun testWarningForMoreNextsThanFors() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 NEXT I\n300 NEXT I")
+        configureFile("100 FOR I = 1 TO 10\n200 NEXT I\n300 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.any { it.description == "FOR-NEXT-ERROR: 1 FOR statements and 2 NEXT statements" })
     }
 
     fun testBalanceWarningOnSurplusForNotFirst() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 5\n200 FOR J = 1 TO 5\n300 NEXT I")
+        configureFile("100 FOR I = 1 TO 5\n200 FOR J = 1 TO 5\n300 NEXT I")
         val annotations = myFixture.doHighlighting()
         val balanceWarnings = annotations.filter {
             it.description == "FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements"
@@ -1456,142 +1228,122 @@ class TiBasicAnnotatorTest : BasePlatformTestCase() {
     }
 
     fun testNoBalanceWarningForBalancedForNext() {
-        myFixture.configureByText("test.tibasic", "100 FOR I = 1 TO 10\n200 FOR J = 1 TO 5\n300 NEXT J\n400 NEXT I")
+        configureFile("100 FOR I = 1 TO 10\n200 FOR J = 1 TO 5\n300 NEXT J\n400 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT") })
     }
 
     fun testForWithLeadingDotValuesNoError() {
-        myFixture.configureByText("test.tibasic", "110 FOR X= .1 TO 1 STEP .2\n120 NEXT X")
+        configureFile("110 FOR X= .1 TO 1 STEP .2\n120 NEXT X")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testInputWithValidVariablesNoError() {
-        myFixture.configureByText("test.tibasic", "100 INPUT A,B$")
+        configureFile("100 INPUT A,B$")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testInputWithNoVariablesIsError() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">INPUT</error>"
+        configureFile("100 <error descr=\"Incorrect statement\">INPUT</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testInputWithInvalidVariableNameIsError() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 INPUT <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
+        configureFile("100 INPUT <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testInputWithStringPromptNoError() {
-        myFixture.configureByText("test.tibasic", "100 INPUT \"Enter value\": A")
+        configureFile("100 INPUT \"Enter value\": A")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testInputWithNumericPromptResultsInIncorrectStatement() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">INPUT 42: A</error>"
+        configureFile("100 <error descr=\"Incorrect statement\">INPUT 42: A</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testReadWithValidVariablesNoError() {
-        myFixture.configureByText("test.tibasic", "100 READ A,B$,C")
+        configureFile("100 READ A,B$,C")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testReadWithNoVariablesIsError() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">READ</error>"
+        configureFile("100 <error descr=\"Incorrect statement\">READ</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testReadWithInvalidVariableNameIsError() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 READ <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
+        configureFile("100 READ <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testDataWithNumericItemNoError() {
-        myFixture.configureByText("test.tibasic", "100 DATA 42")
+        configureFile("100 DATA 42")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testDataWithStringLiteralNoError() {
-        myFixture.configureByText("test.tibasic", "100 DATA \"hello\"")
+        configureFile("100 DATA \"hello\"")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testDataWithUnquotedStringNoError() {
-        myFixture.configureByText("test.tibasic", "100 DATA world")
+        configureFile("100 DATA world")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testDataWithMixedItemsNoError() {
-        myFixture.configureByText("test.tibasic", "100 DATA 1,\"two\",three")
+        configureFile("100 DATA 1,\"two\",three")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testDataWithConsecutiveCommasNoError() {
-        myFixture.configureByText("test.tibasic", "100 DATA 1,,3")
+        configureFile("100 DATA 1,,3")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testDataWithNoItemsIsError() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">DATA</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">DATA</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithNoArgumentNoError() {
-        myFixture.configureByText("test.tibasic", "100 RESTORE")
+        configureFile("100 RESTORE")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithDefinedLineNumberNoError() {
-        myFixture.configureByText("test.tibasic", "100 RESTORE 200\n200 DATA 1,2,3")
+        configureFile("100 RESTORE 200\n200 DATA 1,2,3")
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithUndefinedLineNumberIsWarning() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 RESTORE <warning descr=\"Bad line number\">999</warning>",
+        configureFile("100 RESTORE <warning descr=\"Bad line number\">999</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithOutOfRangeLineNumberIsError() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 RESTORE <error descr=\"Bad line number\">99999</error>",
+        configureFile("100 RESTORE <error descr=\"Bad line number\">99999</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithNonNumericArgIsError() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">RESTORE A</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">RESTORE A</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithMultipleNumbersIsError() {
-        myFixture.configureByText(
-            "test.tibasic",
-            "100 <error descr=\"Incorrect statement\">RESTORE 100 200</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">RESTORE 100 200</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
