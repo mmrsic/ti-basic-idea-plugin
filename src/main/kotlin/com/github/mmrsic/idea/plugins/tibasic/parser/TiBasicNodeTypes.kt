@@ -28,4 +28,5 @@ object TiBasicNodeTypes {
     val EXPRESSION = TiBasicElementType("EXPRESSION")
     val VARIABLE_ACCESS = TiBasicElementType("VARIABLE_ACCESS")
     val TAB_FUNCTION = TiBasicElementType("TAB_FUNCTION")
+    val DISPLAY_STATEMENT = TiBasicElementType("DISPLAY_STATEMENT")
 }

@@ -34,6 +34,7 @@ invalidLine       = noLineNumberText ;          (* annotated as error *)
 lineNumber        = digit { digit } ;           (* value must be in 1..32767 *)
 
 statement         = printStatement
+                  | displayStatement
                   | inputStatement
                   | readStatement
                   | dataStatement
@@ -52,6 +53,8 @@ statement         = printStatement
                   | unknownStatement ;
 
 printStatement          = PRINT     [ whitespace ] [ printArgList ] ;
+displayStatement        = DISPLAY   [ whitespace ] [ printArgList ] ;
+                          (* identical syntax to printStatement; screen output only *)
 printArgList            = { printItem } ;
 printItem               = printSep | tabFunction | expression ;
                           (* expressions must be separated by at least one separator;
@@ -142,8 +145,9 @@ Recognised as statement-starting keywords (case-insensitive):
 | Token                                  | Statement kind                                |
 |----------------------------------------|-----------------------------------------------|
 | `LET`                                  | Variable assignment                           |
-| `PRINT`                                | Print expression                              |
-| `TAB`                                  | Column-positioning function (PRINT only)      |
+| `PRINT`                                | Print to screen, printer, or file             |
+| `DISPLAY`                              | Print to screen only                          |
+| `TAB`                                  | Column-positioning function (PRINT/DISPLAY)   |
 | `INPUT`                                | Keyboard input (with optional string prompt)  |
 | `READ`                                 | Read values from DATA into variables          |
 | `DATA`                                 | Supply data values for READ statements        |
@@ -211,6 +215,9 @@ These identifiers are recognized by the annotator and produce a specific error:
 127 PRINT TAB(N);"TEXT"         ✓ valid — TAB argument may be any numeric expression
 128 PRINT TAB(5)                ✓ valid — TAB without following output
 129 PRINT TAB(5);"A";TAB(10);"B" ✓ valid — multiple TAB calls in one PRINT
+130 DISPLAY "HELLO"             ✓ valid — screen output identical to PRINT syntax
+131 DISPLAY TAB(5);"TEXT"       ✓ valid — TAB is valid in DISPLAY too
+132 DISPLAY                     ✓ valid — DISPLAY with no argument
 127 PRINT :;,                  ✓ valid — separators without expressions
 128 PRINT ,"RIGHT ZONE"        ✓ valid — leading comma jumps to right screen zone
 129 PRINT "CONT";              ✓ valid — trailing semicolon, cursor stays on same line
@@ -251,7 +258,7 @@ These identifiers are recognized by the annotator and produce a specific error:
 520 PRINT A$ + 1                ✗ error — String-Number-Mismatch
 525 PRINT TAB                   ✗ error — TAB requires a numeric argument in parentheses
 526 PRINT TAB()                 ✗ error — TAB requires a numeric argument
-527 LET X = TAB(5)              ✗ error — TAB is only valid in a PRINT statement
+527 LET X = TAB(5)              ✗ error — TAB is only valid in a PRINT or DISPLAY statement
 530 LET A = "hello"             ✗ error — String-number mismatch (numeric variable, string expression)
 540 LET A$ = 5                  ✗ error — String-number mismatch (string variable, numeric expression)
 550 LET A = 5 EXTRA             ✗ error — Incorrect statement (trailing tokens after LET expression)

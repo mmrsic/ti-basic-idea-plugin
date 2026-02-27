@@ -57,6 +57,7 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.DATA_KEYWORD,
             TiBasicTokenTypes.RESTORE_KEYWORD,
             TiBasicTokenTypes.TAB_KEYWORD,
+            TiBasicTokenTypes.DISPLAY_KEYWORD,
             TiBasicTokenTypes.TO_KEYWORD,
             TiBasicTokenTypes.STEP_KEYWORD -> arrayOf(KEYWORD)
 

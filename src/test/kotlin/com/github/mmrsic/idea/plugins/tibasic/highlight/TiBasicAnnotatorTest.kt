@@ -1412,7 +1412,7 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForTabOutsidePrintInLetStatement() {
-        configureFile("100 LET X = <error descr=\"TAB is only valid in a PRINT statement\">TAB</error>(5)")
+        configureFile("100 LET X = <error descr=\"TAB is only valid in a PRINT or DISPLAY statement\">TAB</error>(5)")
         myFixture.checkHighlighting(true, false, true)
     }
 
@@ -1423,6 +1423,31 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
 
     fun testErrorForTwoTabsWithoutSeparator() {
         configureFile("100 PRINT TAB(5)<error descr=\"Separator expected between expressions\">TAB(10)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoErrorForDisplayWithStringLiteral() {
+        configureFile("100 DISPLAY \"HELLO\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoErrorForDisplayWithNoArgument() {
+        configureFile("100 DISPLAY")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testNoErrorForDisplayWithTabFunction() {
+        configureFile("100 DISPLAY TAB(5);\"TEXT\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForDisplayWithTwoExpressionsWithoutSeparator() {
+        configureFile("100 DISPLAY TAB(5)<error descr=\"Separator expected between expressions\">TAB(10)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForTabOutsidePrintOrDisplay() {
+        configureFile("100 LET X = <error descr=\"TAB is only valid in a PRINT or DISPLAY statement\">TAB</error>(5)")
         myFixture.checkHighlighting(true, false, true)
     }
 }

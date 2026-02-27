@@ -17,7 +17,11 @@ class TiBasicLine(node: ASTNode) : ASTWrapperPsiElement(node) {
             ?: Int.MAX_VALUE
 }
 
-class TiBasicPrintStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+abstract class TiBasicScreenPrintStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
+class TiBasicPrintStatement(node: ASTNode) : TiBasicScreenPrintStatement(node)
+
+class TiBasicDisplayStatement(node: ASTNode) : TiBasicScreenPrintStatement(node)
 
 class TiBasicLineNumberListStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 

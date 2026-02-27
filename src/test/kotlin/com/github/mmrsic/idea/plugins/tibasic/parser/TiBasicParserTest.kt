@@ -1551,6 +1551,41 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmt.children.filterIsInstance<TiBasicTabFunction>().size)
     }
 
+    fun testDisplayStatementWithStringLiteralIsParsed() {
+        val file = parseCode("100 DISPLAY \"HELLO\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDisplayStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testDisplayStatementWithNoArgumentIsParsed() {
+        val file = parseCode("100 DISPLAY")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDisplayStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testDisplayStatementWithMultipleArgumentsIsParsed() {
+        val file = parseCode("100 DISPLAY \"A\";\"B\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDisplayStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testDisplayStatementWithTabFunctionIsParsed() {
+        val file = parseCode("100 DISPLAY TAB(5);\"TEXT\"")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDisplayStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicTabFunction>().size)
+    }
+
+    fun testDisplayStatementLowercaseIsParsed() {
+        val file = parseCode("100 display \"HELLO\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicDisplayStatement>()
+        assertEquals(1, stmts.size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
 

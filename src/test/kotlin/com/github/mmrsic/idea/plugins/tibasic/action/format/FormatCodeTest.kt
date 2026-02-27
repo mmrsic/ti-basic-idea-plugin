@@ -322,5 +322,20 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 PRINT TAB( 5 ) ; \"text\"")
         assertEquals("100 PRINT TAB(5);\"text\"", formattedText(file))
     }
+
+    fun testDisplayKeywordLowercaseIsUppercased() {
+        val file = configureFile("100 display \"hello\"")
+        assertEquals("100 DISPLAY \"hello\"", formattedText(file))
+    }
+
+    fun testDisplayWithArgumentFormatted() {
+        val file = configureFile("100 DISPLAY  \"HELLO\"")
+        assertEquals("100 DISPLAY \"HELLO\"", formattedText(file))
+    }
+
+    fun testDisplayWithTabFunctionUppercased() {
+        val file = configureFile("100 display tab(5);\"text\"")
+        assertEquals("100 DISPLAY TAB(5);\"text\"", formattedText(file))
+    }
 }
 

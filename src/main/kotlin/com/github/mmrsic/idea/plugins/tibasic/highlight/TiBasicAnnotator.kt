@@ -28,7 +28,7 @@ class TiBasicAnnotator : Annotator {
 
             is TiBasicLine -> annotateLineNumber(element, holder)
             is TiBasicLetStatement -> annotateLetStatement(element, holder)
-            is TiBasicPrintStatement -> annotateInvalidPrintArgument(element, holder)
+            is TiBasicScreenPrintStatement -> annotateInvalidPrintArgument(element, holder)
             is TiBasicTabFunction -> annotateTabFunction(element, holder)
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
@@ -48,7 +48,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
             is TiBasicExpression -> annotateExpression(element, holder)
             else -> if (element.node.elementType == TiBasicTokenTypes.TAB_KEYWORD && element.parent !is TiBasicTabFunction) {
-                holder.error("TAB is only valid in a PRINT statement", element)
+                holder.error("TAB is only valid in a PRINT or DISPLAY statement", element)
             }
         }
     }
@@ -374,7 +374,7 @@ class TiBasicAnnotator : Annotator {
         }
     }
 
-    private fun annotateInvalidPrintArgument(statement: TiBasicPrintStatement, holder: AnnotationHolder) {
+    private fun annotateInvalidPrintArgument(statement: TiBasicScreenPrintStatement, holder: AnnotationHolder) {
         var previousWasExpression = false
         for (child in statement.node.allChildren) {
             when (child.elementType) {
@@ -397,7 +397,8 @@ class TiBasicAnnotator : Annotator {
                 TokenType.WHITE_SPACE -> { /* whitespace does not break the chain */
                 }
 
-                TiBasicTokenTypes.PRINT_KEYWORD -> { /* skip */
+                TiBasicTokenTypes.PRINT_KEYWORD,
+                TiBasicTokenTypes.DISPLAY_KEYWORD -> { /* skip */
                 }
 
                 else -> {

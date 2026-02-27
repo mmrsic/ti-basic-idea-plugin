@@ -34,6 +34,7 @@ class TiBasicParserDefinition : ParserDefinition {
             TiBasicNodeTypes.LINE -> TiBasicLine(node)
             TiBasicNodeTypes.LET_STATEMENT -> TiBasicLetStatement(node)
             TiBasicNodeTypes.PRINT_STATEMENT -> TiBasicPrintStatement(node)
+            TiBasicNodeTypes.DISPLAY_STATEMENT -> TiBasicDisplayStatement(node)
             TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT -> TiBasicLineNumberListStatement(node)
             TiBasicNodeTypes.DELETE_STATEMENT -> TiBasicDeleteStatement(node)
             TiBasicNodeTypes.REM_STATEMENT -> TiBasicRemStatement(node)

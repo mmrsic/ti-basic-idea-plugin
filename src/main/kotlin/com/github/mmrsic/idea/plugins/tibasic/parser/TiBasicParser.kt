@@ -60,6 +60,7 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE_NUMBE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.NEXT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.PRINT_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DISPLAY_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.READ_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.REM_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RESTORE_STATEMENT
@@ -68,6 +69,7 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.TAB_FUNCTI
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.UNKNOWN_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.VARIABLE_ACCESS
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.TAB_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DISPLAY_KEYWORD
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -88,6 +90,7 @@ import com.intellij.psi.tree.IElementType
  *                           | forStatement | nextStatement
  *                           | deleteStatement | lineNumberListStatement | unknownStatement
  * printStatement          ::= PRINT_KEYWORD (WHITE_SPACE printArgList)?
+ * displayStatement        ::= DISPLAY_KEYWORD (WHITE_SPACE printArgList)?
  * printArgList            ::= (printSep | WHITE_SPACE | tabFunction | expression)*
  * tabFunction             ::= TAB_KEYWORD (LPAREN expression? RPAREN)?
  * printSep                ::= COLON | SEMICOLON | COMMA
@@ -170,6 +173,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             DATA_KEYWORD -> parseDataStatement(builder)
             RESTORE_KEYWORD -> parseRestoreStatement(builder)
             PRINT_KEYWORD -> parsePrintStatement(builder)
+            DISPLAY_KEYWORD -> parseDisplayStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
             else -> { /* line number only — valid, no statement */
@@ -402,6 +406,18 @@ class TiBasicParser : PsiParser, LightPsiParser {
     private fun parsePrintStatement(builder: PsiBuilder) {
         val stmtMarker = builder.mark()
         builder.advanceLexer() // consume PRINT_KEYWORD
+        parsePrintArgList(builder)
+        stmtMarker.done(PRINT_STATEMENT)
+    }
+
+    private fun parseDisplayStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume DISPLAY_KEYWORD
+        parsePrintArgList(builder)
+        stmtMarker.done(DISPLAY_STATEMENT)
+    }
+
+    private fun parsePrintArgList(builder: PsiBuilder) {
         skipWhitespace(builder)
         while (!isLineEnd(builder)) {
             when {
@@ -412,7 +428,6 @@ class TiBasicParser : PsiParser, LightPsiParser {
                 else -> builder.advanceLexer() // unexpected token — consume to prevent infinite loop
             }
         }
-        stmtMarker.done(PRINT_STATEMENT)
     }
 
     private fun parseTabFunction(builder: PsiBuilder) {

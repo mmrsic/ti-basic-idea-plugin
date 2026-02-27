@@ -14,25 +14,26 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 
 ### Supported statements
 
-| Statement                  | Description                                                                 |
-|----------------------------|-----------------------------------------------------------------------------|
-| `LET`                      | Assign a value to a variable (`LET` keyword is optional)                    |
-| `PRINT`                    | Output values or text; multiple expressions separated by `;`, `,`, or `:`   |
-| `INPUT`                    | Read keyboard input into one or more variables (optional string prompt)     |
-| `READ`                     | Read values from DATA statements into one or more variables                 |
-| `DATA`                     | Supply a comma-separated list of values for `READ` statements               |
-| `RESTORE`                  | Reset the DATA pointer (optionally to a specific line number)               |
-| `REM`                      | Remark / comment                                                            |
-| `END`                      | Halt program execution (by convention the last line)                        |
-| `STOP`                     | Halt program execution (by convention used mid-program)                     |
-| `GOTO` / `GO TO`           | Unconditional branch to the given line number                               |
-| `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers                              |
-| `IF … THEN … [ELSE …]`     | Conditional branch; numeric expression selects target                       |
-| `FOR … TO … [STEP …]`      | Counted loop with numeric control variable, start, limit, and optional step |
-| `NEXT`                     | Marks the end of the counted loop body                                      |
-| `DELETE`                   | Delete a string expression                                                  |
-| `BREAK` / `UNBREAK`        | Set or clear breakpoints at given line numbers                              |
-| `TRACE` / `UNTRACE`        | Enable or disable execution tracing at given line numbers                   |
+| Statement                  | Description                                                                                           |
+|----------------------------|-------------------------------------------------------------------------------------------------------|
+| `LET`                      | Assign a value to a variable (`LET` keyword is optional)                                              |
+| `PRINT`                    | Output values or text to screen, printer, or file; multiple expressions separated by `;`, `,`, or `:` |
+| `DISPLAY`                  | Output values or text to screen only; identical syntax to `PRINT`                                     |
+| `INPUT`                    | Read keyboard input into one or more variables (optional string prompt)                               |
+| `READ`                     | Read values from DATA statements into one or more variables                                           |
+| `DATA`                     | Supply a comma-separated list of values for `READ` statements                                         |
+| `RESTORE`                  | Reset the DATA pointer (optionally to a specific line number)                                         |
+| `REM`                      | Remark / comment                                                                                      |
+| `END`                      | Halt program execution (by convention the last line)                                                  |
+| `STOP`                     | Halt program execution (by convention used mid-program)                                               |
+| `GOTO` / `GO TO`           | Unconditional branch to the given line number                                                         |
+| `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers                                                        |
+| `IF … THEN … [ELSE …]`     | Conditional branch; numeric expression selects target                                                 |
+| `FOR … TO … [STEP …]`      | Counted loop with numeric control variable, start, limit, and optional step                           |
+| `NEXT`                     | Marks the end of the counted loop body                                                                |
+| `DELETE`                   | Delete a string expression                                                                            |
+| `BREAK` / `UNBREAK`        | Set or clear breakpoints at given line numbers                                                        |
+| `TRACE` / `UNTRACE`        | Enable or disable execution tracing at given line numbers                                             |
 
 Lines whose keyword is not one of the above are flagged as unknown statements.
 
@@ -40,7 +41,8 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 
 - **Numeric literals** — integers, decimals, scientific notation (e.g. `1.5E-3`)
 - **String literals** — double-quoted (e.g. `"HELLO"`)
-- **Numeric variables** — 1–15 characters; starts with a letter (or `@`, `[`, `]`, `\`, `_`); remaining characters are letters, digits, `@`, or `_` (e.g. `A`, `X1`, `COUNTER`)
+- **Numeric variables** — 1–15 characters; starts with a letter (or `@`, `[`, `]`, `\`, `_`); remaining characters are
+  letters, digits, `@`, or `_` (e.g. `A`, `X1`, `COUNTER`)
 - **String variables** — same naming rules as numeric, ending with `$` (e.g. `A$`, `STR$`)
 - **Array subscripts** — up to 3 dimensions (e.g. `A(1)`, `B(1,2)`, `C(1,2,3)`)
 - **Operators** — `+`, `-`, `*`, `/`, `^` (power), `&` (string concatenation)
@@ -51,45 +53,45 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 
 The annotator inspects every file and highlights:
 
-| Severity | Check                                                                                                       |
-|----------|-------------------------------------------------------------------------------------------------------------|
-| Error    | Line number out of range (< 1 or > 32767)                                                                   |
-| Error    | Duplicate line numbers                                                                                      |
-| Warning  | Line numbers not in ascending order                                                                         |
-| Error    | Line without a line number                                                                                  |
-| Error    | Unknown statement keyword                                                                                   |
-| Error    | Variable name that is a reserved keyword or command                                                         |
-| Error    | Conflicting variable usage (scalar vs. array)                                                               |
-| Error    | Empty subscript or more than 3 subscript dimensions                                                         |
-| Error    | Type mismatch (numeric value where string is required, or vice versa)                                       |
-| Error    | String-number mismatch in LET assignment (variable type differs from expression)                            |
-| Error    | LET with an invalid variable name (Bad variable name)                                                       |
-| Error    | LET with trailing tokens after the expression (Incorrect statement)                                         |
-| Error    | `END` or `STOP` with trailing content (Incorrect statement)                                                 |
-| Warning  | Reference to an undefined line number in BREAK/UNBREAK/TRACE/UNTRACE                                        |
-| Error    | `GOTO` / `GO TO` without a numeric line number, or with extra content (Incorrect statement)                 |
-| Warning  | `GOTO` / `GO TO` reference to an undefined line number                                                      |
-| Error    | `ON … GOTO` with string expression (String-number mismatch)                                                 |
-| Error    | `ON … GOTO` missing expression, GOTO keyword, or line numbers (Incorrect statement)                         |
-| Error    | `ON … GOTO` line number out of range 1–32767 (Bad line number)                                              |
-| Warning  | `ON … GOTO` reference to an undefined line number                                                           |
-| Error    | `IF … THEN` with string expression (String-number mismatch)                                                 |
-| Error    | `IF … THEN` missing expression, THEN keyword, or THEN line number (Incorrect statement)                     |
-| Error    | `IF … THEN` / `ELSE` line number out of range 1–32767 (Bad line number)                                     |
-| Warning  | `IF … THEN` / `ELSE` reference to an undefined line number                                                  |
-| Error    | `FOR` missing `=`, `TO`, control variable, or a required expression (Incorrect statement)                   |
-| Error    | `FOR` or `NEXT` control variable is a string variable (Numeric variable expected)                           |
-| Error    | `FOR` initial value, limit, or step is a string expression (String-number mismatch)                         |
-| Warning  | Unequal number of `FOR` and `NEXT` statements — surplus occurrences flagged (FOR-NEXT-ERROR)                |
-| Error    | `NEXT` without a control variable (Incorrect statement)                                                     |
-| Error    | `INPUT` without a variable list (Incorrect statement)                                                       |
-| Error    | `INPUT` with a bad variable name (Bad variable name)                                                        |
-| Error    | `READ` without a variable list (Incorrect statement)                                                        |
-| Error    | `READ` with a bad variable name (Bad variable name)                                                         |
-| Error    | `PRINT` with two adjacent expressions missing a separator (Separator expected between expressions)          |
-| Error    | `PRINT` with an invalid token that is not an expression or separator (PRINT argument must be an expression) |
-| Error    | `RESTORE` with invalid argument — not a single numeric literal (Incorrect statement)                        |
-| Warning  | `RESTORE` references a line number that does not exist in the program                                       |
+| Severity | Check                                                                                                                    |
+|----------|--------------------------------------------------------------------------------------------------------------------------|
+| Error    | Line number out of range (< 1 or > 32767)                                                                                |
+| Error    | Duplicate line numbers                                                                                                   |
+| Warning  | Line numbers not in ascending order                                                                                      |
+| Error    | Line without a line number                                                                                               |
+| Error    | Unknown statement keyword                                                                                                |
+| Error    | Variable name that is a reserved keyword or command                                                                      |
+| Error    | Conflicting variable usage (scalar vs. array)                                                                            |
+| Error    | Empty subscript or more than 3 subscript dimensions                                                                      |
+| Error    | Type mismatch (numeric value where string is required, or vice versa)                                                    |
+| Error    | String-number mismatch in LET assignment (variable type differs from expression)                                         |
+| Error    | LET with an invalid variable name (Bad variable name)                                                                    |
+| Error    | LET with trailing tokens after the expression (Incorrect statement)                                                      |
+| Error    | `END` or `STOP` with trailing content (Incorrect statement)                                                              |
+| Warning  | Reference to an undefined line number in BREAK/UNBREAK/TRACE/UNTRACE                                                     |
+| Error    | `GOTO` / `GO TO` without a numeric line number, or with extra content (Incorrect statement)                              |
+| Warning  | `GOTO` / `GO TO` reference to an undefined line number                                                                   |
+| Error    | `ON … GOTO` with string expression (String-number mismatch)                                                              |
+| Error    | `ON … GOTO` missing expression, GOTO keyword, or line numbers (Incorrect statement)                                      |
+| Error    | `ON … GOTO` line number out of range 1–32767 (Bad line number)                                                           |
+| Warning  | `ON … GOTO` reference to an undefined line number                                                                        |
+| Error    | `IF … THEN` with string expression (String-number mismatch)                                                              |
+| Error    | `IF … THEN` missing expression, THEN keyword, or THEN line number (Incorrect statement)                                  |
+| Error    | `IF … THEN` / `ELSE` line number out of range 1–32767 (Bad line number)                                                  |
+| Warning  | `IF … THEN` / `ELSE` reference to an undefined line number                                                               |
+| Error    | `FOR` missing `=`, `TO`, control variable, or a required expression (Incorrect statement)                                |
+| Error    | `FOR` or `NEXT` control variable is a string variable (Numeric variable expected)                                        |
+| Error    | `FOR` initial value, limit, or step is a string expression (String-number mismatch)                                      |
+| Warning  | Unequal number of `FOR` and `NEXT` statements — surplus occurrences flagged (FOR-NEXT-ERROR)                             |
+| Error    | `NEXT` without a control variable (Incorrect statement)                                                                  |
+| Error    | `INPUT` without a variable list (Incorrect statement)                                                                    |
+| Error    | `INPUT` with a bad variable name (Bad variable name)                                                                     |
+| Error    | `READ` without a variable list (Incorrect statement)                                                                     |
+| Error    | `READ` with a bad variable name (Bad variable name)                                                                      |
+| Error    | `PRINT` or `DISPLAY` with two adjacent expressions missing a separator (Separator expected between expressions)          |
+| Error    | `PRINT` or `DISPLAY` with an invalid token that is not an expression or separator (PRINT argument must be an expression) |
+| Error    | `RESTORE` with invalid argument — not a single numeric literal (Incorrect statement)                                     |
+| Warning  | `RESTORE` references a line number that does not exist in the program                                                    |
 
 ### Code actions
 

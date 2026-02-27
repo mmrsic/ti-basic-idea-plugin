@@ -37,6 +37,7 @@ object TiBasicKeywords {
             "NEXT",
             "ON",
             "PRINT",
+            "DISPLAY",
             "INPUT",
             "READ",
             "DATA",
