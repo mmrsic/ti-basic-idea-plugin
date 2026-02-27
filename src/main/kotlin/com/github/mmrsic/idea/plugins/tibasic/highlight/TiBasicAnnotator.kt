@@ -561,7 +561,7 @@ class TiBasicAnnotator : Annotator {
         val result = mutableListOf<ASTNode>()
         fun traverse(node: ASTNode) {
             if (node.elementType == TiBasicNodeTypes.VARIABLE_ACCESS) result.add(node)
-            for (child in node.allChildren) traverse(child)
+            for (child in node.childSequence) traverse(child)
         }
         file.lines()
             .flatMap { it.children.toList() }

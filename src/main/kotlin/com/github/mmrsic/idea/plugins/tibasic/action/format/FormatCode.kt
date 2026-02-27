@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.format
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.*
@@ -29,20 +29,28 @@ private fun formattedLine(line: TiBasicLine): String {
     when (firstTokenType) {
         TiBasicTokenTypes.GOTO_KEYWORD ->
             return formattedGotoLine(line.lineNumber(), statement.node.firstChildNode!!.text, statementText)
+
         TiBasicTokenTypes.ON_KEYWORD ->
             return formattedOnGotoLine(line.lineNumber(), statement as TiBasicOnGotoStatement)
+
         TiBasicTokenTypes.IF_KEYWORD ->
             return formattedIfLine(line.lineNumber(), statement as TiBasicIfStatement)
+
         TiBasicTokenTypes.FOR_KEYWORD ->
             return formattedForLine(line.lineNumber(), statement as TiBasicForStatement)
+
         TiBasicTokenTypes.NEXT_KEYWORD ->
             return formattedNextLine(line.lineNumber(), statement as TiBasicNextStatement)
+
         TiBasicTokenTypes.INPUT_KEYWORD ->
             return formattedInputLine(line.lineNumber(), statement as TiBasicInputStatement)
+
         TiBasicTokenTypes.READ_KEYWORD ->
             return formattedReadLine(line.lineNumber(), statement as TiBasicReadStatement)
+
         TiBasicTokenTypes.DATA_KEYWORD ->
             return formattedDataLine(line.lineNumber(), statement as TiBasicDataStatement)
+
         TiBasicTokenTypes.RESTORE_KEYWORD ->
             return formattedRestoreLine(line.lineNumber(), statement as TiBasicRestoreStatement)
     }
@@ -150,12 +158,8 @@ private fun formattedForLine(lineNumber: Int, statement: TiBasicForStatement): S
     }
 }
 
-private fun formattedNextLine(lineNumber: Int, statement: TiBasicNextStatement): String {
-    val nextNode = statement.node.firstChildNode!!
-    val varPart = statement.text.drop(nextNode.textLength).trim()
-    return if (varPart.isEmpty()) "$lineNumber NEXT"
-    else "$lineNumber NEXT ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varPart))}"
-}
+private fun formattedNextLine(lineNumber: Int, statement: TiBasicNextStatement): String =
+    formattedSimpleLine(lineNumber, statement) { removeWhitespaceOutsideStrings(uppercaseOutsideStrings(it)) }
 
 private fun formattedInputLine(lineNumber: Int, statement: TiBasicInputStatement): String {
     val stmtStart = statement.textRange.startOffset
@@ -181,12 +185,8 @@ private fun formattedInputLine(lineNumber: Int, statement: TiBasicInputStatement
     }
 }
 
-private fun formattedReadLine(lineNumber: Int, statement: TiBasicReadStatement): String {
-    val readNode = statement.node.firstChildNode!!
-    val varsPart = statement.text.drop(readNode.textLength).trim()
-    return if (varsPart.isEmpty()) "$lineNumber READ"
-    else "$lineNumber READ ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varsPart))}"
-}
+private fun formattedReadLine(lineNumber: Int, statement: TiBasicReadStatement): String =
+    formattedSimpleLine(lineNumber, statement) { removeWhitespaceOutsideStrings(uppercaseOutsideStrings(it)) }
 
 private fun formattedDataLine(lineNumber: Int, statement: TiBasicDataStatement): String {
     val dataItems = statement.node.allChildren
@@ -203,11 +203,14 @@ private fun formattedDataLine(lineNumber: Int, statement: TiBasicDataStatement):
     return "$lineNumber DATA $itemsText"
 }
 
-private fun formattedRestoreLine(lineNumber: Int, statement: TiBasicRestoreStatement): String {
-    val restoreNode = statement.node.firstChildNode!!
-    val argText = statement.text.drop(restoreNode.textLength).trim()
-    return if (argText.isEmpty()) "$lineNumber RESTORE"
-    else "$lineNumber RESTORE $argText"
+private fun formattedRestoreLine(lineNumber: Int, statement: TiBasicRestoreStatement): String =
+    formattedSimpleLine(lineNumber, statement)
+
+private fun formattedSimpleLine(lineNumber: Int, statement: PsiElement, argTransform: (String) -> String = { it }): String {
+    val keywordNode = statement.node.firstChildNode!!
+    val argText = statement.text.drop(keywordNode.textLength).trim()
+    return if (argText.isEmpty()) "$lineNumber ${keywordNode.text.uppercase()}"
+    else "$lineNumber ${keywordNode.text.uppercase()} ${argTransform(argText)}"
 }
 
 private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {

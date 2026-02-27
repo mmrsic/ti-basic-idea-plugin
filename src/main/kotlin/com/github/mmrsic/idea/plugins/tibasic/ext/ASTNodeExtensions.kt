@@ -6,6 +6,8 @@ import com.intellij.psi.tree.IElementType
 
 val ASTNode.allChildren: Array<ASTNode> get() = getChildren(null)
 
+val ASTNode.childSequence: Sequence<ASTNode> get() = generateSequence(firstChildNode) { it.treeNext }
+
 val ASTNode.nonWhitespaceChildren: List<ASTNode> get() = allChildren.filter { it.elementType != TokenType.WHITE_SPACE }
 
 val ASTNode.firstChildType: IElementType? get() = firstChildNode?.elementType

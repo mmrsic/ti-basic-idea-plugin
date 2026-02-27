@@ -211,161 +211,111 @@ class TiBasicLexer : LexerBase() {
                     while (i < argStr.length && argStr[i].isWhitespace()) i++
                     result.add(LineToken(offset + start, offset + i, TokenType.WHITE_SPACE))
                 }
-
                 ch == '"' -> {
-                    val start = i++
-                    var closed = false
-                    while (i < argStr.length) {
-                        when {
-                            argStr[i] == '"' && i + 1 < argStr.length && argStr[i + 1] == '"' -> i += 2
-                            argStr[i] == '"' -> {
-                                i++; closed = true; break
-                            }
-
-                            else -> i++
-                        }
-                    }
-                    result.add(
-                        LineToken(
-                            offset + start,
-                            offset + i,
-                            if (closed) TiBasicTokenTypes.STRING_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT
-                        )
-                    )
+                    val token = tokenizeStringLiteral(argStr, offset, i)
+                    result.add(token); i = token.end - offset
                 }
-
-                ch == '&' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.CONCAT_OP)); i++
+                ch == '&' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.CONCAT_OP)); i++ }
+                ch == '+' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PLUS_OP)); i++ }
+                ch == '-' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MINUS_OP)); i++ }
+                ch == '*' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MUL_OP)); i++ }
+                ch == '/' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.DIV_OP)); i++ }
+                ch == '^' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.POW_OP)); i++ }
+                ch == '=' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.EQ_OP)); i++ }
+                ch == '<' -> when {
+                    i + 1 < argStr.length && argStr[i + 1] == '>' -> { result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.NEQ_OP)); i += 2 }
+                    i + 1 < argStr.length && argStr[i + 1] == '=' -> { result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.LE_OP)); i += 2 }
+                    else -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LT_OP)); i++ }
                 }
-
-                ch == '+' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PLUS_OP)); i++
+                ch == '>' -> when {
+                    i + 1 < argStr.length && argStr[i + 1] == '=' -> { result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.GE_OP)); i += 2 }
+                    else -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.GT_OP)); i++ }
                 }
-
-                ch == '-' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MINUS_OP)); i++
+                ch == '(' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LPAREN)); i++ }
+                ch == ')' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.RPAREN)); i++ }
+                ch == ',' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COMMA)); i++ }
+                ch == ':' -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COLON)); i++ }
+                ch.isDigit() || (ch == '.' && i + 1 < argStr.length && argStr[i + 1].isDigit()) -> {
+                    val token = tokenizeNumber(argStr, offset, i)
+                    result.add(token); i = token.end - offset
                 }
-
-                ch == '*' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.MUL_OP)); i++
-                }
-
-                ch == '/' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.DIV_OP)); i++
-                }
-
-                ch == '^' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.POW_OP)); i++
-                }
-
-                ch == '=' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.EQ_OP)); i++
-                }
-
-                ch == '<' -> {
-                    when {
-                        i + 1 < argStr.length && argStr[i + 1] == '>' -> {
-                            result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.NEQ_OP)); i += 2
-                        }
-
-                        i + 1 < argStr.length && argStr[i + 1] == '=' -> {
-                            result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.LE_OP)); i += 2
-                        }
-
-                        else -> {
-                            result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LT_OP)); i++
-                        }
-                    }
-                }
-
-                ch == '>' -> {
-                    if (i + 1 < argStr.length && argStr[i + 1] == '=') {
-                        result.add(LineToken(offset + i, offset + i + 2, TiBasicTokenTypes.GE_OP)); i += 2
-                    } else {
-                        result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.GT_OP)); i++
-                    }
-                }
-
-                ch == '(' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.LPAREN)); i++
-                }
-
-                ch == ')' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.RPAREN)); i++
-                }
-
-                ch == ',' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COMMA)); i++
-                }
-
-                ch == ':' -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.COLON)); i++
-                }
-
-                ch.isDigit() -> {
-                    val start = i
-                    while (i < argStr.length && argStr[i].isDigit()) i++
-                    if (i < argStr.length && argStr[i] == '.') {
-                        i++
-                        while (i < argStr.length && argStr[i].isDigit()) i++
-                    }
-                    if (i < argStr.length && argStr[i] in "Ee") {
-                        i++
-                        if (i < argStr.length && argStr[i] in "+-") i++
-                        while (i < argStr.length && argStr[i].isDigit()) i++
-                    }
-                    val text = argStr.substring(start, i)
-                    result.add(
-                        LineToken(
-                            offset + start,
-                            offset + i,
-                            if (NUMERIC_LITERAL.matches(text)) TiBasicTokenTypes.NUMERIC_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT
-                        )
-                    )
-                }
-
                 isVariableFirstChar(ch) -> {
-                    val start = i++
-                    while (i < argStr.length && (argStr[i].isLetterOrDigit() || argStr[i] in "@_")) i++
-                    if (i < argStr.length && argStr[i] == '$') i++
-                    val text = argStr.substring(start, i)
-                    when (text.uppercase()) {
-                        "GOTO" -> result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.GOTO_KEYWORD))
-                        "THEN" -> result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.THEN_KEYWORD))
-                        "ELSE" -> result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.ELSE_KEYWORD))
-                        "TO" -> result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.TO_KEYWORD))
-                        "STEP" -> result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.STEP_KEYWORD))
-                        "GO" -> {
-                            val endOfGoTo = goToEnd(argStr, i)
-                            if (endOfGoTo >= 0) {
-                                result.add(LineToken(offset + start, offset + endOfGoTo, TiBasicTokenTypes.GOTO_KEYWORD))
-                                i = endOfGoTo
-                            } else {
-                                result.add(LineToken(offset + start, offset + i, classifyIdentifierToken(text)))
-                            }
-                        }
-
-                        else -> result.add(LineToken(offset + start, offset + i, classifyIdentifierToken(text)))
-                    }
+                    val token = tokenizeIdentifier(argStr, offset, i)
+                    result.add(token); i = token.end - offset
                 }
-
-                ch == '.' && i + 1 < argStr.length && argStr[i + 1].isDigit() -> {
-                    val start = i++
-                    while (i < argStr.length && argStr[i].isDigit()) i++
-                    if (i < argStr.length && argStr[i] in "Ee") {
-                        i++
-                        if (i < argStr.length && argStr[i] in "+-") i++
-                        while (i < argStr.length && argStr[i].isDigit()) i++
-                    }
-                    result.add(LineToken(offset + start, offset + i, TiBasicTokenTypes.NUMERIC_LITERAL))
-                }
-
-                else -> {
-                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PRINT_ARGUMENT)); i++
-                }
+                else -> { result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.PRINT_ARGUMENT)); i++ }
             }
         }
         return result
+    }
+
+    private fun tokenizeStringLiteral(s: String, offset: Int, start: Int): LineToken {
+        var i = start + 1
+        var closed = false
+        while (i < s.length) {
+            when {
+                s[i] == '"' && i + 1 < s.length && s[i + 1] == '"' -> i += 2
+                s[i] == '"' -> { i++; closed = true; break }
+                else -> i++
+            }
+        }
+        return LineToken(
+            offset + start,
+            offset + i,
+            if (closed) TiBasicTokenTypes.STRING_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT,
+        )
+    }
+
+    private fun tokenizeNumber(s: String, offset: Int, start: Int): LineToken {
+        var i = start
+        val startsWithDot = s[i] == '.'
+        if (startsWithDot) {
+            i++
+            while (i < s.length && s[i].isDigit()) i++
+        } else {
+            while (i < s.length && s[i].isDigit()) i++
+            if (i < s.length && s[i] == '.') {
+                i++
+                while (i < s.length && s[i].isDigit()) i++
+            }
+        }
+        if (i < s.length && s[i] in "Ee") {
+            i++
+            if (i < s.length && s[i] in "+-") i++
+            while (i < s.length && s[i].isDigit()) i++
+        }
+        val text = s.substring(start, i)
+        return LineToken(
+            offset + start,
+            offset + i,
+            if (startsWithDot || NUMERIC_LITERAL.matches(text)) TiBasicTokenTypes.NUMERIC_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT,
+        )
+    }
+
+    private fun tokenizeIdentifier(s: String, offset: Int, start: Int): LineToken {
+        var i = start + 1
+        while (i < s.length && (s[i].isLetterOrDigit() || s[i] in "@_")) i++
+        if (i < s.length && s[i] == '$') i++
+        val text = s.substring(start, i)
+        val end: Int
+        val type: IElementType
+        when (text.uppercase()) {
+            "GOTO" -> { end = i; type = TiBasicTokenTypes.GOTO_KEYWORD }
+            "THEN" -> { end = i; type = TiBasicTokenTypes.THEN_KEYWORD }
+            "ELSE" -> { end = i; type = TiBasicTokenTypes.ELSE_KEYWORD }
+            "TO"   -> { end = i; type = TiBasicTokenTypes.TO_KEYWORD }
+            "STEP" -> { end = i; type = TiBasicTokenTypes.STEP_KEYWORD }
+            "GO"   -> {
+                val endOfGoTo = goToEnd(s, i)
+                if (endOfGoTo >= 0) {
+                    end = endOfGoTo; type = TiBasicTokenTypes.GOTO_KEYWORD
+                } else {
+                    end = i; type = classifyIdentifierToken(text)
+                }
+            }
+            else -> { end = i; type = classifyIdentifierToken(text) }
+        }
+        return LineToken(offset + start, offset + end, type)
     }
 
     private fun tokenizeDataContent(offset: Int, content: String): List<LineToken> {
@@ -382,22 +332,9 @@ class TiBasicLexer : LexerBase() {
                     i++
                 }
                 content[i] == '"' -> {
-                    val start = i++
-                    var closed = false
-                    while (i < content.length) {
-                        when {
-                            content[i] == '"' && i + 1 < content.length && content[i + 1] == '"' -> i += 2
-                            content[i] == '"' -> { i++; closed = true; break }
-                            else -> i++
-                        }
-                    }
-                    result.add(
-                        LineToken(
-                            offset + start,
-                            offset + i,
-                            if (closed) TiBasicTokenTypes.STRING_LITERAL else TiBasicTokenTypes.PRINT_ARGUMENT,
-                        )
-                    )
+                    val token = tokenizeStringLiteral(content, offset, i)
+                    result.add(token)
+                    i = token.end - offset
                 }
                 else -> {
                     val start = i
