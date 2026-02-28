@@ -46,7 +46,8 @@ PSI tree              (tibasic.psi)
     IntelliJ wraps each composite node via TiBasicParserDefinition.createElement().
     Typed PSI classes (TiBasicLine, TiBasicPrintStatement, …) provide
     convenience accessors (e.g., TiBasicLine.lineNumber(),
-    TiBasicFile.lines(), TiBasicVariableAccess.subscriptDimCount()).
+    TiBasicFile.lines(), TiBasicFile.variableAccesses(),
+    TiBasicVariableAccess.subscriptDimCount()).
     │
     ├──▶ TiBasicSyntaxHighlighter   (tibasic.highlight)
     │       Token-level colouring: keywords, literals, operators, comments.
@@ -56,7 +57,9 @@ PSI tree              (tibasic.psi)
     │       Attaches error/warning annotations and quick-fixes.
     │
     ├──▶ TiBasicCompletionContributor (tibasic.editor)
-    │       Provides keyword suggestions from TiBasicKeywords.
+    │       Provides on-demand keyword suggestions (from TiBasicKeywords) and
+    │       variable suggestions (all variables defined in the current file).
+    │       Triggered by Ctrl+Space only; auto-popup is disabled.
     │
     └──▶ Actions                    (tibasic.action.*)
             FormatAction  — reformats the document text via FormatCode.

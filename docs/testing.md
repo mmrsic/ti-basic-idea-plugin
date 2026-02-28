@@ -143,6 +143,12 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         myFixture.completeBasic()
         assertTrue(myFixture.lookupElementStrings?.contains("PRINT") == true)
     }
+
+    fun `test variable completion`() {
+        myFixture.configureByText("test.tibasic", "100 LET A=5\n200 <caret>")
+        myFixture.completeBasic()
+        assertTrue(myFixture.lookupElementStrings?.contains("A") == true)
+    }
 }
 ```
 

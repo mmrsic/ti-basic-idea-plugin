@@ -592,17 +592,8 @@ class TiBasicAnnotator : Annotator {
         }
     }
 
-    private fun collectVariableAccesses(file: TiBasicFile): List<ASTNode> {
-        val result = mutableListOf<ASTNode>()
-        fun traverse(node: ASTNode) {
-            if (node.elementType == TiBasicNodeTypes.VARIABLE_ACCESS) result.add(node)
-            for (child in node.childSequence) traverse(child)
-        }
-        file.lines()
-            .flatMap { it.children.toList() }
-            .forEach { traverse(it.node) }
-        return result
-    }
+    private fun collectVariableAccesses(file: TiBasicFile): List<ASTNode> =
+        file.variableAccesses().map { it.node }
 
     private fun annotateNameConflicts(
         nodes: List<ASTNode>,

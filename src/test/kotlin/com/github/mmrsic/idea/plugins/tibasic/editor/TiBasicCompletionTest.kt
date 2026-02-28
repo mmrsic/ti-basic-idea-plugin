@@ -1,9 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
+import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
-class TiBasicCompletionTest : BasePlatformTestCase() {
+class TiBasicCompletionTest : TiBasicTestBase() {
 
     fun testKeywordsPrintExists() {
         val keywords = TiBasicKeywords.getKeywords()
@@ -57,6 +57,27 @@ class TiBasicCompletionTest : BasePlatformTestCase() {
             "PRINT must be applied or suggested when typing 'Pr'",
             appliedText.contains("PRINT") || popupItems.contains("PRINT"),
         )
+    }
+
+    fun testCompletionSuggestsNumericVariable() {
+        myFixture.configureByText("test.tibasic", "100 LET A=5\n200 <caret>")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Numeric variable A must be suggested", popupItems.contains("A"))
+    }
+
+    fun testCompletionSuggestsStringVariable() {
+        myFixture.configureByText("test.tibasic", "100 LET A\$=\"HELLO\"\n200 <caret>")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("String variable A\$ must be suggested", popupItems.contains("A\$"))
+    }
+
+    fun testCompletionSuggestsOnlyDistinctVariables() {
+        myFixture.configureByText("test.tibasic", "100 LET A=1\n200 LET A=2\n300 <caret>")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertEquals("Variable A must appear exactly once", 1, popupItems.count { it == "A" })
     }
 }
 

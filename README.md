@@ -110,7 +110,7 @@ The annotator inspects every file and highlights:
 
 ### Editor assistance
 
-- **Keyword completion** — autocomplete suggestions for all TI-Basic keywords while typing (case-insensitive)
+- **Keyword and variable completion** — on-demand autocomplete (Ctrl+Space) for all TI-Basic keywords and all variables defined in the current file (case-insensitive); keywords and variables appear in separate groups
 - **Shift+Enter** — inserts a new line and automatically prepends the next logical line number
 
 ## Project structure

@@ -48,8 +48,10 @@ Returns a `TiBasicSyntaxHighlighter` instance. The highlighter maps token types 
 | `language`            | `TI-Basic`                                    |
 | `implementationClass` | `tibasic.editor.TiBasicCompletionContributor` |
 
-Provides keyword completion suggestions from `TiBasicKeywords.getKeywords()`.
-Completion is case-insensitive; results are inserted in uppercase.
+Provides on-demand completion suggestions (Ctrl+Space only; auto-popup is disabled).
+Suggests all TI-Basic keywords from `TiBasicKeywords.getKeywords()` and all variables
+defined in the current file. Completion is case-insensitive; keywords and variables
+appear in separate groups in the popup.
 
 ---
 
