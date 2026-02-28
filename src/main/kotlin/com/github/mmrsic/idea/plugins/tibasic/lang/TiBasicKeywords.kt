@@ -26,6 +26,7 @@ object TiBasicKeywords {
     private val keywords =
         commands + setOf(
             "BREAK",
+            "CALL",
             "DELETE",
             "ELSE",
             "END",

@@ -30,6 +30,8 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TextAttributesKey.createTextAttributesKey("TI_BASIC_PAREN", DefaultLanguageHighlighterColors.PARENTHESES)
         val PRINT_ARGUMENT =
             TextAttributesKey.createTextAttributesKey("TI_BASIC_PRINT_ARGUMENT", DefaultLanguageHighlighterColors.STRING)
+        val CALL_SUBPROGRAM =
+            TextAttributesKey.createTextAttributesKey("TI_BASIC_CALL_SUBPROGRAM", DefaultLanguageHighlighterColors.FUNCTION_CALL)
         val COMMENT =
             TextAttributesKey.createTextAttributesKey("TI_BASIC_COMMENT", DefaultLanguageHighlighterColors.LINE_COMMENT)
     }
@@ -58,6 +60,7 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.RESTORE_KEYWORD,
             TiBasicTokenTypes.TAB_KEYWORD,
             TiBasicTokenTypes.DISPLAY_KEYWORD,
+            TiBasicTokenTypes.CALL_KEYWORD,
             TiBasicTokenTypes.TO_KEYWORD,
             TiBasicTokenTypes.STEP_KEYWORD -> arrayOf(KEYWORD)
 
@@ -87,6 +90,7 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.RPAREN -> arrayOf(PAREN)
 
             TiBasicTokenTypes.PRINT_ARGUMENT -> arrayOf(PRINT_ARGUMENT)
+            TiBasicTokenTypes.CALL_SUBPROGRAM_NAME -> arrayOf(CALL_SUBPROGRAM)
             TokenType.BAD_CHARACTER -> arrayOf(DefaultLanguageHighlighterColors.INVALID_STRING_ESCAPE)
             else -> emptyArray()
         }

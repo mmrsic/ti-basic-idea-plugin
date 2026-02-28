@@ -49,6 +49,7 @@ statement         = printStatement
                   | forStatement
                   | nextStatement
                   | deleteStatement
+                  | callStatement
                   | lineNumberListStatement
                   | unknownStatement ;
 
@@ -98,6 +99,10 @@ nextStatement           = NEXT whitespace numericVariable ;
                           (* control variable must match a preceding FOR variable *)
 deleteStatement         = DELETE    [ whitespace ] [ stringExpression ] ;
 lineNumberListStatement = listKeyword whitespace lineNumberList ;
+callStatement           = CALL [ whitespace ] CALL_SUBPROGRAM_NAME
+                          [ LPAREN [ callArgList ] RPAREN ]
+                          { token } ;   (* trailing tokens annotated as error for CLEAR *)
+callArgList             = expression { COMMA expression } ;
 unknownStatement        = unknownText ;         (* annotated as error *)
 
 listKeyword       = BREAK | UNBREAK | TRACE | UNTRACE ;
@@ -276,8 +281,8 @@ PRINT "no number"               ✗ error — line number expected
 ## Scope and dialect notes
 
 - The plugin currently supports statements that are meaningful within a single source file.
-- `GOSUB`/`RETURN`, `CALL` and other TI Extended Basic statements
-  are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
+- `GOSUB`/`RETURN` and TI Extended Basic statements are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
+- `CALL` is implemented for the 10 built-in TI-Basic subprograms: `CLEAR`, `SCREEN`, `COLOR`, `HCHAR`, `VCHAR`, `GCHAR`, `CHAR`, `KEY`, `JOYST`, `SOUND`. Extended Basic subprograms are out of scope.
 - `FOR`/`NEXT` are implemented. The annotator checks FOR-NEXT balance by count (total in file);
   it does **not** check that the control variable in `NEXT` matches the preceding `FOR` variable.
 - `TAB(n)` is a column-positioning function valid **only** inside `PRINT` statements.

@@ -70,6 +70,9 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.UNKNOWN_ST
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.VARIABLE_ACCESS
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.TAB_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DISPLAY_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_SUBPROGRAM_NAME
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CALL_STATEMENT
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -109,6 +112,7 @@ import com.intellij.psi.tree.IElementType
  * ifStatement             ::= IF_KEYWORD WHITE_SPACE? expression WHITE_SPACE? THEN_KEYWORD WHITE_SPACE? NUMERIC_LITERAL (WHITE_SPACE? ELSE_KEYWORD WHITE_SPACE? NUMERIC_LITERAL)?
  * forStatement            ::= FOR_KEYWORD WHITE_SPACE? variableAccess EQ expression TO_KEYWORD expression (STEP_KEYWORD expression)?
  * nextStatement           ::= NEXT_KEYWORD WHITE_SPACE? variableAccess
+ * callStatement           ::= CALL_KEYWORD WHITE_SPACE? CALL_SUBPROGRAM_NAME (WHITE_SPACE? LPAREN expressionList? RPAREN)? trailingTokens*
  * deleteStatement         ::= DELETE_KEYWORD (WHITE_SPACE? expression)?
  * lineNumberListStatement ::= LINE_NUMBER_LIST_KEYWORD (WHITE_SPACE? NUMERIC_LITERAL (COMMA NUMERIC_LITERAL)*)?
  * unknownStatement        ::= UNKNOWN_STATEMENT_TEXT
@@ -174,6 +178,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             RESTORE_KEYWORD -> parseRestoreStatement(builder)
             PRINT_KEYWORD -> parsePrintStatement(builder)
             DISPLAY_KEYWORD -> parseDisplayStatement(builder)
+            CALL_KEYWORD -> parseCallStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
             else -> { /* line number only — valid, no statement */
@@ -415,6 +420,31 @@ class TiBasicParser : PsiParser, LightPsiParser {
         builder.advanceLexer() // consume DISPLAY_KEYWORD
         parsePrintArgList(builder)
         stmtMarker.done(DISPLAY_STATEMENT)
+    }
+
+    private fun parseCallStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume CALL_KEYWORD
+        skipWhitespace(builder)
+        if (builder.tokenType == CALL_SUBPROGRAM_NAME) builder.advanceLexer()
+        skipWhitespace(builder)
+        if (builder.tokenType == LPAREN) {
+            builder.advanceLexer() // consume LPAREN
+            skipWhitespace(builder)
+            if (builder.tokenType != RPAREN && !isLineEnd(builder)) {
+                parseExpression(builder)
+                skipWhitespace(builder)
+                while (builder.tokenType == COMMA) {
+                    builder.advanceLexer() // consume COMMA
+                    skipWhitespace(builder)
+                    parseExpression(builder)
+                    skipWhitespace(builder)
+                }
+            }
+            if (builder.tokenType == RPAREN) builder.advanceLexer()
+        }
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(CALL_STATEMENT)
     }
 
     private fun parsePrintArgList(builder: PsiBuilder) {

@@ -61,6 +61,14 @@ class TiBasicTabFunction(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicCallStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun subprogramName(): String? =
+        node.firstChildOfType(TiBasicTokenTypes.CALL_SUBPROGRAM_NAME)?.text?.uppercase()
+
+    fun arguments(): List<TiBasicExpression> =
+        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).map { it.psi as TiBasicExpression }
+}
+
 class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun hasSubscriptParens(): Boolean =
         node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null

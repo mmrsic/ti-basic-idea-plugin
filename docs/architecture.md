@@ -6,19 +6,19 @@ This document describes the internal structure of the TI-Basic IntelliJ IDEA plu
 
 All source code lives under `com.github.mmrsic.idea.plugins.tibasic` (abbreviated `tibasic` below).
 
-| Package                     | Responsibility                                                                                                                                         |
-|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `tibasic.lang`              | Language/file-type registration: `TiBasicLanguage`, `TiBasicFileType`, `TiBasicFileIconProvider`, `TiBasicKeywords`                                    |
-| `tibasic.lexer`             | Tokenisation: `TiBasicLexer`, `TiBasicTokenTypes` (token element types), `TiBasicElementType`                                                          |
-| `tibasic.parser`            | Syntax analysis: `TiBasicParser`, `TiBasicParserDefinition`, `TiBasicNodeTypes` (composite node types)                                                 |
-| `tibasic.psi`               | Program structure interface: `TiBasicFile` (root PSI element), all PSI node classes, `VALID_LINE_NUMBER_RANGE`                                         |
-| `tibasic.highlight`         | Syntax colours (`TiBasicSyntaxHighlighter`, `TiBasicSyntaxHighlighterFactory`) and semantic annotations (`TiBasicAnnotator`)                           |
-| `tibasic.editor`            | Editor assistance: keyword completion (`TiBasicCompletionContributor`) and Shift+Enter handling (`TiBasicShiftEnterHandler`)                           |
-| `tibasic.action.format`     | Format action and formatting logic (`FormatAction`, `FormatCode`)                                                                                      |
-| `tibasic.action.resequence` | Resequence action, logic, options dialog, and quick-fix (`ResequenceAction`, `ResequenceLineNumbers`, `ResequenceOptionsDialog`, `ResequenceQuickFix`) |
-| `tibasic.action`            | Abstract base for all TI-Basic actions (`TiBasicFileAction`)                                                                                           |
-| `tibasic.util`              | Document write-action helpers (`PsiFileUtils`)                                                                                                         |
-| `tibasic.ext`               | Kotlin extensions on framework classes (`ASTNodeExtensions`)                                                                                           |
+| Package                     | Responsibility                                                                                                                                                                             |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `tibasic.lang`              | Language/file-type registration: `TiBasicLanguage`, `TiBasicFileType`, `TiBasicFileIconProvider`, `TiBasicKeywords`, `TiBasicCallSubprograms` (signatures for all 10 built-in subprograms) |
+| `tibasic.lexer`             | Tokenisation: `TiBasicLexer`, `TiBasicTokenTypes` (token element types), `TiBasicElementType`                                                                                              |
+| `tibasic.parser`            | Syntax analysis: `TiBasicParser`, `TiBasicParserDefinition`, `TiBasicNodeTypes` (composite node types)                                                                                     |
+| `tibasic.psi`               | Program structure interface: `TiBasicFile` (root PSI element), all PSI node classes, `VALID_LINE_NUMBER_RANGE`                                                                             |
+| `tibasic.highlight`         | Syntax colours (`TiBasicSyntaxHighlighter`, `TiBasicSyntaxHighlighterFactory`) and semantic annotations (`TiBasicAnnotator`)                                                               |
+| `tibasic.editor`            | Editor assistance: keyword completion (`TiBasicCompletionContributor`) and Shift+Enter handling (`TiBasicShiftEnterHandler`)                                                               |
+| `tibasic.action.format`     | Format action and formatting logic (`FormatAction`, `FormatCode`)                                                                                                                          |
+| `tibasic.action.resequence` | Resequence action, logic, options dialog, and quick-fix (`ResequenceAction`, `ResequenceLineNumbers`, `ResequenceOptionsDialog`, `ResequenceQuickFix`)                                     |
+| `tibasic.action`            | Abstract base for all TI-Basic actions (`TiBasicFileAction`)                                                                                                                               |
+| `tibasic.util`              | Document write-action helpers (`PsiFileUtils`)                                                                                                                                             |
+| `tibasic.ext`               | Kotlin extensions on framework classes (`ASTNodeExtensions`)                                                                                                                               |
 
 ## Data flow
 
@@ -46,7 +46,7 @@ PSI tree              (tibasic.psi)
     IntelliJ wraps each composite node via TiBasicParserDefinition.createElement().
     Typed PSI classes (TiBasicLine, TiBasicPrintStatement, …) provide
     convenience accessors (e.g., TiBasicLine.lineNumber(),
-    TiBasicFile.lines(), TiBasicFile.variableAccesses(),
+    TiBasicFile.lines(), TiBasicFile.variableAccesses(), TiBasicFile.callStatements(),
     TiBasicVariableAccess.subscriptDimCount()).
     │
     ├──▶ TiBasicSyntaxHighlighter   (tibasic.highlight)
@@ -57,9 +57,10 @@ PSI tree              (tibasic.psi)
     │       Attaches error/warning annotations and quick-fixes.
     │
     ├──▶ TiBasicCompletionContributor (tibasic.editor)
-    │       Provides on-demand keyword suggestions (from TiBasicKeywords) and
-    │       variable suggestions (all variables defined in the current file).
-    │       Triggered by Ctrl+Space only; auto-popup is disabled.
+    │       Provides on-demand keyword suggestions (from TiBasicKeywords),
+    │       variable suggestions (all variables defined in the current file),
+    │       and CALL subprogram name suggestions (from TiBasicCallSubprograms) when
+    │       the cursor is after CALL. Triggered by Ctrl+Space only; auto-popup is disabled.
     │
     └──▶ Actions                    (tibasic.action.*)
             FormatAction  — reformats the document text via FormatCode.
@@ -91,6 +92,7 @@ PSI tree              (tibasic.psi)
 | `TiBasicIfStatement`                                                                                    | Missing expression, THEN keyword, or THEN line number; string expression; line numbers out of range or undefined                                                                                                                                                      |
 | `TiBasicForStatement`                                                                                   | Missing `=`, `TO`, variable, or required expressions (Incorrect statement); string control variable (Numeric variable expected); string expression in numeric position (String-number mismatch)                                                                       |
 | `TiBasicNextStatement`                                                                                  | Missing control variable (Incorrect statement); string control variable (Numeric variable expected)                                                                                                                                                                   |
+| `TiBasicCallStatement`                                                                                  | Unknown subprogram name (error on name token); wrong argument count (error on statement); type mismatch in any argument (warning on expression)                                                                                                                       |
 | `TiBasicUnknownStatement`                                                                               | Command used as statement vs. fully unknown identifier                                                                                                                                                                                                                |
 | `TiBasicInvalidLine`                                                                                    | Line without a leading line number                                                                                                                                                                                                                                    |
 | `TiBasicVariableAccess`                                                                                 | Empty subscript parens, subscript count > 3                                                                                                                                                                                                                           |

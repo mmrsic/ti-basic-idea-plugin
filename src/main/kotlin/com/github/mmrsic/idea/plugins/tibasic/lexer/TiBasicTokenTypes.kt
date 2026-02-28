@@ -55,6 +55,8 @@ object TiBasicTokenTypes {
     val RESTORE_KEYWORD = TiBasicElementType("RESTORE_KEYWORD")
     val TAB_KEYWORD = TiBasicElementType("TAB_KEYWORD")
     val DISPLAY_KEYWORD = TiBasicElementType("DISPLAY_KEYWORD")
+    val CALL_KEYWORD = TiBasicElementType("CALL_KEYWORD")
+    val CALL_SUBPROGRAM_NAME = TiBasicElementType("CALL_SUBPROGRAM_NAME")
 }
 
 class TiBasicElementType(debugName: String) : IElementType(debugName, TiBasicLanguage)

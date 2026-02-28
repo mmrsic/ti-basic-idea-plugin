@@ -271,25 +271,25 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForUnknownStatementWithValidLineNumber() {
-        configureFile("100 <error descr=\"Incorrect statement\">CALL CLEAR</error>",
+        configureFile("100 <error descr=\"Incorrect statement\">BEEP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLeadingZerosLineNumber() {
-        configureFile("0100 <error descr=\"Incorrect statement\">CALL CLEAR</error>",
+        configureFile("0100 <error descr=\"Incorrect statement\">BEEP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLineNumberAboveMax() {
-        configureFile("<error descr=\"Bad line number\">32768</error> <error descr=\"Incorrect statement\">CALL CLEAR</error>",
+        configureFile("<error descr=\"Bad line number\">32768</error> <error descr=\"Incorrect statement\">BEEP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLineNumberZero() {
-        configureFile("<error descr=\"Bad line number\">0</error> <error descr=\"Incorrect statement\">CALL CLEAR</error>",
+        configureFile("<error descr=\"Bad line number\">0</error> <error descr=\"Incorrect statement\">BEEP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }

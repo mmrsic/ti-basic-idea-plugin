@@ -3,6 +3,9 @@ package com.github.mmrsic.idea.plugins.tibasic.highlight
 import com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceQuickFix
 import com.github.mmrsic.idea.plugins.tibasic.ext.*
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
+import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_NAME_RUNTIME_ERROR
+import com.github.mmrsic.idea.plugins.tibasic.lang.CallArgType
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.*
@@ -43,6 +46,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicReadStatement -> annotateReadStatement(element, holder)
             is TiBasicDataStatement -> annotateDataStatement(element, holder)
             is TiBasicRestoreStatement -> annotateRestoreStatement(element, holder)
+            is TiBasicCallStatement -> annotateCallStatement(element, holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
             is TiBasicInvalidLine -> holder.error("Line number expected", element)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
@@ -538,6 +542,59 @@ class TiBasicAnnotator : Annotator {
             }
             if (isMismatch) {
                 holder.error("String-number mismatch", child.textRange)
+            }
+        }
+    }
+
+    private fun annotateCallStatement(statement: TiBasicCallStatement, holder: AnnotationHolder) {
+        val name = statement.subprogramName()
+        val subprogram = TiBasicCallSubprograms.byName(name)
+        if (subprogram == null) {
+            val nameNode = statement.node.firstChildOfType(TiBasicTokenTypes.CALL_SUBPROGRAM_NAME)
+            if (nameNode != null) {
+                holder.error("Unknown subprogram: $name", nameNode.textRange)
+            } else {
+                holder.error("Incorrect statement", statement)
+            }
+            return
+        }
+        val argNodes = statement.node.childrenOfType(TiBasicNodeTypes.EXPRESSION)
+        val argCount = argNodes.size
+        if (argCount !in subprogram.validArgCounts) {
+            holder.error(
+                subprogram.syntaxViolationError
+                    ?: "Wrong number of arguments for $name: expected ${subprogram.validArgCounts.joinToString(" or ")}, got $argCount",
+                statement,
+            )
+            return
+        }
+        if (name == "CLEAR") {
+            val trailingNodes = statement.node
+                .childrenAfter(TiBasicTokenTypes.CALL_SUBPROGRAM_NAME)
+                .filter { it.elementType != TokenType.WHITE_SPACE }
+            if (trailingNodes.isNotEmpty()) {
+                val trailingRange = TextRange(
+                    trailingNodes.first().startOffset,
+                    trailingNodes.last().textRange.endOffset,
+                )
+                holder.error(BAD_NAME_RUNTIME_ERROR, trailingRange)
+                return
+            }
+        }
+        argNodes.forEachIndexed { index, argNode ->
+            val expr = argNode.psi as? TiBasicExpression ?: return@forEachIndexed
+            val expectedType = subprogram.argTypes[index % subprogram.argTypes.size]
+            val isString = isStringExpression(expr)
+            val mismatch = when (expectedType) {
+                CallArgType.NUMERIC -> isString
+                CallArgType.STRING -> !isString
+            }
+            if (mismatch) {
+                if (subprogram.syntaxViolationError != null) {
+                    holder.error(subprogram.syntaxViolationError, statement)
+                    return
+                }
+                holder.warning("Type mismatch at argument ${index + 1} of $name", argNode.textRange)
             }
         }
     }

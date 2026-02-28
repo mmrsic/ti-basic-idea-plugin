@@ -53,6 +53,9 @@ private fun formattedLine(line: TiBasicLine): String {
 
         TiBasicTokenTypes.RESTORE_KEYWORD ->
             return formattedRestoreLine(line.lineNumber(), statement as TiBasicRestoreStatement)
+
+        TiBasicTokenTypes.CALL_KEYWORD ->
+            return formattedCallLine(line.lineNumber(), statement as TiBasicCallStatement)
     }
 
     val keywordMatch = TiBasicKeywords.getKeywords()
@@ -202,6 +205,17 @@ private fun formattedDataLine(lineNumber: Int, statement: TiBasicDataStatement):
 
 private fun formattedRestoreLine(lineNumber: Int, statement: TiBasicRestoreStatement): String =
     formattedSimpleLine(lineNumber, statement)
+
+private fun formattedCallLine(lineNumber: Int, statement: TiBasicCallStatement): String {
+    val name = statement.subprogramName() ?: return "$lineNumber CALL"
+    val args = statement.arguments()
+    return if (args.isEmpty()) {
+        "$lineNumber CALL $name"
+    } else {
+        val argsText = args.joinToString(",") { removeWhitespaceOutsideStrings(uppercaseOutsideStrings(it.text.trim())) }
+        "$lineNumber CALL $name($argsText)"
+    }
+}
 
 private fun formattedSimpleLine(lineNumber: Int, statement: PsiElement, argTransform: (String) -> String = { it }): String {
     val keywordNode = statement.node.firstChildNode!!

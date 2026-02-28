@@ -22,7 +22,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -144,6 +144,7 @@ class TiBasicLexer : LexerBase() {
             "DATA" -> TiBasicTokenTypes.DATA_KEYWORD
             "RESTORE" -> TiBasicTokenTypes.RESTORE_KEYWORD
             "DISPLAY" -> TiBasicTokenTypes.DISPLAY_KEYWORD
+            "CALL" -> TiBasicTokenTypes.CALL_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         offset = appendToken(result, offset, printStr, keywordType)
@@ -155,7 +156,10 @@ class TiBasicLexer : LexerBase() {
                     result.addAll(tokenizeDataContent(offset, argStr))
                     offset += argStr.length
                 }
-
+                "CALL" -> {
+                    result.addAll(tokenizeCallArguments(offset, argStr))
+                    offset += argStr.length
+                }
                 else -> {
                     result.addAll(tokenizeArgument(offset, argStr))
                     offset += argStr.length
@@ -308,6 +312,22 @@ class TiBasicLexer : LexerBase() {
                 }
             }
         }
+        return result
+    }
+
+    private fun tokenizeCallArguments(offset: Int, argStr: String): List<LineToken> {
+        val result = mutableListOf<LineToken>()
+        var i = 0
+        val wsStart = i
+        while (i < argStr.length && argStr[i].isWhitespace()) i++
+        if (i > wsStart) result.add(LineToken(offset + wsStart, offset + i, TokenType.WHITE_SPACE))
+        if (i < argStr.length && isVariableFirstChar(argStr[i])) {
+            val nameStart = i
+            i++
+            while (i < argStr.length && (argStr[i].isLetterOrDigit() || argStr[i] in "@_")) i++
+            result.add(LineToken(offset + nameStart, offset + i, TiBasicTokenTypes.CALL_SUBPROGRAM_NAME))
+        }
+        if (i < argStr.length) result.addAll(tokenizeArgument(offset + i, argStr.substring(i)))
         return result
     }
 
