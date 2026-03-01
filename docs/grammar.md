@@ -50,6 +50,7 @@ statement         = printStatement
                   | nextStatement
                   | deleteStatement
                   | callStatement
+                  | randomizeStatement
                   | lineNumberListStatement
                   | unknownStatement ;
 
@@ -103,6 +104,9 @@ callStatement           = CALL [ whitespace ] CALL_SUBPROGRAM_NAME
                           [ LPAREN [ callArgList ] RPAREN ]
                           { token } ;   (* trailing tokens annotated as error for CLEAR *)
 callArgList             = expression { COMMA expression } ;
+randomizeStatement      = RANDOMIZE [ whitespace numericExpression ] ;
+                          (* without argument: system clock is used as seed;
+                             with a numeric expression: INT of the result is used as seed *)
 unknownStatement        = unknownText ;         (* annotated as error *)
 
 listKeyword       = BREAK | UNBREAK | TRACE | UNTRACE ;

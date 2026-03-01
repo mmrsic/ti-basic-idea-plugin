@@ -1450,4 +1450,34 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         configureFile("100 LET X = <error descr=\"TAB is only valid in a PRINT or DISPLAY statement\">TAB</error>(5)")
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun `test RANDOMIZE without argument no error`() {
+        configureFile("100 RANDOMIZE")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test RANDOMIZE with numeric literal no error`() {
+        configureFile("100 RANDOMIZE 42")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test RANDOMIZE with numeric expression no error`() {
+        configureFile("100 RANDOMIZE A+B*3")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test RANDOMIZE with string argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">RANDOMIZE \"HELLO\"</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test RANDOMIZE with unbalanced paren gives INCORRECT STATEMENT error`() {
+        configureFile("100 RANDOMIZE <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">(A+B</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test RANDOMIZE with trailing comma and extra content gives INCORRECT STATEMENT error`() {
+        configureFile("155 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">RANDOMIZE 6/6+123, dsaas</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
 }

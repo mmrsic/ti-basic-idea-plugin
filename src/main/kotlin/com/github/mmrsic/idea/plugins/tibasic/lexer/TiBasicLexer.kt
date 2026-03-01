@@ -23,7 +23,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -146,6 +146,7 @@ class TiBasicLexer : LexerBase() {
             "RESTORE" -> TiBasicTokenTypes.RESTORE_KEYWORD
             "DISPLAY" -> TiBasicTokenTypes.DISPLAY_KEYWORD
             "CALL" -> TiBasicTokenTypes.CALL_KEYWORD
+            "RANDOMIZE" -> TiBasicTokenTypes.RANDOMIZE_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         offset = appendToken(result, offset, printStr, keywordType)

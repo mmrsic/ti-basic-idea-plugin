@@ -27,6 +27,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 | `REM`                      | Remark / comment                                                                                      |
 | `END`                      | Halt program execution (by convention the last line)                                                  |
 | `STOP`                     | Halt program execution (by convention used mid-program)                                               |
+| `RANDOMIZE`                | Seed the random-number generator; optional numeric expression (integer part used as seed)             |
 | `GOTO` / `GO TO`           | Unconditional branch to the given line number                                                         |
 | `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers                                                        |
 | `IF … THEN … [ELSE …]`     | Conditional branch; numeric expression selects target                                                 |

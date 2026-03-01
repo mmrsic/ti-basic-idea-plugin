@@ -35,6 +35,8 @@ class TiBasicEndStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicStopStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicRandomizeStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicGotoStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicOnGotoStatement(node: ASTNode) : ASTWrapperPsiElement(node)

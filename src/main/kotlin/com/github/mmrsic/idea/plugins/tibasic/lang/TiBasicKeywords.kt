@@ -44,6 +44,7 @@ object TiBasicKeywords {
             "NEXT",
             "ON",
             "PRINT",
+            "RANDOMIZE",
             "RND",
             "DISPLAY",
             "INPUT",

@@ -75,6 +75,8 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_SUBPR
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CALL_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FUNCTION_CALL
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RANDOMIZE_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RANDOMIZE_STATEMENT
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -181,6 +183,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             PRINT_KEYWORD -> parsePrintStatement(builder)
             DISPLAY_KEYWORD -> parseDisplayStatement(builder)
             CALL_KEYWORD -> parseCallStatement(builder)
+            RANDOMIZE_KEYWORD -> parseRandomizeStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
             else -> { /* line number only — valid, no statement */
@@ -227,6 +230,15 @@ class TiBasicParser : PsiParser, LightPsiParser {
         builder.advanceLexer() // consume STOP_KEYWORD
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(STOP_STATEMENT)
+    }
+
+    private fun parseRandomizeStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume RANDOMIZE_KEYWORD
+        skipWhitespace(builder)
+        if (!isLineEnd(builder)) parseExpression(builder)
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(RANDOMIZE_STATEMENT)
     }
 
     private fun parseGotoStatement(builder: PsiBuilder) {

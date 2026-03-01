@@ -44,6 +44,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicNextStatement -> annotateNextStatement(element, holder)
             is TiBasicEndStatement -> annotateTrailingContent(element.node, "END", holder)
             is TiBasicStopStatement -> annotateTrailingContent(element.node, "STOP", holder)
+            is TiBasicRandomizeStatement -> annotateRandomizeStatement(element, holder)
             is TiBasicInputStatement -> annotateInputStatement(element, holder)
             is TiBasicReadStatement -> annotateReadStatement(element, holder)
             is TiBasicDataStatement -> annotateDataStatement(element, holder)
@@ -68,6 +69,21 @@ class TiBasicAnnotator : Annotator {
         if (trailing.isEmpty()) return
         val range = TextRange(trailing.first().startOffset, trailing.last().startOffset + trailing.last().textLength)
         holder.warning("Everything after $stmtName statement is ignored", range)
+    }
+
+    private fun annotateRandomizeStatement(statement: TiBasicRandomizeStatement, holder: AnnotationHolder) {
+        val trailing = statement.node
+            .childrenAfter(TiBasicTokenTypes.RANDOMIZE_KEYWORD)
+            .filter { it.elementType != TokenType.WHITE_SPACE && it.elementType != TiBasicNodeTypes.EXPRESSION }
+        if (trailing.isNotEmpty()) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        val exprNode = statement.node.childrenOfType(TiBasicNodeTypes.EXPRESSION).firstOrNull() ?: return
+        val expr = exprNode.psi as? TiBasicExpression ?: return
+        if (isStringExpression(expr)) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+        }
     }
 
     private fun annotateInputStatement(statement: TiBasicInputStatement, holder: AnnotationHolder) {

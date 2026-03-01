@@ -40,6 +40,7 @@ class TiBasicParserDefinition : ParserDefinition {
             TiBasicNodeTypes.REM_STATEMENT -> TiBasicRemStatement(node)
             TiBasicNodeTypes.END_STATEMENT -> TiBasicEndStatement(node)
             TiBasicNodeTypes.STOP_STATEMENT -> TiBasicStopStatement(node)
+            TiBasicNodeTypes.RANDOMIZE_STATEMENT -> TiBasicRandomizeStatement(node)
             TiBasicNodeTypes.GOTO_STATEMENT -> TiBasicGotoStatement(node)
             TiBasicNodeTypes.ON_GOTO_STATEMENT -> TiBasicOnGotoStatement(node)
             TiBasicNodeTypes.IF_STATEMENT -> TiBasicIfStatement(node)
