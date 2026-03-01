@@ -57,6 +57,8 @@ object TiBasicTokenTypes {
     val DISPLAY_KEYWORD = TiBasicElementType("DISPLAY_KEYWORD")
     val CALL_KEYWORD = TiBasicElementType("CALL_KEYWORD")
     val CALL_SUBPROGRAM_NAME = TiBasicElementType("CALL_SUBPROGRAM_NAME")
+    val NUMERIC_FUNCTION_KEYWORD = TiBasicElementType("NUMERIC_FUNCTION_KEYWORD")
+    val STRING_FUNCTION_KEYWORD = TiBasicElementType("STRING_FUNCTION_KEYWORD")
 }
 
 class TiBasicElementType(debugName: String) : IElementType(debugName, TiBasicLanguage)

@@ -49,9 +49,11 @@ Returns a `TiBasicSyntaxHighlighter` instance. The highlighter maps token types 
 | `implementationClass` | `tibasic.editor.TiBasicCompletionContributor` |
 
 Provides on-demand completion suggestions (Ctrl+Space only; auto-popup is disabled).
-Suggests all TI-Basic keywords from `TiBasicKeywords.getKeywords()` and all variables
-defined in the current file. Completion is case-insensitive; keywords and variables
-appear in separate groups in the popup.
+Suggests all TI-Basic keywords from `TiBasicKeywords.getKeywords()`, all variables
+defined in the current file, CALL subprogram names (from `TiBasicCallSubprograms`) when
+the cursor is immediately after `CALL`, and built-in function names (from
+`TiBasicBuiltInFunctions`) in expression context. Keywords, variables, subprogram names,
+and function names appear in separate groups in the popup.
 
 ---
 

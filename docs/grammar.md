@@ -128,7 +128,14 @@ numericPrimary    = NUMERIC_LITERAL
                   | variableAccess
                   | STRING_LITERAL          (* type mismatch — parsed for error reporting *)
                   | stringVariableAccess    (* type mismatch — parsed for error reporting *)
-                  | LPAREN numericComparison RPAREN ;
+                  | LPAREN numericComparison RPAREN
+                  | numericFunctionCall ;
+
+numericFunctionCall = NUMERIC_FUNCTION_KEYWORD LPAREN expressionList RPAREN ;
+                    (* functions with argCount=0, e.g. RND, omit the parentheses entirely *)
+stringFunctionCall  = STRING_FUNCTION_KEYWORD LPAREN expressionList RPAREN ;
+                    (* string-returning functions; wired into stringOperand when first string function is implemented *)
+expressionList      = expression { COMMA expression } ;
 
 variableAccess        = ( NUMERIC_VARIABLE | STRING_VARIABLE ) [ subscripts ] ;
 stringVariableAccess  = STRING_VARIABLE [ subscripts ] ;
@@ -142,6 +149,50 @@ subscriptExpr         = numericComparison ;
 > a generic parse failure.
 
 ## Tokens
+
+### Built-in expression functions
+
+Built-in functions appear inside expressions and return a value. They are distinct from `CALL` subprograms
+(which are stand-alone statements). Function names are recognised as `NUMERIC_FUNCTION_KEYWORD` or
+`STRING_FUNCTION_KEYWORD` tokens in the lexer.
+
+#### Numeric and mixed-return functions (`NUMERIC_FUNCTION_KEYWORD`)
+
+All take one or more parenthesised arguments unless noted; all return a numeric value.
+
+| Function       | Arguments             | Description                             |
+|----------------|-----------------------|-----------------------------------------|
+| `ABS(x)`       | 1 numeric             | Absolute value                          |
+| `ATN(x)`       | 1 numeric             | Arctangent (result in radians)          |
+| `COS(x)`       | 1 numeric             | Cosine (argument in radians)            |
+| `EXP(x)`       | 1 numeric             | *e* raised to the power *x*             |
+| `INT(x)`       | 1 numeric             | Greatest integer ≤ *x*                  |
+| `LOG(x)`       | 1 numeric             | Natural logarithm                       |
+| `RND`          | none (no parentheses) | Random number in [0, 1)                 |
+| `SGN(x)`       | 1 numeric             | Sign of *x* (−1, 0, or 1)               |
+| `SIN(x)`       | 1 numeric             | Sine (argument in radians)              |
+| `SQR(x)`       | 1 numeric             | Square root                             |
+| `TAN(x)`       | 1 numeric             | Tangent (argument in radians)           |
+| `ASC(s$)`      | 1 string              | ASCII code of first character           |
+| `LEN(s$)`      | 1 string              | Length of string                        |
+| `POS(s$,t$,n)` | 2 strings, 1 numeric  | Starting position of *t$* in *s$* ≥ *n* |
+| `VAL(s$)`      | 1 string              | Numeric value of string                 |
+
+#### String-returning functions (`STRING_FUNCTION_KEYWORD`)
+
+These functions return a string value and are valid in string expression positions.
+
+| Function             | Arguments            | Description                   |
+|----------------------|----------------------|-------------------------------|
+| `CHR$(n)`            | 1 numeric            | Character with ASCII code *n* |
+| `SEG$(s$,start,len)` | 1 string, 2 numerics | Substring of *s$*             |
+| `STR$(x)`            | 1 numeric            | String representation of *x*  |
+
+> **Implementation note:** `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, and `TAN` are fully implemented. All other functions listed above are
+> planned and will be added to the registry `TiBasicBuiltInFunctions` one by one; no further architecture
+> changes are needed for numeric and mixed-return functions. String-returning functions additionally require
+> wiring `STRING_FUNCTION_KEYWORD` into the string-expression parser — a one-time change needed only for
+> the very first string function.
 
 ### Keywords
 
@@ -276,6 +327,11 @@ PRINT "no number"               ✗ error — line number expected
 600 FOR I = 1 TO 10\n610 FOR J = 1 TO 5\n620 NEXT I  ✗ warning on line 610 — FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements
 630 GOTO 100                    ✗ warning — undefined line number (100 not in file)
 640 GOTO A                      ✗ error — argument must be a numeric literal (Incorrect statement)
+650 LET Y = ABS(X)              ✓ valid — built-in numeric function
+660 LET Y = ABS(-5)             ✓ valid — literal as function argument
+670 LET Y = ABS(X,2)            ✗ error — ABS takes exactly 1 argument (INCORRECT STATEMENT)
+680 LET Y = ABS("A")            ✗ error — ABS requires a numeric argument (INCORRECT STATEMENT)
+690 LET Y = ABS()               ✗ error — ABS requires 1 argument (INCORRECT STATEMENT)
 ```
 
 ## Scope and dialect notes
@@ -283,6 +339,8 @@ PRINT "no number"               ✗ error — line number expected
 - The plugin currently supports statements that are meaningful within a single source file.
 - `GOSUB`/`RETURN` and TI Extended Basic statements are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
 - `CALL` is implemented for the 10 built-in TI-Basic subprograms: `CLEAR`, `SCREEN`, `COLOR`, `HCHAR`, `VCHAR`, `GCHAR`, `CHAR`, `KEY`, `JOYST`, `SOUND`. Extended Basic subprograms are out of scope.
+- **Built-in expression functions** are supported for `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, and `TAN`. All remaining standard TI-Basic functions
+  (`ASC`, `LEN`, `POS`, `VAL`, `CHR$`, `SEG$`, `STR$`) are planned; adding each requires only a single registry entry.
 - `FOR`/`NEXT` are implemented. The annotator checks FOR-NEXT balance by count (total in file);
   it does **not** check that the control variable in `NEXT` matches the preceding `FOR` variable.
 - `TAB(n)` is a column-positioning function valid **only** inside `PRINT` statements.

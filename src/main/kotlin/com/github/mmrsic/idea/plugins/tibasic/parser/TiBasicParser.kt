@@ -73,6 +73,8 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DISPLAY_KE
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_SUBPROGRAM_NAME
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CALL_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FUNCTION_CALL
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -602,6 +604,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             NUMERIC_LITERAL -> builder.advanceLexer()
             NUMERIC_VARIABLE, STRING_VARIABLE -> parseVariableAccess(builder) // STRING_VARIABLE = mismatch
             STRING_LITERAL -> builder.advanceLexer() // mismatch but consume for error reporting
+            NUMERIC_FUNCTION_KEYWORD -> parseFunctionCall(builder)
             LPAREN -> {
                 builder.advanceLexer()
                 skipIntraLineWhitespace(builder)
@@ -610,6 +613,45 @@ class TiBasicParser : PsiParser, LightPsiParser {
                 if (builder.tokenType == RPAREN) builder.advanceLexer()
             }
         }
+    }
+
+    private fun parseFunctionCall(builder: PsiBuilder) {
+        val marker = builder.mark()
+        builder.advanceLexer() // consume NUMERIC_FUNCTION_KEYWORD
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == LPAREN) {
+            builder.advanceLexer() // consume (
+            parseFunctionArgList(builder)
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == RPAREN) builder.advanceLexer()
+        }
+        marker.done(FUNCTION_CALL)
+    }
+
+    private fun parseFunctionArgList(builder: PsiBuilder) {
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == RPAREN || isLineEnd(builder)) return
+        parseFunctionArg(builder)
+        while (true) {
+            val cp = builder.mark()
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType != COMMA) {
+                cp.rollbackTo(); break
+            }
+            builder.advanceLexer()
+            skipIntraLineWhitespace(builder)
+            if (!isExpressionStart(builder)) {
+                cp.rollbackTo(); break
+            }
+            cp.drop()
+            parseFunctionArg(builder)
+        }
+    }
+
+    private fun parseFunctionArg(builder: PsiBuilder) {
+        val marker = builder.mark()
+        parseNumericCmp(builder)
+        marker.done(EXPRESSION)
     }
 
     // --- Variable access (shared by string and numeric paths) ---
@@ -666,7 +708,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
         builder.tokenType == STRING_LITERAL || builder.tokenType == STRING_VARIABLE
 
     private fun isNumericPrimaryStart(builder: PsiBuilder): Boolean =
-        builder.tokenType in setOf(NUMERIC_LITERAL, NUMERIC_VARIABLE, PLUS_OP, MINUS_OP, LPAREN, STRING_LITERAL, STRING_VARIABLE)
+        builder.tokenType in setOf(NUMERIC_LITERAL, NUMERIC_VARIABLE, PLUS_OP, MINUS_OP, LPAREN, STRING_LITERAL, STRING_VARIABLE, NUMERIC_FUNCTION_KEYWORD)
 
     private fun skipNewlines(builder: PsiBuilder) {
         while (!builder.eof() && builder.tokenType == TokenType.WHITE_SPACE) builder.advanceLexer()

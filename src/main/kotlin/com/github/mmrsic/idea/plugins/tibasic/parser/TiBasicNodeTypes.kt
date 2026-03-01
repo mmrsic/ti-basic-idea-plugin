@@ -30,4 +30,5 @@ object TiBasicNodeTypes {
     val TAB_FUNCTION = TiBasicElementType("TAB_FUNCTION")
     val DISPLAY_STATEMENT = TiBasicElementType("DISPLAY_STATEMENT")
     val CALL_STATEMENT = TiBasicElementType("CALL_STATEMENT")
+    val FUNCTION_CALL = TiBasicElementType("FUNCTION_CALL")
 }

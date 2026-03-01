@@ -76,3 +76,11 @@ class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun subscriptDimCount(): Int =
         node.childrenOfType(TiBasicNodeTypes.EXPRESSION).size
 }
+
+class TiBasicFunctionCall(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun functionName(): String? =
+        node.firstChildOfType(TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD)?.text?.uppercase()
+
+    fun arguments(): List<TiBasicExpression> =
+        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).map { it.psi as TiBasicExpression }
+}

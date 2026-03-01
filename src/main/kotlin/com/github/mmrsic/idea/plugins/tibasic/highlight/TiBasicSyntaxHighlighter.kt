@@ -62,7 +62,9 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.DISPLAY_KEYWORD,
             TiBasicTokenTypes.CALL_KEYWORD,
             TiBasicTokenTypes.TO_KEYWORD,
-            TiBasicTokenTypes.STEP_KEYWORD -> arrayOf(KEYWORD)
+            TiBasicTokenTypes.STEP_KEYWORD,
+            TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD,
+            TiBasicTokenTypes.STRING_FUNCTION_KEYWORD -> arrayOf(KEYWORD)
 
             TiBasicTokenTypes.REM_TEXT -> arrayOf(COMMENT)
             TiBasicTokenTypes.LINE_NUMBER -> arrayOf(LINE_NUMBER)

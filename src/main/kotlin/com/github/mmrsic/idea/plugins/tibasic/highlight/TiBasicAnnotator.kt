@@ -4,7 +4,9 @@ import com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceQuickF
 import com.github.mmrsic.idea.plugins.tibasic.ext.*
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBuiltInFunctions
 import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_NAME_RUNTIME_ERROR
+import com.github.mmrsic.idea.plugins.tibasic.lang.INCORRECT_STATEMENT_RUNTIME_ERROR
 import com.github.mmrsic.idea.plugins.tibasic.lang.CallArgType
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
@@ -47,6 +49,7 @@ class TiBasicAnnotator : Annotator {
             is TiBasicDataStatement -> annotateDataStatement(element, holder)
             is TiBasicRestoreStatement -> annotateRestoreStatement(element, holder)
             is TiBasicCallStatement -> annotateCallStatement(element, holder)
+            is TiBasicFunctionCall -> annotateFunctionCall(element, holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
             is TiBasicInvalidLine -> holder.error("Line number expected", element)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
@@ -352,6 +355,14 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateLetStatement(statement: TiBasicLetStatement, holder: AnnotationHolder) {
+        val funcKeywordNode = statement.node.nonWhitespaceChildren.firstOrNull {
+            it.elementType == TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD ||
+                    it.elementType == TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
+        }
+        if (funcKeywordNode != null) {
+            holder.error("Function name cannot be used as variable", funcKeywordNode.textRange)
+            return
+        }
         val varAccessNode = statement.node.firstChildOfType(TiBasicNodeTypes.VARIABLE_ACCESS)
         if (varAccessNode != null && varAccessNode.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
             holder.error("Bad variable name", varAccessNode.textRange)
@@ -528,6 +539,12 @@ class TiBasicAnnotator : Annotator {
 
     private fun annotateExpression(expr: TiBasicExpression, holder: AnnotationHolder) {
         val children = expr.node.nonWhitespaceChildren
+        val openParens = children.count { it.elementType == TiBasicTokenTypes.LPAREN }
+        val closeParens = children.count { it.elementType == TiBasicTokenTypes.RPAREN }
+        if (openParens > closeParens) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, expr)
+            return
+        }
         if (children.any { it.elementType in COMPARISON_OP_TYPES }) return
         val isString = isStringExpression(expr)
         children.forEach { child ->
@@ -560,6 +577,10 @@ class TiBasicAnnotator : Annotator {
         }
         val argNodes = statement.node.childrenOfType(TiBasicNodeTypes.EXPRESSION)
         val argCount = argNodes.size
+        if (argNodes.any { it.firstChildNode == null }) {
+            holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
         if (argCount !in subprogram.validArgCounts) {
             holder.error(
                 subprogram.syntaxViolationError
@@ -595,6 +616,42 @@ class TiBasicAnnotator : Annotator {
                     return
                 }
                 holder.warning("Type mismatch at argument ${index + 1} of $name", argNode.textRange)
+            }
+        }
+    }
+
+    private fun annotateFunctionCall(call: TiBasicFunctionCall, holder: AnnotationHolder) {
+        val name = call.functionName()
+        val signature = TiBasicBuiltInFunctions.byName(name)
+        if (signature == null) {
+            holder.error("Unknown built-in function: $name", call)
+            return
+        }
+        val hasOpenParen = call.node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
+        val hasCloseParen = call.node.firstChildOfType(TiBasicTokenTypes.RPAREN) != null
+        if (hasOpenParen && !hasCloseParen) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, call)
+            return
+        }
+        if (hasOpenParen && signature.argCount == 0) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, call)
+            return
+        }
+        val args = call.arguments()
+        if (args.size != signature.argCount) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, call)
+            return
+        }
+        args.forEachIndexed { index, arg ->
+            val expectedType = signature.argTypes[index]
+            val isString = isStringExpression(arg)
+            val mismatch = when (expectedType) {
+                CallArgType.NUMERIC -> isString
+                CallArgType.STRING -> !isString
+            }
+            if (mismatch) {
+                holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, call)
+                return
             }
         }
     }

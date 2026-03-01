@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBuiltInFunctions
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
@@ -14,6 +15,7 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 
 private const val VARIABLE_GROUPING = 1
 private const val CALL_SUBPROGRAM_GROUPING = 2
+private const val FUNCTION_GROUPING = 3
 
 class TiBasicCompletionContributor : CompletionContributor() {
 
@@ -33,9 +35,16 @@ class TiBasicCompletionContributor : CompletionContributor() {
             }
             return
         }
-        TiBasicKeywords.getKeywords().forEach { keyword ->
-            result.caseInsensitive().addElement(LookupElementBuilder.create(keyword).withTypeText("keyword"))
-        }
+        val functionNames = TiBasicBuiltInFunctions.allNames()
+        functionNames.sorted()
+            .forEach { name ->
+                result.caseInsensitive().addElement(
+                    PrioritizedLookupElement.withGrouping(LookupElementBuilder.create(name).withTypeText("function"), FUNCTION_GROUPING)
+                )
+            }
+        TiBasicKeywords.getKeywords()
+            .filter { it !in functionNames }
+            .forEach { keyword -> result.caseInsensitive().addElement(LookupElementBuilder.create(keyword).withTypeText("keyword")) }
         file.variableAccesses()
             .map { it.node.firstChildNode.text.uppercase() }
             .distinct()

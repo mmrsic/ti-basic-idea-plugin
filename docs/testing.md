@@ -57,10 +57,14 @@ src/test/kotlin/com/github/mmrsic/idea/plugins/tibasic/
 │   └── TiBasicShiftEnterHandlerTest.kt
 ├── highlight/
 │   ├── TiBasicAnnotatorTest.kt
+│   ├── TiBasicCallAnnotatorTest.kt
+│   ├── TiBasicFunctionCallAnnotatorTest.kt
 │   └── TiBasicSyntaxHighlightingTest.kt
 ├── lang/
 │   └── IconLoadTest.kt
 └── parser/
+    ├── TiBasicCallParserTest.kt
+    ├── TiBasicFunctionCallParserTest.kt
     └── TiBasicParserTest.kt
 ```
 

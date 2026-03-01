@@ -3,6 +3,7 @@ package com.github.mmrsic.idea.plugins.tibasic.lexer
 import com.intellij.lexer.LexerBase
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBuiltInFunctions
 
 /**
  * Lexer for TI-Basic source files.
@@ -419,7 +420,12 @@ class TiBasicLexer : LexerBase() {
             }
 
             else -> {
-                end = i; type = classifyIdentifierToken(text)
+                end = i
+                type = when (text.uppercase()) {
+                    in TiBasicBuiltInFunctions.numericFunctionNames() -> TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD
+                    in TiBasicBuiltInFunctions.stringFunctionNames() -> TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
+                    else -> classifyIdentifierToken(text)
+                }
             }
         }
         return LineToken(offset + start, offset + end, type)

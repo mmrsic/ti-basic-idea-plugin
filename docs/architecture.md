@@ -6,19 +6,19 @@ This document describes the internal structure of the TI-Basic IntelliJ IDEA plu
 
 All source code lives under `com.github.mmrsic.idea.plugins.tibasic` (abbreviated `tibasic` below).
 
-| Package                     | Responsibility                                                                                                                                                                             |
-|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `tibasic.lang`              | Language/file-type registration: `TiBasicLanguage`, `TiBasicFileType`, `TiBasicFileIconProvider`, `TiBasicKeywords`, `TiBasicCallSubprograms` (signatures for all 10 built-in subprograms) |
-| `tibasic.lexer`             | Tokenisation: `TiBasicLexer`, `TiBasicTokenTypes` (token element types), `TiBasicElementType`                                                                                              |
-| `tibasic.parser`            | Syntax analysis: `TiBasicParser`, `TiBasicParserDefinition`, `TiBasicNodeTypes` (composite node types)                                                                                     |
-| `tibasic.psi`               | Program structure interface: `TiBasicFile` (root PSI element), all PSI node classes, `VALID_LINE_NUMBER_RANGE`                                                                             |
-| `tibasic.highlight`         | Syntax colours (`TiBasicSyntaxHighlighter`, `TiBasicSyntaxHighlighterFactory`) and semantic annotations (`TiBasicAnnotator`)                                                               |
-| `tibasic.editor`            | Editor assistance: keyword completion (`TiBasicCompletionContributor`) and Shift+Enter handling (`TiBasicShiftEnterHandler`)                                                               |
-| `tibasic.action.format`     | Format action and formatting logic (`FormatAction`, `FormatCode`)                                                                                                                          |
-| `tibasic.action.resequence` | Resequence action, logic, options dialog, and quick-fix (`ResequenceAction`, `ResequenceLineNumbers`, `ResequenceOptionsDialog`, `ResequenceQuickFix`)                                     |
-| `tibasic.action`            | Abstract base for all TI-Basic actions (`TiBasicFileAction`)                                                                                                                               |
-| `tibasic.util`              | Document write-action helpers (`PsiFileUtils`)                                                                                                                                             |
-| `tibasic.ext`               | Kotlin extensions on framework classes (`ASTNodeExtensions`)                                                                                                                               |
+| Package                     | Responsibility                                                                                                                                                                                                                                                           |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `tibasic.lang`              | Language/file-type registration: `TiBasicLanguage`, `TiBasicFileType`, `TiBasicFileIconProvider`, `TiBasicKeywords`, `TiBasicCallSubprograms` (signatures for all 10 built-in subprograms), `TiBasicBuiltInFunctions` (signatures for all built-in expression functions) |
+| `tibasic.lexer`             | Tokenisation: `TiBasicLexer`, `TiBasicTokenTypes` (token element types), `TiBasicElementType`                                                                                                                                                                            |
+| `tibasic.parser`            | Syntax analysis: `TiBasicParser`, `TiBasicParserDefinition`, `TiBasicNodeTypes` (composite node types)                                                                                                                                                                   |
+| `tibasic.psi`               | Program structure interface: `TiBasicFile` (root PSI element), all PSI node classes, `VALID_LINE_NUMBER_RANGE`                                                                                                                                                           |
+| `tibasic.highlight`         | Syntax colours (`TiBasicSyntaxHighlighter`, `TiBasicSyntaxHighlighterFactory`) and semantic annotations (`TiBasicAnnotator`)                                                                                                                                             |
+| `tibasic.editor`            | Editor assistance: keyword completion (`TiBasicCompletionContributor`) and Shift+Enter handling (`TiBasicShiftEnterHandler`)                                                                                                                                             |
+| `tibasic.action.format`     | Format action and formatting logic (`FormatAction`, `FormatCode`)                                                                                                                                                                                                        |
+| `tibasic.action.resequence` | Resequence action, logic, options dialog, and quick-fix (`ResequenceAction`, `ResequenceLineNumbers`, `ResequenceOptionsDialog`, `ResequenceQuickFix`)                                                                                                                   |
+| `tibasic.action`            | Abstract base for all TI-Basic actions (`TiBasicFileAction`)                                                                                                                                                                                                             |
+| `tibasic.util`              | Document write-action helpers (`PsiFileUtils`)                                                                                                                                                                                                                           |
+| `tibasic.ext`               | Kotlin extensions on framework classes (`ASTNodeExtensions`)                                                                                                                                                                                                             |
 
 ## Data flow
 
@@ -39,7 +39,8 @@ TiBasicParser         (tibasic.parser)
     END_STATEMENT, STOP_STATEMENT, GOTO_STATEMENT, ON_GOTO_STATEMENT,
     IF_STATEMENT, FOR_STATEMENT, NEXT_STATEMENT, DELETE_STATEMENT,
     LINE_NUMBER_LIST_STATEMENT, UNKNOWN_STATEMENT,
-    INVALID_LINE, EXPRESSION, VARIABLE_ACCESS, TAB_FUNCTION.
+    INVALID_LINE, EXPRESSION, VARIABLE_ACCESS, TAB_FUNCTION, CALL_STATEMENT,
+    FUNCTION_CALL.
     │
     ▼
 PSI tree              (tibasic.psi)
@@ -59,8 +60,10 @@ PSI tree              (tibasic.psi)
     ├──▶ TiBasicCompletionContributor (tibasic.editor)
     │       Provides on-demand keyword suggestions (from TiBasicKeywords),
     │       variable suggestions (all variables defined in the current file),
-    │       and CALL subprogram name suggestions (from TiBasicCallSubprograms) when
-    │       the cursor is after CALL. Triggered by Ctrl+Space only; auto-popup is disabled.
+    │       CALL subprogram name suggestions (from TiBasicCallSubprograms) when
+    │       the cursor is after CALL, and built-in function name suggestions
+    │       (from TiBasicBuiltInFunctions) in expression context.
+    │       Triggered by Ctrl+Space only; auto-popup is disabled.
     │
     └──▶ Actions                    (tibasic.action.*)
             FormatAction  — reformats the document text via FormatCode.
@@ -93,6 +96,7 @@ PSI tree              (tibasic.psi)
 | `TiBasicForStatement`                                                                                   | Missing `=`, `TO`, variable, or required expressions (Incorrect statement); string control variable (Numeric variable expected); string expression in numeric position (String-number mismatch)                                                                       |
 | `TiBasicNextStatement`                                                                                  | Missing control variable (Incorrect statement); string control variable (Numeric variable expected)                                                                                                                                                                   |
 | `TiBasicCallStatement`                                                                                  | Unknown subprogram name (error on name token); wrong argument count (error on statement); type mismatch in any argument (warning on expression)                                                                                                                       |
+| `TiBasicFunctionCall`                                                                                   | Unknown function name (error on name token); wrong argument count → `INCORRECT STATEMENT` runtime error; type mismatch in any argument → `INCORRECT STATEMENT` runtime error                                                                                          |
 | `TiBasicUnknownStatement`                                                                               | Command used as statement vs. fully unknown identifier                                                                                                                                                                                                                |
 | `TiBasicInvalidLine`                                                                                    | Line without a leading line number                                                                                                                                                                                                                                    |
 | `TiBasicVariableAccess`                                                                                 | Empty subscript parens, subscript count > 3                                                                                                                                                                                                                           |
@@ -123,3 +127,71 @@ PSI tree              (tibasic.psi)
 - **Kotlin extensions on framework types.** Verbose framework calls (e.g., `node.getChildren(null)`) are wrapped in
   extensions (`node.allChildren`) collected in `tibasic.ext`. See [`extension-points.md`](extension-points.md) and
   the coding conventions in `.github/copilot-instructions.md`.
+
+## Built-in expression functions
+
+TI-Basic provides a fixed set of built-in functions usable inside expressions (e.g., `ABS(X)`, `SIN(A)`, `CHR$(65)`).
+These are distinct from `CALL` subprograms: they appear inside an expression and return a value, whereas `CALL`
+subprograms are stand-alone statements.
+
+### Function registry (`tibasic.lang` — `TiBasicBuiltInFunctions.kt`)
+
+```kotlin
+enum class FunctionReturnType { NUMERIC, STRING }
+
+data class BuiltInFunctionSignature(
+    val argCount: Int,                  // 0 = no parentheses (RND), ≥1 = parenthesised args
+    val argTypes: List<CallArgType>,    // reuses CallArgType from TiBasicCallSubprograms
+    val returnType: FunctionReturnType,
+)
+
+object TiBasicBuiltInFunctions {
+    // single source of truth for all built-in function names and signatures
+    fun numericFunctionNames(): Set<String>  // NUMERIC_FUNCTION_KEYWORD candidates
+    fun stringFunctionNames():  Set<String>  // STRING_FUNCTION_KEYWORD candidates (CHR$, SEG$, STR$)
+    fun byName(name: String?): BuiltInFunctionSignature?
+}
+```
+
+To add a new function, add **one entry** to the map inside `TiBasicBuiltInFunctions`. No other change is needed
+in the lexer, parser, or annotator. Currently implemented: `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, `TAN`.
+
+### Token types
+
+| Token                      | Covers                                                                                                                                          |
+|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `NUMERIC_FUNCTION_KEYWORD` | All numeric and mixed-return functions: `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, `TAN`, `ASC`, `LEN`, `VAL`, `POS` |
+| `STRING_FUNCTION_KEYWORD`  | All string-returning functions: `CHR$`, `SEG$`, `STR$`                                                                                          |
+
+The lexer's `tokenizeIdentifier` checks function names (from `TiBasicBuiltInFunctions`) before
+falling back to the variable/keyword classification. `STRING_FUNCTION_KEYWORD` is defined from the
+start but only wired into the string-expression parser when string functions are implemented.
+
+### Grammar extension
+
+```ebnf
+numericPrimary = NUMERIC_LITERAL
+               | variableAccess
+               | STRING_LITERAL | stringVariableAccess   (* type mismatch — for error reporting *)
+               | LPAREN numericComparison RPAREN
+               | numericFunctionCall ;
+
+numericFunctionCall = NUMERIC_FUNCTION_KEYWORD LPAREN expressionList RPAREN ;
+                    (* argCount=0 functions (RND) omit the parentheses *)
+
+stringFunctionCall  = STRING_FUNCTION_KEYWORD LPAREN expressionList RPAREN ;
+                    (* added to stringOperand once string functions are implemented *)
+
+expressionList = expression { COMMA expression } ;
+```
+
+Both `numericFunctionCall` and `stringFunctionCall` produce a `FUNCTION_CALL` composite node
+(same node type, function name token distinguishes numeric vs. string return type).
+
+### Extensibility checklist
+
+To add a new built-in function later:
+1. Add one entry to `TiBasicBuiltInFunctions.signatures`.
+2. If it is a string-returning function (`CHR$`, `SEG$`, `STR$`), also wire `STRING_FUNCTION_KEYWORD`
+   into `parseStringOperand` and `isStringOperand` — a one-time change required only for the very
+   first string function.

@@ -98,4 +98,9 @@ class TiBasicCallAnnotatorTest : TiBasicTestBase() {
         configureFile("100 CALL CHAR(<warning descr=\"Type mismatch at argument 1 of CHAR\">\"X\"</warning>,<warning descr=\"Type mismatch at argument 2 of CHAR\">96</warning>)")
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun `test CALL HCHAR with trailing comma gives INCORRECT STATEMENT error`() {
+        configureFile("170 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL HCHAR(12*3-45+A,3/56,42-1,)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
 }

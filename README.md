@@ -65,6 +65,32 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 - **Comparisons** — `=`, `<>`, `<`, `>`, `<=`, `>=`
 - Parentheses for grouping; `^` is right-associative, all others left-associative
 
+### Built-in functions
+
+Built-in functions appear directly inside expressions and return a value (unlike `CALL` subprograms, which are
+stand-alone statements).
+
+| Function             | Arguments            | Returns | Description                               |
+|----------------------|----------------------|---------|-------------------------------------------|
+| `ABS(x)`             | 1 numeric            | numeric | Absolute value                            |
+| `ATN(x)`             | 1 numeric            | numeric | Arctangent in radians                     |
+| `COS(x)`             | 1 numeric            | numeric | Cosine in radians                         |
+| `EXP(x)`             | 1 numeric            | numeric | *e* to the power *x*                      |
+| `INT(x)`             | 1 numeric            | numeric | Greatest integer ≤ *x*                    |
+| `LOG(x)`             | 1 numeric            | numeric | Natural logarithm                         |
+| `RND`                | none                 | numeric | Random number in [0, 1)                   |
+| `SGN(x)`             | 1 numeric            | numeric | Sign of *x*                               |
+| `SIN(x)`             | 1 numeric            | numeric | Sine in radians                           |
+| `SQR(x)`             | 1 numeric            | numeric | Square root                               |
+| `TAN(x)`             | 1 numeric            | numeric | Tangent in radians                        |
+| `ASC(s$)`            | 1 string             | numeric | ASCII code of first character *(planned)* |
+| `LEN(s$)`            | 1 string             | numeric | Length of string *(planned)*              |
+| `POS(s$,t$,n)`       | 2 strings, 1 numeric | numeric | Position of *t$* in *s$* *(planned)*      |
+| `VAL(s$)`            | 1 string             | numeric | Numeric value of string *(planned)*       |
+| `CHR$(n)`            | 1 numeric            | string  | Character with ASCII code *n* *(planned)* |
+| `SEG$(s$,start,len)` | 1 string, 2 numerics | string  | Substring of *s$* *(planned)*             |
+| `STR$(x)`            | 1 numeric            | string  | String representation of *x* *(planned)*  |
+
 ### Error and warning annotations
 
 The annotator inspects every file and highlights:
@@ -113,6 +139,8 @@ The annotator inspects every file and highlights:
 | Error    | `CALL` with wrong number of arguments for other subprograms                                                                           |
 | Warning  | `CALL` with a type mismatch in any argument for `CHAR`, `KEY`, `JOYST`, `SOUND`                                                       |
 | Error    | `CALL CLEAR` with any trailing tokens on the same line — will cause run-time error `BAD NAME`                                         |
+| Error    | Built-in function with wrong argument count — will cause run-time error `INCORRECT STATEMENT`                                         |
+| Error    | Built-in function with a type-mismatched argument — will cause run-time error `INCORRECT STATEMENT`                                   |
 
 ### Code actions
 
@@ -133,6 +161,7 @@ The annotator inspects every file and highlights:
 
 - **Keyword and variable completion** — on-demand autocomplete (Ctrl+Space) for all TI-Basic keywords and all variables defined in the current file (case-insensitive); keywords and variables appear in separate groups
 - **CALL subprogram completion** — when the cursor is immediately after `CALL`, autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated group
+- **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated group
 - **Shift+Enter** — inserts a new line and automatically prepends the next logical line number
 
 ## Project structure
@@ -163,10 +192,12 @@ src/
 │   │   │   ├── TiBasicSyntaxHighlighter.kt     Token-based syntax colours
 │   │   │   └── TiBasicSyntaxHighlighterFactory.kt
 │   │   ├── lang/
-│   │   │   ├── TiBasicFileIconProvider.kt      Custom file icon
-│   │   │   ├── TiBasicFileType.kt              LanguageFileType object
-│   │   │   ├── TiBasicKeywords.kt              Keyword and command lists
-│   │   │   └── TiBasicLanguage.kt              Language singleton
+│   │   │   ├── TiBasicBuiltInFunctions.kt      Built-in expression function signatures and registry
+│   │   │   ├── TiBasicCallSubprograms.kt        CALL subprogram signatures and registry
+│   │   │   ├── TiBasicFileIconProvider.kt       Custom file icon
+│   │   │   ├── TiBasicFileType.kt               LanguageFileType object
+│   │   │   ├── TiBasicKeywords.kt               Keyword and command lists
+│   │   │   └── TiBasicLanguage.kt               Language singleton
 │   │   ├── lexer/
 │   │   │   ├── TiBasicLexer.kt                 Line-based lexer
 │   │   │   └── TiBasicTokenTypes.kt            Token element types
