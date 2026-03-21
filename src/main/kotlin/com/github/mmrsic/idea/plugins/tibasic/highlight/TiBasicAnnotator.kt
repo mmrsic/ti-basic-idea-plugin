@@ -17,6 +17,7 @@ import com.intellij.lang.annotation.Annotator
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
+import com.intellij.psi.util.PsiTreeUtil
 
 class TiBasicAnnotator : Annotator {
 
@@ -29,10 +30,12 @@ class TiBasicAnnotator : Annotator {
                 annotateNonAscendingLineNumbers(lines, duplicates, holder)
                 annotateVariableNameConflicts(element, holder)
                 annotateForNextBalance(element, holder)
+                annotateDefDuplicatesAndSelfReference(element, holder)
             }
 
             is TiBasicLine -> annotateLineNumber(element, holder)
             is TiBasicLetStatement -> annotateLetStatement(element, holder)
+            is TiBasicDefStatement -> annotateDefStatement(element, holder)
             is TiBasicScreenPrintStatement -> annotateInvalidPrintArgument(element, holder)
             is TiBasicTabFunction -> annotateTabFunction(element, holder)
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
@@ -83,6 +86,72 @@ class TiBasicAnnotator : Annotator {
         val expr = exprNode.psi as? TiBasicExpression ?: return
         if (isStringExpression(expr)) {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+        }
+    }
+
+    private fun annotateDefStatement(statement: TiBasicDefStatement, holder: AnnotationHolder) {
+        // Check 1: missing function name
+        val funcNameNode = statement.functionNameNode()
+        if (funcNameNode == null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        // Check 2: invalid function name
+        if (funcNameNode.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
+            holder.error("Bad variable name", funcNameNode.textRange)
+            return
+        }
+        // Check 6: invalid parameter name
+        val paramNode = statement.parameterNode()
+        if (paramNode != null && paramNode.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
+            holder.error("Bad variable name", paramNode.textRange)
+        }
+        // Check 3: missing =
+        val hasEq = statement.node.nonWhitespaceChildren.any { it.elementType == TiBasicTokenTypes.EQ_OP }
+        if (!hasEq) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        // Check 4: missing body expression
+        val bodyExpr = statement.bodyExpression()
+        if (bodyExpr == null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        // Check 5: type mismatch between function name and body expression
+        val isFuncNameString = funcNameNode.elementType == TiBasicTokenTypes.STRING_VARIABLE
+        val isBodyString = isStringExpression(bodyExpr)
+        if (isFuncNameString != isBodyString) {
+            holder.error("String-number mismatch", statement)
+            return
+        }
+        // Check 7: parameter used as array (with subscripts) in body
+        if (paramNode != null) {
+            val paramName = paramNode.text.uppercase()
+            PsiTreeUtil.findChildrenOfType(bodyExpr, TiBasicVariableAccess::class.java)
+                .filter { it.node.firstChildNode?.text?.uppercase() == paramName && it.subscriptDimCount() > 0 }
+                .forEach { holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, it) }
+        }
+    }
+
+    private fun annotateDefDuplicatesAndSelfReference(file: TiBasicFile, holder: AnnotationHolder) {
+        val defs = file.defStatements()
+        // Check 8: duplicate function names
+        defs.groupBy { it.functionName() ?: "" }
+            .values
+            .filter { it.size > 1 }
+            .forEach { duplicates ->
+                duplicates.forEach { stmt ->
+                    holder.warning("Duplicate DEF for function name ${stmt.functionName()}", stmt)
+                }
+            }
+        // Check 9: direct self-reference in body expression
+        defs.forEach { stmt ->
+            val funcName = stmt.functionName()?.uppercase() ?: return@forEach
+            val body = stmt.bodyExpression() ?: return@forEach
+            PsiTreeUtil.findChildrenOfType(body, TiBasicVariableAccess::class.java)
+                .filter { it.node.firstChildNode?.text?.uppercase() == funcName }
+                .forEach { holder.warning("DEF function may not reference itself", it) }
         }
     }
 

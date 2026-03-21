@@ -14,28 +14,29 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 
 ### Supported statements
 
-| Statement                  | Description                                                                                           |
-|----------------------------|-------------------------------------------------------------------------------------------------------|
-| `LET`                      | Assign a value to a variable (`LET` keyword is optional)                                              |
-| `PRINT`                    | Output values or text to screen, printer, or file; multiple expressions separated by `;`, `,`, or `:` |
-| `DISPLAY`                  | Output values or text to screen only; identical syntax to `PRINT`                                     |
-| `INPUT`                    | Read keyboard input into one or more variables (optional string prompt)                               |
-| `READ`                     | Read values from DATA statements into one or more variables                                           |
-| `DATA`                     | Supply a comma-separated list of values for `READ` statements                                         |
-| `RESTORE`                  | Reset the DATA pointer (optionally to a specific line number)                                         |
-| `CALL`                     | Invoke a built-in TI-Basic subprogram (see table below)                                               |
-| `REM`                      | Remark / comment                                                                                      |
-| `END`                      | Halt program execution (by convention the last line)                                                  |
-| `STOP`                     | Halt program execution (by convention used mid-program)                                               |
-| `RANDOMIZE`                | Seed the random-number generator; optional numeric expression (integer part used as seed)             |
-| `GOTO` / `GO TO`           | Unconditional branch to the given line number                                                         |
-| `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers                                                        |
-| `IF … THEN … [ELSE …]`     | Conditional branch; numeric expression selects target                                                 |
-| `FOR … TO … [STEP …]`      | Counted loop with numeric control variable, start, limit, and optional step                           |
-| `NEXT`                     | Marks the end of the counted loop body                                                                |
-| `DELETE`                   | Delete a string expression                                                                            |
-| `BREAK` / `UNBREAK`        | Set or clear breakpoints at given line numbers                                                        |
-| `TRACE` / `UNTRACE`        | Enable or disable execution tracing at given line numbers                                             |
+| Statement                  | Description                                                                                                  |
+|----------------------------|--------------------------------------------------------------------------------------------------------------|
+| `LET`                      | Assign a value to a variable (`LET` keyword is optional)                                                     |
+| `DEF`                      | Define a user function: `DEF name[(param)] = expression`; name is a variable name (string if body is string) |
+| `PRINT`                    | Output values or text to screen, printer, or file; multiple expressions separated by `;`, `,`, or `:`        |
+| `DISPLAY`                  | Output values or text to screen only; identical syntax to `PRINT`                                            |
+| `INPUT`                    | Read keyboard input into one or more variables (optional string prompt)                                      |
+| `READ`                     | Read values from DATA statements into one or more variables                                                  |
+| `DATA`                     | Supply a comma-separated list of values for `READ` statements                                                |
+| `RESTORE`                  | Reset the DATA pointer (optionally to a specific line number)                                                |
+| `CALL`                     | Invoke a built-in TI-Basic subprogram (see table below)                                                      |
+| `REM`                      | Remark / comment                                                                                             |
+| `END`                      | Halt program execution (by convention the last line)                                                         |
+| `STOP`                     | Halt program execution (by convention used mid-program)                                                      |
+| `RANDOMIZE`                | Seed the random-number generator; optional numeric expression (integer part used as seed)                    |
+| `GOTO` / `GO TO`           | Unconditional branch to the given line number                                                                |
+| `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers                                                               |
+| `IF … THEN … [ELSE …]`     | Conditional branch; numeric expression selects target                                                        |
+| `FOR … TO … [STEP …]`      | Counted loop with numeric control variable, start, limit, and optional step                                  |
+| `NEXT`                     | Marks the end of the counted loop body                                                                       |
+| `DELETE`                   | Delete a string expression                                                                                   |
+| `BREAK` / `UNBREAK`        | Set or clear breakpoints at given line numbers                                                               |
+| `TRACE` / `UNTRACE`        | Enable or disable execution tracing at given line numbers                                                    |
 
 Lines whose keyword is not one of the above are flagged as unknown statements.
 
@@ -142,6 +143,15 @@ The annotator inspects every file and highlights:
 | Error    | `CALL CLEAR` with any trailing tokens on the same line — will cause run-time error `BAD NAME`                                         |
 | Error    | Built-in function with wrong argument count — will cause run-time error `INCORRECT STATEMENT`                                         |
 | Error    | Built-in function with a type-mismatched argument — will cause run-time error `INCORRECT STATEMENT`                                   |
+| Error    | `DEF` without a function name (Incorrect statement)                                                                                   |
+| Error    | `DEF` with an invalid function name (Bad variable name)                                                                               |
+| Error    | `DEF` missing `=` (Incorrect statement)                                                                                               |
+| Error    | `DEF` missing body expression after `=` (Incorrect statement)                                                                         |
+| Error    | `DEF` type mismatch — string function name with numeric body, or vice versa (String-number mismatch)                                  |
+| Error    | `DEF` with an invalid parameter name (Bad variable name)                                                                              |
+| Error    | `DEF` parameter used with subscripts inside the body expression (Incorrect statement)                                                 |
+| Warning  | Duplicate `DEF` for the same function name                                                                                            |
+| Warning  | `DEF` body expression directly references the function itself (self-reference not allowed)                                            |
 
 ### Code actions
 

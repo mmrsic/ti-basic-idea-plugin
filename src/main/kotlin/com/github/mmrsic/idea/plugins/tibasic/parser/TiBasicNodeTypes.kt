@@ -32,4 +32,5 @@ object TiBasicNodeTypes {
     val CALL_STATEMENT = TiBasicElementType("CALL_STATEMENT")
     val FUNCTION_CALL = TiBasicElementType("FUNCTION_CALL")
     val RANDOMIZE_STATEMENT = TiBasicElementType("RANDOMIZE_STATEMENT")
+    val DEF_STATEMENT = TiBasicElementType("DEF_STATEMENT")
 }

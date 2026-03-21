@@ -1,13 +1,40 @@
 package com.github.mmrsic.idea.plugins.tibasic.psi
 
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.lang.ASTNode
+import com.intellij.psi.tree.IElementType
 
 val VALID_LINE_NUMBER_RANGE = 1..32767
+
+private val DEF_VARIABLE_TYPES: Set<IElementType> = setOf(
+    TiBasicTokenTypes.NUMERIC_VARIABLE,
+    TiBasicTokenTypes.STRING_VARIABLE,
+    TiBasicTokenTypes.INVALID_VARIABLE_NAME,
+)
+
+// ...existing code...
+
+class TiBasicDefStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun functionNameNode(): ASTNode? =
+        node.childrenAfter(TiBasicTokenTypes.DEF_KEYWORD)
+            .firstOrNull { it.elementType in DEF_VARIABLE_TYPES }
+
+    fun functionName(): String? = functionNameNode()?.text?.uppercase()
+
+    fun parameterNode(): ASTNode? {
+        if (node.firstChildOfType(TiBasicTokenTypes.LPAREN) == null) return null
+        return node.childrenAfter(TiBasicTokenTypes.LPAREN)
+            .firstOrNull { it.elementType in DEF_VARIABLE_TYPES }
+    }
+
+    fun bodyExpression(): TiBasicExpression? =
+        node.firstChildOfType(TiBasicNodeTypes.EXPRESSION)?.psi as? TiBasicExpression
+}
 
 class TiBasicLine(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun lineNumber(): Int =

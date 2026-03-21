@@ -77,7 +77,9 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FUNCTION_C
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RANDOMIZE_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DEF_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RANDOMIZE_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DEF_STATEMENT
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -185,6 +187,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
             DISPLAY_KEYWORD -> parseDisplayStatement(builder)
             CALL_KEYWORD -> parseCallStatement(builder)
             RANDOMIZE_KEYWORD -> parseRandomizeStatement(builder)
+            DEF_KEYWORD -> parseDefStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
             else -> { /* line number only — valid, no statement */
@@ -240,6 +243,29 @@ class TiBasicParser : PsiParser, LightPsiParser {
         if (!isLineEnd(builder)) parseExpression(builder)
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(RANDOMIZE_STATEMENT)
+    }
+
+    private fun parseDefStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume DEF_KEYWORD
+        skipWhitespace(builder)
+        if (isVariableStart(builder)) {
+            builder.advanceLexer() // consume function name — direct token, not wrapped in VARIABLE_ACCESS
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == LPAREN) {
+            builder.advanceLexer() // consume (
+            skipIntraLineWhitespace(builder)
+            if (isVariableStart(builder)) builder.advanceLexer() // consume parameter token
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == RPAREN) builder.advanceLexer() // consume )
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == EQ_OP) builder.advanceLexer() // consume =
+        skipIntraLineWhitespace(builder)
+        if (isExpressionStart(builder)) parseExpression(builder)
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(DEF_STATEMENT)
     }
 
     private fun parseGotoStatement(builder: PsiBuilder) {

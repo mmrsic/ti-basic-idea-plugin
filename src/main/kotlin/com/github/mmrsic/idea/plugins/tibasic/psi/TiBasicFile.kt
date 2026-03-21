@@ -14,5 +14,6 @@ class TiBasicFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, Ti
     fun forStatements(): List<TiBasicForStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicForStatement>() }
     fun nextStatements(): List<TiBasicNextStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicNextStatement>() }
     fun variableAccesses(): List<TiBasicVariableAccess> = PsiTreeUtil.findChildrenOfType(this, TiBasicVariableAccess::class.java).toList()
+    fun defStatements(): List<TiBasicDefStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicDefStatement>() }
 }
 

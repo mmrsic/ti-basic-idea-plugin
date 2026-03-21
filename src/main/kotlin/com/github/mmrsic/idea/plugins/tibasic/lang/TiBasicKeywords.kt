@@ -30,6 +30,7 @@ object TiBasicKeywords {
             "BREAK",
             "CALL",
             "COS",
+            "DEF",
             "DELETE",
             "ELSE",
             "END",

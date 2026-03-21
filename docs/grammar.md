@@ -40,6 +40,7 @@ statement         = printStatement
                   | dataStatement
                   | restoreStatement
                   | letStatement
+                  | defStatement
                   | remStatement
                   | endStatement
                   | stopStatement
@@ -80,6 +81,11 @@ restoreStatement        = RESTORE   [ whitespace lineNumber ] ;
 variablesList           = variableAccess { COMMA variableAccess } ;
 letStatement            = [ LET whitespace ] variableAccess EQ expression ;
                           (* LET keyword is optional; annotator checks type compatibility *)
+defStatement            = DEF whitespace funcName [ LPAREN paramName RPAREN ] EQ expression ;
+                          (* funcName and paramName are variable names (NUMERIC_VARIABLE or STRING_VARIABLE);
+                             if the body expression is a string expression, funcName must be a STRING_VARIABLE;
+                             paramName is local to this DEF — it does not alias program variables of the same name;
+                             DEF calls in expressions look syntactically like a VARIABLE_ACCESS with one subscript *)
 remStatement            = REM       [ whitespace ] [ remarkText ] ;
 endStatement            = END ;
                           (* halts program; by convention placed as the last line, but may appear anywhere *)
