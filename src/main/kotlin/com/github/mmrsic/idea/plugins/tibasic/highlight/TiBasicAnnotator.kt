@@ -792,7 +792,32 @@ class TiBasicAnnotator : Annotator {
                 holder.error(message, node.textRange)
             }
         }
+        annotateDefNameUsageConflicts(file, allAccesses, holder)
     }
+
+    private fun annotateDefNameUsageConflicts(
+        file: TiBasicFile,
+        allVarAccesses: List<ASTNode>,
+        holder: AnnotationHolder,
+    ) {
+        val defSignaturesByName = buildDefSignaturesByName(file)
+        allVarAccesses.forEach { varAccess ->
+            val signature = defSignaturesByName[variableAccessName(varAccess)] ?: return@forEach
+            val accessHasParens = varAccess.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
+            if (signature.hasParameter != accessHasParens) {
+                holder.error("Name conflict with line ${signature.lineNumber}", varAccess.textRange)
+            }
+        }
+    }
+
+    private fun buildDefSignaturesByName(file: TiBasicFile): Map<String, DefSignature> =
+        file.defStatements()
+            .mapNotNull { def ->
+                val name = def.functionName() ?: return@mapNotNull null
+                val lineNumber = (def.parent as? TiBasicLine)?.lineNumber() ?: return@mapNotNull null
+                name to DefSignature(lineNumber, def.parameterNode() != null)
+            }
+            .toMap()
 
     private fun collectVariableAccesses(file: TiBasicFile): List<ASTNode> =
         file.variableAccesses().map { it.node }
@@ -844,6 +869,8 @@ class TiBasicAnnotator : Annotator {
     }
 
 }
+
+private data class DefSignature(val lineNumber: Int, val hasParameter: Boolean)
 
 private val COMMANDS_UPPERCASE = TiBasicKeywords.getCommands().map { it.uppercase() }.toSet()
 

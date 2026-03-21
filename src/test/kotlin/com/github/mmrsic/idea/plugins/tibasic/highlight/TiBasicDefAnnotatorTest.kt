@@ -98,5 +98,40 @@ class TiBasicDefAnnotatorTest : TiBasicTestBase() {
         configureFile("100 DEF F(X) = <warning descr=\"DEF function may not reference itself\">F(X)</warning>")
         myFixture.checkHighlighting(true, false, true)
     }
-}
 
+    // --- Check 10: DEF function name used without parens ---
+
+    fun `test DEF function name used without parens gives Name conflict error`() {
+        configureFile(
+            "100 DEF SQUARE(X)=X*X\n" +
+                    "110 PRINT <error descr=\"Name conflict with line 100\">SQUARE</error>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test DEF function name used with parens no error`() {
+        configureFile(
+            "100 DEF SQUARE(X)=X*X\n" +
+                    "110 PRINT SQUARE(4)",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    // --- Check 11: DEF constant name used with parens ---
+
+    fun `test DEF constant name used with parens gives Name conflict error`() {
+        configureFile(
+            "120 DEF PI=3.1416\n" +
+                    "130 PRINT <error descr=\"Name conflict with line 120\">PI(2)</error>",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test DEF constant name used without parens no error`() {
+        configureFile(
+            "100 DEF PI=3.14159\n" +
+                    "200 LET Y=PI",
+        )
+        myFixture.checkHighlighting(true, false, true)
+    }
+}
