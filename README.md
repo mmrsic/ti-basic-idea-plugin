@@ -18,6 +18,8 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 |----------------------------|--------------------------------------------------------------------------------------------------------------|
 | `LET`                      | Assign a value to a variable (`LET` keyword is optional)                                                     |
 | `DEF`                      | Define a user function: `DEF name[(param)] = expression`; name is a variable name (string if body is string) |
+| `DIM`                      | Declare array dimensions: `DIM name(size[,size…])`, comma-separated; must appear before first array use      |
+| `OPTION BASE`              | Set the minimum array index to `0` (default) or `1`; only integer literals 0 or 1 are allowed                |
 | `PRINT`                    | Output values or text to screen, printer, or file; multiple expressions separated by `;`, `,`, or `:`        |
 | `DISPLAY`                  | Output values or text to screen only; identical syntax to `PRINT`                                            |
 | `INPUT`                    | Read keyboard input into one or more variables (optional string prompt)                                      |
@@ -152,6 +154,18 @@ The annotator inspects every file and highlights:
 | Error    | `DEF` parameter used with subscripts inside the body expression (Incorrect statement)                                                 |
 | Warning  | Duplicate `DEF` for the same function name                                                                                            |
 | Warning  | `DEF` body expression directly references the function itself (self-reference not allowed)                                            |
+| Error    | `DIM` without any array entry (Incorrect statement)                                                                                   |
+| Error    | `DIM` with an invalid variable name (Bad variable name)                                                                               |
+| Error    | `DIM` entry without parenthesised dimension (Incorrect statement)                                                                     |
+| Error    | `DIM` dimension contains a variable (Variable not allowed as DIM dimension)                                                           |
+| Error    | `DIM` dimension is a floating-point literal (Float not allowed as DIM dimension)                                                      |
+| Error    | `DIM` dimension is an expression rather than a plain integer literal (Integer expected as DIM dimension)                              |
+| Error    | Same array name declared more than once with `DIM` across the whole file (Duplicate DIM for array name …)                             |
+| Warning  | `DIM` statement appears after the first use of the array it declares (DIM for … must appear before first use at line …)               |
+| Error    | `OPTION BASE` without a value (Incorrect statement)                                                                                   |
+| Error    | `OPTION BASE` with a variable as value (Variable not allowed as OPTION BASE value)                                                    |
+| Error    | `OPTION BASE` with a floating-point value (Float not allowed as OPTION BASE value)                                                    |
+| Error    | `OPTION BASE` value is not 0 or 1 (OPTION BASE value must be 0 or 1)                                                                  |
 
 ### Code actions
 
@@ -170,8 +184,10 @@ The annotator inspects every file and highlights:
 
 ### Editor assistance
 
-- **Keyword and variable completion** — on-demand autocomplete (Ctrl+Space) for all TI-Basic keywords and all variables defined in the current file (case-insensitive); keywords and variables appear in separate groups
-- **CALL subprogram completion** — when the cursor is immediately after `CALL`, autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated group
+- **Keyword and variable completion** — on-demand autocomplete (Ctrl+Space) for all TI-Basic keywords and all variables
+  defined in the current file (case-insensitive); keywords and variables appear in separate groups
+- **CALL subprogram completion** — when the cursor is immediately after `CALL`, autocomplete (Ctrl+Space) lists all 10
+  built-in subprogram names in a dedicated group
 - **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated group
 - **Shift+Enter** — inserts a new line and automatically prepends the next logical line number
 

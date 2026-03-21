@@ -337,5 +337,25 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 display tab(5);\"text\"")
         assertEquals("100 DISPLAY TAB(5);\"text\"", formattedText(file))
     }
+
+    fun testOptionBaseSpacePreserved() {
+        val file = configureFile("2 OPTION BASE 0")
+        assertEquals("2 OPTION BASE 0", formattedText(file))
+    }
+
+    fun testOptionBaseLowercaseUppercased() {
+        val file = configureFile("2 option base 1")
+        assertEquals("2 OPTION BASE 1", formattedText(file))
+    }
+
+    fun testOptionBaseExtraSpaceNormalized() {
+        val file = configureFile("2 OPTION  BASE 0")
+        assertEquals("2 OPTION BASE 0", formattedText(file))
+    }
+
+    fun testOptionBaseSpaceBetweenKeywordAndValueNormalized() {
+        val file = configureFile("2 OPTION BASE  1")
+        assertEquals("2 OPTION BASE 1", formattedText(file))
+    }
 }
 

@@ -56,6 +56,9 @@ private fun formattedLine(line: TiBasicLine): String {
 
         TiBasicTokenTypes.CALL_KEYWORD ->
             return formattedCallLine(line.lineNumber(), statement as TiBasicCallStatement)
+
+        TiBasicTokenTypes.OPTION_BASE_KEYWORD ->
+            return formattedOptionBaseLine(line.lineNumber(), statement as TiBasicOptionBaseStatement)
     }
 
     val keywordMatch = TiBasicKeywords.getKeywords()
@@ -222,6 +225,13 @@ private fun formattedSimpleLine(lineNumber: Int, statement: PsiElement, argTrans
     val argText = statement.text.drop(keywordNode.textLength).trim()
     return if (argText.isEmpty()) "$lineNumber ${keywordNode.text.uppercase()}"
     else "$lineNumber ${keywordNode.text.uppercase()} ${argTransform(argText)}"
+}
+
+private fun formattedOptionBaseLine(lineNumber: Int, statement: TiBasicOptionBaseStatement): String {
+    val keywordNode = statement.node.firstChildNode!!
+    val argText = statement.text.drop(keywordNode.textLength).trim()
+    return if (argText.isEmpty()) "$lineNumber OPTION BASE"
+    else "$lineNumber OPTION BASE $argText"
 }
 
 private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {

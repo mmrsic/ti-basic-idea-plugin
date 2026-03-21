@@ -102,6 +102,9 @@ class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun hasSubscriptParens(): Boolean =
         node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
 
+    fun hasClosingSubscriptParen(): Boolean =
+        node.firstChildOfType(TiBasicTokenTypes.RPAREN) != null
+
     fun subscriptDimCount(): Int =
         node.childrenOfType(TiBasicNodeTypes.EXPRESSION).size
 }
@@ -114,3 +117,11 @@ class TiBasicFunctionCall(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun arguments(): List<TiBasicExpression> =
         node.childrenOfType(TiBasicNodeTypes.EXPRESSION).map { it.psi as TiBasicExpression }
 }
+
+class TiBasicDimStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun dimVariableAccesses(): List<TiBasicVariableAccess> =
+        node.childrenOfType(TiBasicNodeTypes.VARIABLE_ACCESS).map { it.psi as TiBasicVariableAccess }
+}
+
+class TiBasicOptionBaseStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+

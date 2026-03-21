@@ -31,11 +31,15 @@ class TiBasicAnnotator : Annotator {
                 annotateVariableNameConflicts(element, holder)
                 annotateForNextBalance(element, holder)
                 annotateDefDuplicatesAndSelfReference(element, holder)
+                annotateDimDuplicatesAndBeforeUse(element, holder)
+                annotateOptionBasePlacement(element, holder)
             }
 
             is TiBasicLine -> annotateLineNumber(element, holder)
             is TiBasicLetStatement -> annotateLetStatement(element, holder)
             is TiBasicDefStatement -> annotateDefStatement(element, holder)
+            is TiBasicDimStatement -> annotateDimStatement(element, holder)
+            is TiBasicOptionBaseStatement -> annotateOptionBaseStatement(element, holder)
             is TiBasicScreenPrintStatement -> annotateInvalidPrintArgument(element, holder)
             is TiBasicTabFunction -> annotateTabFunction(element, holder)
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
@@ -152,6 +156,147 @@ class TiBasicAnnotator : Annotator {
             PsiTreeUtil.findChildrenOfType(body, TiBasicVariableAccess::class.java)
                 .filter { it.node.firstChildNode?.text?.uppercase() == funcName }
                 .forEach { holder.warning("DEF function may not reference itself", it) }
+        }
+    }
+
+    private fun annotateDimStatement(statement: TiBasicDimStatement, holder: AnnotationHolder) {
+        val varAccesses = statement.dimVariableAccesses()
+        if (varAccesses.isEmpty()) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        val lastContentNode = statement.node.nonWhitespaceChildren
+            .filter { it.elementType != TiBasicTokenTypes.DIM_KEYWORD }
+            .lastOrNull()
+        if (lastContentNode?.elementType == TiBasicTokenTypes.COMMA) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, lastContentNode.textRange)
+            return
+        }
+        for (varAccess in varAccesses) {
+            when {
+                varAccess.node.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
+                    holder.error("Bad variable name", varAccess)
+                !varAccess.hasSubscriptParens() ->
+                    holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, varAccess)
+                !varAccess.hasClosingSubscriptParen() ->
+                    holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, varAccess)
+                else -> annotateDimSubscripts(varAccess, holder)
+            }
+        }
+    }
+
+    private fun annotateDimSubscripts(varAccess: TiBasicVariableAccess, holder: AnnotationHolder) {
+        val dimCount = varAccess.subscriptDimCount()
+        if (dimCount == 0 || dimCount > 3) return
+        varAccess.node.childrenOfType(TiBasicNodeTypes.EXPRESSION).forEach { subscriptNode ->
+            val expr = subscriptNode.psi as? TiBasicExpression ?: return@forEach
+            val error = dimSubscriptError(expr) ?: return@forEach
+            holder.error(error, subscriptNode.textRange)
+        }
+    }
+
+    private fun dimSubscriptError(expr: TiBasicExpression): String? {
+        val children = expr.node.nonWhitespaceChildren
+        if (children.isEmpty()) return INCORRECT_STATEMENT_RUNTIME_ERROR
+        if (children.any { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }) {
+            return "Variable not allowed as DIM dimension"
+        }
+        if (children.size == 1 && children[0].elementType == TiBasicTokenTypes.NUMERIC_LITERAL) {
+            val text = children[0].text
+            return if (text.contains('.') || text.contains('E', ignoreCase = true)) {
+                "Float not allowed as DIM dimension"
+            } else {
+                null
+            }
+        }
+        return "Integer expected as DIM dimension"
+    }
+
+    private fun annotateOptionBaseStatement(statement: TiBasicOptionBaseStatement, holder: AnnotationHolder) {
+        val contentNodes = statement.node.nonWhitespaceChildren
+            .filter { it.elementType != TiBasicTokenTypes.OPTION_BASE_KEYWORD }
+        if (contentNodes.isEmpty() || contentNodes.size > 1) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        val valueNode = contentNodes[0]
+        when (valueNode.elementType) {
+            TiBasicTokenTypes.NUMERIC_VARIABLE,
+            TiBasicTokenTypes.STRING_VARIABLE,
+            TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
+                holder.error("Variable not allowed as OPTION BASE value", valueNode.textRange)
+            TiBasicTokenTypes.NUMERIC_LITERAL -> {
+                val text = valueNode.text
+                when {
+                    text.contains('.') || text.contains('E', ignoreCase = true) ->
+                        holder.error("Float not allowed as OPTION BASE value", valueNode.textRange)
+                    text.toIntOrNull().let { it != 0 && it != 1 } ->
+                        holder.error("OPTION BASE value must be 0 or 1", valueNode.textRange)
+                }
+            }
+            else -> holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+        }
+    }
+
+    private fun annotateDimDuplicatesAndBeforeUse(file: TiBasicFile, holder: AnnotationHolder) {
+        val dimsByArrayName = mutableMapOf<String, MutableList<TiBasicDimStatement>>()
+        for (stmt in file.dimStatements()) {
+            for (varAccess in stmt.dimVariableAccesses()) {
+                val name = varAccess.node.firstChildNode?.text?.uppercase() ?: continue
+                dimsByArrayName.getOrPut(name) { mutableListOf() }.add(stmt)
+            }
+        }
+        for ((name, stmts) in dimsByArrayName) {
+            if (stmts.size > 1) {
+                stmts.distinct().forEach { stmt -> holder.error("Duplicate DIM for array name $name", stmt) }
+            }
+        }
+        for ((name, stmts) in dimsByArrayName) {
+            val dimLineNumber = PsiTreeUtil.getParentOfType(stmts.first(), TiBasicLine::class.java)
+                ?.lineNumber() ?: continue
+            val firstUseLineNumber = file.variableAccesses()
+                .filter { varAccess ->
+                    varAccess.hasSubscriptParens() &&
+                            PsiTreeUtil.getParentOfType(varAccess, TiBasicDimStatement::class.java) == null &&
+                            varAccess.node.firstChildNode?.text?.uppercase() == name
+                }
+                .mapNotNull { PsiTreeUtil.getParentOfType(it, TiBasicLine::class.java)?.lineNumber() }
+                .minOrNull() ?: continue
+            if (dimLineNumber > firstUseLineNumber) {
+                stmts.distinct().forEach { stmt ->
+                    holder.warning("DIM for $name must appear before first use at line $firstUseLineNumber", stmt)
+                }
+            }
+        }
+    }
+
+    private fun annotateOptionBasePlacement(file: TiBasicFile, holder: AnnotationHolder) {
+        val optionBaseStmts = file.optionBaseStatements()
+        if (optionBaseStmts.size > 1) {
+            optionBaseStmts.forEach { stmt -> holder.error("Duplicate OPTION BASE", stmt) }
+            return
+        }
+        val optionBaseStmt = optionBaseStmts.singleOrNull() ?: return
+        val optionBaseLine = PsiTreeUtil.getParentOfType(optionBaseStmt, TiBasicLine::class.java)
+            ?.lineNumber() ?: return
+        val earliestDimLine = file.dimStatements()
+            .mapNotNull { PsiTreeUtil.getParentOfType(it, TiBasicLine::class.java)?.lineNumber() }
+            .minOrNull()
+        if (earliestDimLine != null && earliestDimLine < optionBaseLine) {
+            holder.warning("OPTION BASE must appear before DIM at line $earliestDimLine", optionBaseStmt)
+        }
+        val earliestArrayUseLine = file.variableAccesses()
+            .filter { varAccess ->
+                varAccess.hasSubscriptParens() &&
+                        PsiTreeUtil.getParentOfType(varAccess, TiBasicDimStatement::class.java) == null
+            }
+            .mapNotNull { PsiTreeUtil.getParentOfType(it, TiBasicLine::class.java)?.lineNumber() }
+            .minOrNull()
+        if (earliestArrayUseLine != null && earliestArrayUseLine < optionBaseLine) {
+            holder.warning(
+                "OPTION BASE must appear before first array use at line $earliestArrayUseLine",
+                optionBaseStmt,
+            )
         }
     }
 

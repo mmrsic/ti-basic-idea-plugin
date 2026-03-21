@@ -61,6 +61,8 @@ object TiBasicTokenTypes {
     val STRING_FUNCTION_KEYWORD = TiBasicElementType("STRING_FUNCTION_KEYWORD")
     val RANDOMIZE_KEYWORD = TiBasicElementType("RANDOMIZE_KEYWORD")
     val DEF_KEYWORD = TiBasicElementType("DEF_KEYWORD")
+    val DIM_KEYWORD = TiBasicElementType("DIM_KEYWORD")
+    val OPTION_BASE_KEYWORD = TiBasicElementType("OPTION_BASE_KEYWORD")
 }
 
 class TiBasicElementType(debugName: String) : IElementType(debugName, TiBasicLanguage)

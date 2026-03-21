@@ -41,6 +41,8 @@ statement         = printStatement
                   | restoreStatement
                   | letStatement
                   | defStatement
+                  | dimStatement
+                  | optionBaseStatement
                   | remStatement
                   | endStatement
                   | stopStatement
@@ -86,6 +88,17 @@ defStatement            = DEF whitespace funcName [ LPAREN paramName RPAREN ] EQ
                              if the body expression is a string expression, funcName must be a STRING_VARIABLE;
                              paramName is local to this DEF — it does not alias program variables of the same name;
                              DEF calls in expressions look syntactically like a VARIABLE_ACCESS with one subscript *)
+dimStatement            = DIM whitespace dimEntry { COMMA dimEntry } ;
+                          (* each entry declares the maximum indices of one array;
+                             the same array name must appear at most once across all DIM statements;
+                             a DIM statement must precede the first use of every array it declares;
+                             dimensions must be plain integer literals — variables, floats, and expressions are forbidden *)
+dimEntry                = ( NUMERIC_VARIABLE | STRING_VARIABLE ) LPAREN integerLiteral { COMMA integerLiteral } RPAREN ;
+                          (* 1–3 dimensions; integerLiteral must be a NUMERIC_LITERAL without '.' or exponent *)
+optionBaseStatement     = OPTION_BASE integerLiteral ;
+                          (* integerLiteral must be exactly 0 or 1;
+                             sets the minimum array index for the program;
+                             variables, floats, and other integers are forbidden *)
 remStatement            = REM       [ whitespace ] [ remarkText ] ;
 endStatement            = END ;
                           (* halts program; by convention placed as the last line, but may appear anywhere *)
@@ -208,6 +221,9 @@ Recognised as statement-starting keywords (case-insensitive):
 | Token                                  | Statement kind                                |
 |----------------------------------------|-----------------------------------------------|
 | `LET`                                  | Variable assignment                           |
+| `DEF`                                  | User-defined function                         |
+| `DIM`                                  | Array dimension declaration                   |
+| `OPTION BASE`                          | Minimum array index (0 or 1)                  |
 | `PRINT`                                | Print to screen, printer, or file             |
 | `DISPLAY`                              | Print to screen only                          |
 | `TAB`                                  | Column-positioning function (PRINT/DISPLAY)   |
@@ -339,14 +355,33 @@ PRINT "no number"               ✗ error — line number expected
 670 LET Y = ABS(X,2)            ✗ error — ABS takes exactly 1 argument (INCORRECT STATEMENT)
 680 LET Y = ABS("A")            ✗ error — ABS requires a numeric argument (INCORRECT STATEMENT)
 690 LET Y = ABS()               ✗ error — ABS requires 1 argument (INCORRECT STATEMENT)
+700 DIM A(10)                   ✓ valid — 1-D array; indices 0–10
+710 DIM A(5,3)                  ✓ valid — 2-D array
+720 DIM A(10),B$(5)             ✓ valid — two arrays in one DIM statement
+730 OPTION BASE 0               ✓ valid — minimum index is 0 (default)
+740 OPTION BASE 1               ✓ valid — minimum index is 1
+750 DIM                         ✗ error — at least one array entry required
+760 DIM A                       ✗ error — dimension parentheses required (Incorrect statement)
+770 DIM A(X)                    ✗ error — variable not allowed as DIM dimension
+780 DIM A(2.5)                  ✗ error — float not allowed as DIM dimension
+790 DIM A(1+2)                  ✗ error — expression not allowed as DIM dimension
+800 DIM A(10)\n810 DIM A(5)     ✗ error — duplicate DIM for array name A
+820 LET A(1)=5\n830 DIM A(10)   ✗ warning — DIM for A must appear before first use at line 820
+840 OPTION BASE                 ✗ error — value required (Incorrect statement)
+850 OPTION BASE 2               ✗ error — OPTION BASE value must be 0 or 1
+860 OPTION BASE X               ✗ error — variable not allowed as OPTION BASE value
+870 OPTION BASE 1.0             ✗ error — float not allowed as OPTION BASE value
 ```
 
 ## Scope and dialect notes
 
 - The plugin currently supports statements that are meaningful within a single source file.
-- `GOSUB`/`RETURN` and TI Extended Basic statements are **not yet** implemented; lines starting with these keywords are treated as unknown statements.
-- `CALL` is implemented for the 10 built-in TI-Basic subprograms: `CLEAR`, `SCREEN`, `COLOR`, `HCHAR`, `VCHAR`, `GCHAR`, `CHAR`, `KEY`, `JOYST`, `SOUND`. Extended Basic subprograms are out of scope.
-- **Built-in expression functions** are supported for `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, and `TAN`. All remaining standard TI-Basic functions
+- `GOSUB`/`RETURN` and TI Extended Basic statements are **not yet** implemented; lines starting with these keywords are
+  treated as unknown statements.
+- `CALL` is implemented for the 10 built-in TI-Basic subprograms: `CLEAR`, `SCREEN`, `COLOR`, `HCHAR`, `VCHAR`, `GCHAR`,
+  `CHAR`, `KEY`, `JOYST`, `SOUND`. Extended Basic subprograms are out of scope.
+- **Built-in expression functions** are supported for `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`,
+  `SQR`, and `TAN`. All remaining standard TI-Basic functions
   (`ASC`, `LEN`, `POS`, `VAL`, `CHR$`, `SEG$`, `STR$`) are planned; adding each requires only a single registry entry.
 - `FOR`/`NEXT` are implemented. The annotator checks FOR-NEXT balance by count (total in file);
   it does **not** check that the control variable in `NEXT` matches the preceding `FOR` variable.

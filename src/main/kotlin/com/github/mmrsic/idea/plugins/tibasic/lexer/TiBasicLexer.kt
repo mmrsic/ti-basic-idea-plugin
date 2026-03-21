@@ -1,9 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.lexer
 
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBuiltInFunctions
 import com.intellij.lexer.LexerBase
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBuiltInFunctions
 
 /**
  * Lexer for TI-Basic source files.
@@ -23,7 +23,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE|DEF)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE|DEF|DIM|OPTION[ \t]+BASE)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -148,6 +148,8 @@ class TiBasicLexer : LexerBase() {
             "CALL" -> TiBasicTokenTypes.CALL_KEYWORD
             "RANDOMIZE" -> TiBasicTokenTypes.RANDOMIZE_KEYWORD
             "DEF" -> TiBasicTokenTypes.DEF_KEYWORD
+            "DIM" -> TiBasicTokenTypes.DIM_KEYWORD
+            "OPTION BASE" -> TiBasicTokenTypes.OPTION_BASE_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         offset = appendToken(result, offset, printStr, keywordType)
@@ -159,10 +161,12 @@ class TiBasicLexer : LexerBase() {
                     result.addAll(tokenizeDataContent(offset, argStr))
                     offset += argStr.length
                 }
+
                 "CALL" -> {
                     result.addAll(tokenizeCallArguments(offset, argStr))
                     offset += argStr.length
                 }
+
                 else -> {
                     result.addAll(tokenizeArgument(offset, argStr))
                     offset += argStr.length
@@ -321,9 +325,8 @@ class TiBasicLexer : LexerBase() {
     private fun tokenizeCallArguments(offset: Int, argStr: String): List<LineToken> {
         val result = mutableListOf<LineToken>()
         var i = 0
-        val wsStart = i
         while (i < argStr.length && argStr[i].isWhitespace()) i++
-        if (i > wsStart) result.add(LineToken(offset + wsStart, offset + i, TokenType.WHITE_SPACE))
+        if (i > 0) result.add(LineToken(offset, offset + i, TokenType.WHITE_SPACE))
         if (i < argStr.length && isVariableFirstChar(argStr[i])) {
             val nameStart = i
             i++

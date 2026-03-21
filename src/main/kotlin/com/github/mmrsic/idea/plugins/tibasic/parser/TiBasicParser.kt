@@ -78,8 +78,12 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_FU
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RANDOMIZE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DEF_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIM_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.OPTION_BASE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RANDOMIZE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DEF_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DIM_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPTION_BASE_STATEMENT
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -188,6 +192,8 @@ class TiBasicParser : PsiParser, LightPsiParser {
             CALL_KEYWORD -> parseCallStatement(builder)
             RANDOMIZE_KEYWORD -> parseRandomizeStatement(builder)
             DEF_KEYWORD -> parseDefStatement(builder)
+            DIM_KEYWORD -> parseDimStatement(builder)
+            OPTION_BASE_KEYWORD -> parseOptionBaseStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
             else -> { /* line number only — valid, no statement */
@@ -266,6 +272,31 @@ class TiBasicParser : PsiParser, LightPsiParser {
         if (isExpressionStart(builder)) parseExpression(builder)
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(DEF_STATEMENT)
+    }
+
+    private fun parseDimStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume DIM_KEYWORD
+        skipWhitespace(builder)
+        if (isVariableStart(builder)) {
+            parseVariableAccess(builder)
+            skipIntraLineWhitespace(builder)
+            while (builder.tokenType == COMMA) {
+                builder.advanceLexer() // consume COMMA
+                skipIntraLineWhitespace(builder)
+                if (isVariableStart(builder)) parseVariableAccess(builder)
+            }
+        }
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(DIM_STATEMENT)
+    }
+
+    private fun parseOptionBaseStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume OPTION_BASE_KEYWORD
+        skipWhitespace(builder)
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(OPTION_BASE_STATEMENT)
     }
 
     private fun parseGotoStatement(builder: PsiBuilder) {
