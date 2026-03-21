@@ -22,6 +22,13 @@ object TiBasicBuiltInFunctions {
         "SIN" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
         "SQR" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
         "TAN" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
+        "ASC" to BuiltInFunctionSignature(1, listOf(CallArgType.STRING), FunctionReturnType.NUMERIC),
+        "LEN" to BuiltInFunctionSignature(1, listOf(CallArgType.STRING), FunctionReturnType.NUMERIC),
+        "VAL" to BuiltInFunctionSignature(1, listOf(CallArgType.STRING), FunctionReturnType.NUMERIC),
+        "POS" to BuiltInFunctionSignature(3, listOf(CallArgType.STRING, CallArgType.STRING, CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
+        "CHR$" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.STRING),
+        "SEG$" to BuiltInFunctionSignature(3, listOf(CallArgType.STRING, CallArgType.NUMERIC, CallArgType.NUMERIC), FunctionReturnType.STRING),
+        "STR$" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.STRING),
     )
 
     fun numericFunctionNames(): Set<String> =

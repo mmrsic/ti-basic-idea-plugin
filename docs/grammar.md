@@ -118,7 +118,7 @@ expression        = numericComparison ;
 
 (* String expressions *)
 stringExpression  = stringOperand { CONCAT_OP stringOperand } ;
-stringOperand     = STRING_LITERAL | stringVariableAccess ;
+stringOperand     = STRING_LITERAL | stringVariableAccess | stringFunctionCall ;
 
 (* Numeric expressions — operator precedence, low to high *)
 numericComparison = comparable { compOp comparable } ;   (* left-to-right *)
@@ -138,7 +138,7 @@ numericPrimary    = NUMERIC_LITERAL
 numericFunctionCall = NUMERIC_FUNCTION_KEYWORD LPAREN expressionList RPAREN ;
                     (* functions with argCount=0, e.g. RND, omit the parentheses entirely *)
 stringFunctionCall  = STRING_FUNCTION_KEYWORD LPAREN expressionList RPAREN ;
-                    (* string-returning functions; wired into stringOperand when first string function is implemented *)
+                    (* string-returning functions; valid in any stringOperand position *)
 expressionList      = expression { COMMA expression } ;
 
 variableAccess        = ( NUMERIC_VARIABLE | STRING_VARIABLE ) [ subscripts ] ;
@@ -192,11 +192,8 @@ These functions return a string value and are valid in string expression positio
 | `SEG$(s$,start,len)` | 1 string, 2 numerics | Substring of *s$*             |
 | `STR$(x)`            | 1 numeric            | String representation of *x*  |
 
-> **Implementation note:** `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, and `TAN` are fully implemented. All other functions listed above are
-> planned and will be added to the registry `TiBasicBuiltInFunctions` one by one; no further architecture
-> changes are needed for numeric and mixed-return functions. String-returning functions additionally require
-> wiring `STRING_FUNCTION_KEYWORD` into the string-expression parser — a one-time change needed only for
-> the very first string function.
+> **Implementation note:** All functions listed above are fully implemented. Adding a further function
+> requires only one new entry in `TiBasicBuiltInFunctions.signatures`.
 
 ### Keywords
 

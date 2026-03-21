@@ -218,4 +218,148 @@ class TiBasicFunctionCallAnnotatorTest : TiBasicTestBase() {
         configureFile("170 PRINT (RND*1237)")
         myFixture.checkHighlighting(true, false, true)
     }
+
+    // --- ASC ---
+
+    fun `test ASC with string variable argument no error`() {
+        configureFile("100 LET Y=ASC(A$)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test ASC with string literal argument no error`() {
+        configureFile("100 LET Y=ASC(\"HELLO\")")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test ASC with numeric argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">ASC(X)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test ASC with no arguments gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">ASC()</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test ASC with two arguments gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">ASC(A$,B$)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    // --- LEN ---
+
+    fun `test LEN with string variable argument no error`() {
+        configureFile("100 LET Y=LEN(A$)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test LEN with numeric argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">LEN(X)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test LEN with no arguments gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">LEN()</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    // --- VAL ---
+
+    fun `test VAL with string variable argument no error`() {
+        configureFile("100 LET Y=VAL(A$)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test VAL with numeric argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">VAL(X)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    // --- POS ---
+
+    fun `test POS with two string arguments and one numeric no error`() {
+        configureFile("100 LET Y=POS(A$,B$,1)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test POS with wrong argument count gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">POS(A$,B$)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test POS with numeric first argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">POS(X,B$,1)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    // --- CHR$ ---
+
+    fun `test CHR$ with numeric argument assigned to string variable no error`() {
+        configureFile("100 LET A$=CHR$(65)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CHR$ with numeric variable argument no error`() {
+        configureFile("100 LET A$=CHR$(X)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CHR$ with string argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET A$=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CHR$(B$)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CHR$ with no arguments gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET A$=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CHR$()</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CHR$ with two arguments gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET A$=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CHR$(65,66)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CHR$ in PRINT statement no error`() {
+        configureFile("100 PRINT CHR$(65)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CHR$ concatenated with string literal no error`() {
+        configureFile("100 LET A$=CHR$(65)&\"!\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    // --- SEG$ ---
+
+    fun `test SEG$ with correct arguments no error`() {
+        configureFile("100 LET A$=SEG$(B$,1,3)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test SEG$ with wrong argument count gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET A$=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">SEG$(B$,1)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test SEG$ with numeric first argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET A$=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">SEG$(X,1,3)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    // --- STR$ ---
+
+    fun `test STR$ with numeric argument assigned to string variable no error`() {
+        configureFile("100 LET A$=STR$(X)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test STR$ with string argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET A$=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">STR$(B$)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test STR$ with no arguments gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET A$=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">STR$()</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
 }

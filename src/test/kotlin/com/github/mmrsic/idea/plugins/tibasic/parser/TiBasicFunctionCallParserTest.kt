@@ -41,4 +41,36 @@ class TiBasicFunctionCallParserTest : ParsingTestCase("", "tibasic", TiBasicPars
         assertEquals(1, funcCall.size)
         assertEquals("ABS", funcCall[0].functionName())
     }
+
+    fun `test ASC with string argument parses as function call`() {
+        val file = parseCode("100 LET Y=ASC(A$)")
+        val letStmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()[0]
+        val funcCall = letStmt.node.psi.children.flatMap { it.children.toList() }
+            .filterIsInstance<TiBasicFunctionCall>()
+        assertEquals(1, funcCall.size)
+        assertEquals("ASC", funcCall[0].functionName())
+        assertEquals(1, funcCall[0].arguments().size)
+    }
+
+    fun `test CHR$ with numeric argument parses as function call`() {
+        val file = parseCode("100 LET A$=CHR$(65)")
+        val letStmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()[0]
+        val funcCall = letStmt.node.psi.children.flatMap { it.children.toList() }
+            .filterIsInstance<TiBasicFunctionCall>()
+        assertEquals(1, funcCall.size)
+        assertEquals("CHR$", funcCall[0].functionName())
+        assertEquals(1, funcCall[0].arguments().size)
+    }
+
+    fun `test CHR$ lowercase parses as function call`() {
+        val file = parseCode("100 LET A$=chr$(65)")
+        val letStmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()[0]
+        val funcCall = letStmt.node.psi.children.flatMap { it.children.toList() }
+            .filterIsInstance<TiBasicFunctionCall>()
+        assertEquals(1, funcCall.size)
+        assertEquals("CHR$", funcCall[0].functionName())
+    }
 }

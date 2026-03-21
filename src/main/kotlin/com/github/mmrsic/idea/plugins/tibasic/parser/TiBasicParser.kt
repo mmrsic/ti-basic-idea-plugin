@@ -75,6 +75,7 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_SUBPR
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CALL_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FUNCTION_CALL
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RANDOMIZE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RANDOMIZE_STATEMENT
 import com.intellij.lang.ASTNode
@@ -518,8 +519,11 @@ class TiBasicParser : PsiParser, LightPsiParser {
     }
 
     private fun parseStringOperand(builder: PsiBuilder) {
-        if (builder.tokenType == STRING_VARIABLE) parseVariableAccess(builder)
-        else builder.advanceLexer() // STRING_LITERAL
+        when (builder.tokenType) {
+            STRING_VARIABLE -> parseVariableAccess(builder)
+            STRING_FUNCTION_KEYWORD -> parseFunctionCall(builder)
+            else -> builder.advanceLexer() // STRING_LITERAL
+        }
     }
 
     // --- Numeric expression (with semi-permissive mismatch handling) ---
@@ -629,7 +633,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
 
     private fun parseFunctionCall(builder: PsiBuilder) {
         val marker = builder.mark()
-        builder.advanceLexer() // consume NUMERIC_FUNCTION_KEYWORD
+        builder.advanceLexer() // consume NUMERIC_FUNCTION_KEYWORD or STRING_FUNCTION_KEYWORD
         skipIntraLineWhitespace(builder)
         if (builder.tokenType == LPAREN) {
             builder.advanceLexer() // consume (
@@ -717,10 +721,11 @@ class TiBasicParser : PsiParser, LightPsiParser {
         isStringOperand(builder) || isNumericPrimaryStart(builder)
 
     private fun isStringOperand(builder: PsiBuilder): Boolean =
-        builder.tokenType == STRING_LITERAL || builder.tokenType == STRING_VARIABLE
+        builder.tokenType == STRING_LITERAL || builder.tokenType == STRING_VARIABLE ||
+                builder.tokenType == STRING_FUNCTION_KEYWORD
 
     private fun isNumericPrimaryStart(builder: PsiBuilder): Boolean =
-        builder.tokenType in setOf(NUMERIC_LITERAL, NUMERIC_VARIABLE, PLUS_OP, MINUS_OP, LPAREN, STRING_LITERAL, STRING_VARIABLE, NUMERIC_FUNCTION_KEYWORD)
+        builder.tokenType in setOf(NUMERIC_LITERAL, NUMERIC_VARIABLE, PLUS_OP, MINUS_OP, LPAREN, STRING_LITERAL, STRING_VARIABLE, NUMERIC_FUNCTION_KEYWORD, STRING_FUNCTION_KEYWORD)
 
     private fun skipNewlines(builder: PsiBuilder) {
         while (!builder.eof() && builder.tokenType == TokenType.WHITE_SPACE) builder.advanceLexer()

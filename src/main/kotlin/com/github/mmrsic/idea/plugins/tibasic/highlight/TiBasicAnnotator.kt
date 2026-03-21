@@ -681,6 +681,9 @@ class TiBasicAnnotator : Annotator {
         if (first.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
             first.firstChildType == TiBasicTokenTypes.STRING_VARIABLE
         ) return true
+        if (first.elementType == TiBasicNodeTypes.FUNCTION_CALL &&
+            first.firstChildType == TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
+        ) return true
         if (first.elementType == TiBasicTokenTypes.LPAREN) {
             val inner = children.drop(1).dropLast(1)
             if (inner.isEmpty()) return false

@@ -1,1 +1,1 @@
-rootProject.name = "ti-basic"
+rootProject.name = "ti-basic-plugin"

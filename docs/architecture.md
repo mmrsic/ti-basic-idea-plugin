@@ -154,7 +154,7 @@ object TiBasicBuiltInFunctions {
 ```
 
 To add a new function, add **one entry** to the map inside `TiBasicBuiltInFunctions`. No other change is needed
-in the lexer, parser, or annotator. Currently implemented: `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, `TAN`.
+in the lexer, parser, or annotator. Currently implemented: `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, `TAN` (numeric, returning numeric), `ASC`, `LEN`, `VAL`, `POS` (string-arg, returning numeric), `CHR$`, `SEG$`, `STR$` (returning string).
 
 ### Token types
 
@@ -190,8 +190,6 @@ Both `numericFunctionCall` and `stringFunctionCall` produce a `FUNCTION_CALL` co
 
 ### Extensibility checklist
 
-To add a new built-in function later:
+To add a new built-in function:
 1. Add one entry to `TiBasicBuiltInFunctions.signatures`.
-2. If it is a string-returning function (`CHR$`, `SEG$`, `STR$`), also wire `STRING_FUNCTION_KEYWORD`
-   into `parseStringOperand` and `isStringOperand` — a one-time change required only for the very
-   first string function.
+2. That is all — the lexer, parser, annotator, completion, and syntax highlighter pick it up automatically.

@@ -71,26 +71,26 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 Built-in functions appear directly inside expressions and return a value (unlike `CALL` subprograms, which are
 stand-alone statements).
 
-| Function             | Arguments            | Returns | Description                               |
-|----------------------|----------------------|---------|-------------------------------------------|
-| `ABS(x)`             | 1 numeric            | numeric | Absolute value                            |
-| `ATN(x)`             | 1 numeric            | numeric | Arctangent in radians                     |
-| `COS(x)`             | 1 numeric            | numeric | Cosine in radians                         |
-| `EXP(x)`             | 1 numeric            | numeric | *e* to the power *x*                      |
-| `INT(x)`             | 1 numeric            | numeric | Greatest integer ≤ *x*                    |
-| `LOG(x)`             | 1 numeric            | numeric | Natural logarithm                         |
-| `RND`                | none                 | numeric | Random number in [0, 1)                   |
-| `SGN(x)`             | 1 numeric            | numeric | Sign of *x*                               |
-| `SIN(x)`             | 1 numeric            | numeric | Sine in radians                           |
-| `SQR(x)`             | 1 numeric            | numeric | Square root                               |
-| `TAN(x)`             | 1 numeric            | numeric | Tangent in radians                        |
-| `ASC(s$)`            | 1 string             | numeric | ASCII code of first character *(planned)* |
-| `LEN(s$)`            | 1 string             | numeric | Length of string *(planned)*              |
-| `POS(s$,t$,n)`       | 2 strings, 1 numeric | numeric | Position of *t$* in *s$* *(planned)*      |
-| `VAL(s$)`            | 1 string             | numeric | Numeric value of string *(planned)*       |
-| `CHR$(n)`            | 1 numeric            | string  | Character with ASCII code *n* *(planned)* |
-| `SEG$(s$,start,len)` | 1 string, 2 numerics | string  | Substring of *s$* *(planned)*             |
-| `STR$(x)`            | 1 numeric            | string  | String representation of *x* *(planned)*  |
+| Function             | Arguments            | Returns | Description                              |
+|----------------------|----------------------|---------|------------------------------------------|
+| `ABS(x)`             | 1 numeric            | numeric | Absolute value                           |
+| `ATN(x)`             | 1 numeric            | numeric | Arctangent in radians                    |
+| `COS(x)`             | 1 numeric            | numeric | Cosine in radians                        |
+| `EXP(x)`             | 1 numeric            | numeric | *e* to the power *x*                     |
+| `INT(x)`             | 1 numeric            | numeric | Greatest integer ≤ *x*                   |
+| `LOG(x)`             | 1 numeric            | numeric | Natural logarithm                        |
+| `RND`                | none                 | numeric | Random number in [0, 1)                  |
+| `SGN(x)`             | 1 numeric            | numeric | Sign of *x*                              |
+| `SIN(x)`             | 1 numeric            | numeric | Sine in radians                          |
+| `SQR(x)`             | 1 numeric            | numeric | Square root                              |
+| `TAN(x)`             | 1 numeric            | numeric | Tangent in radians                       |
+| `ASC(s$)`            | 1 string             | numeric | ASCII code of first character            |
+| `LEN(s$)`            | 1 string             | numeric | Length of string                         |
+| `POS(s$,t$,n)`       | 2 strings, 1 numeric | numeric | Position of *t$* in *s$* starting at *n* |
+| `VAL(s$)`            | 1 string             | numeric | Numeric value of string                  |
+| `CHR$(n)`            | 1 numeric            | string  | Character with ASCII code *n*            |
+| `SEG$(s$,start,len)` | 1 string, 2 numerics | string  | Substring of *s$*                        |
+| `STR$(x)`            | 1 numeric            | string  | String representation of *x*             |
 
 ### Error and warning annotations
 
