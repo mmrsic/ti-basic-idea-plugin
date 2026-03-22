@@ -357,5 +357,65 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("2 OPTION BASE  1")
         assertEquals("2 OPTION BASE 1", formattedText(file))
     }
+
+    fun testGosubUppercased() {
+        val file = configureFile("100 gosub 200\n200 PRINT \"OK\"\n300 RETURN")
+        assertEquals("100 GOSUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
+    }
+
+    fun testGosubExtraSpaceNormalized() {
+        val file = configureFile("100 GOSUB  200\n200 PRINT \"OK\"\n300 RETURN")
+        assertEquals("100 GOSUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
+    }
+
+    fun testGoSubTwoWordsPreserved() {
+        val file = configureFile("100 GO SUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        assertEquals("100 GO SUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
+    }
+
+    fun testGoSubTwoWordsLowercaseUppercased() {
+        val file = configureFile("100 go sub 200\n200 PRINT \"OK\"\n300 RETURN")
+        assertEquals("100 GO SUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
+    }
+
+    fun testGoSubTwoWordsExtraSpaceNormalized() {
+        val file = configureFile("100 GO  SUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        assertEquals("100 GO SUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
+    }
+
+    fun testReturnUppercased() {
+        val file = configureFile("100 return")
+        assertEquals("100 RETURN", formattedText(file))
+    }
+
+    fun testReturnWithExtraSpaceNormalized() {
+        val file = configureFile("100 RETURN  ")
+        assertEquals("100 RETURN", formattedText(file))
+    }
+
+    fun testOnGosubFormatted() {
+        val file = configureFile("100 on x gosub 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 RETURN")
+        assertEquals("100 ON X GOSUB 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 RETURN", formattedText(file))
+    }
+
+    fun testOnGosubExtraSpacesNormalized() {
+        val file = configureFile("100 ON  X  GOSUB  200 , 300\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 RETURN")
+        assertEquals("100 ON X GOSUB 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 RETURN", formattedText(file))
+    }
+
+    fun testOnGoSubTwoWordsPreserved() {
+        val file = configureFile("100 ON X GO SUB 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 RETURN")
+        assertEquals("100 ON X GO SUB 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 RETURN", formattedText(file))
+    }
+
+    fun testOnGoSubTwoWordsLowercaseUppercased() {
+        val file = configureFile("100 on x go sub 200\n200 PRINT \"OK\"\n300 RETURN")
+        assertEquals("100 ON X GO SUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
+    }
+
+    fun testOnGoSubTwoWordsExtraSpaceNormalized() {
+        val file = configureFile("100 ON X GO  SUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        assertEquals("100 ON X GO SUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
+    }
 }
 

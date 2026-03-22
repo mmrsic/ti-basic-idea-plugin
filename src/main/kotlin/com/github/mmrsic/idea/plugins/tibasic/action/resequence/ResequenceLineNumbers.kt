@@ -44,6 +44,11 @@ private fun collectLineNumberTargetReplacements(
                 .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
                 .forEach { replaceIfMapped(it, oldToNew, replacements) }
 
+        is TiBasicOnGosubStatement ->
+            element.node.childrenAfter(TiBasicTokenTypes.GOSUB_KEYWORD)
+                .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
+                .forEach { replaceIfMapped(it, oldToNew, replacements) }
+
         is TiBasicIfStatement ->
             element.node.childrenAfter(TiBasicTokenTypes.THEN_KEYWORD)
                 .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
@@ -51,6 +56,7 @@ private fun collectLineNumberTargetReplacements(
 
         is TiBasicLineNumberListStatement,
         is TiBasicGotoStatement,
+        is TiBasicGosubStatement,
         is TiBasicRestoreStatement ->
             element.node.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
                 .forEach { replaceIfMapped(it, oldToNew, replacements) }

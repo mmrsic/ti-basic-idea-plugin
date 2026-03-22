@@ -13,6 +13,8 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.EQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.FOR_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GE_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOTO_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOSUB_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RETURN_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.IF_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INPUT_KEYWORD
@@ -51,6 +53,8 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.END_STATEM
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FOR_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOTO_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOSUB_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RETURN_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.IF_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INPUT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
@@ -59,6 +63,7 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.NEXT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOTO_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOSUB_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.PRINT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DISPLAY_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.READ_STATEMENT
@@ -179,7 +184,9 @@ class TiBasicParser : PsiParser, LightPsiParser {
             END_KEYWORD -> parseEndStatement(builder)
             STOP_KEYWORD -> parseStopStatement(builder)
             GOTO_KEYWORD -> parseGotoStatement(builder)
-            ON_KEYWORD -> parseOnGotoStatement(builder)
+            GOSUB_KEYWORD -> parseGosubStatement(builder)
+            RETURN_KEYWORD -> parseReturnStatement(builder)
+            ON_KEYWORD -> parseOnBranchStatement(builder)
             IF_KEYWORD -> parseIfStatement(builder)
             FOR_KEYWORD -> parseForStatement(builder)
             NEXT_KEYWORD -> parseNextStatement(builder)
@@ -304,6 +311,20 @@ class TiBasicParser : PsiParser, LightPsiParser {
         builder.advanceLexer() // consume GOTO_KEYWORD
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(GOTO_STATEMENT)
+    }
+
+    private fun parseGosubStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume GOSUB_KEYWORD
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(GOSUB_STATEMENT)
+    }
+
+    private fun parseReturnStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume RETURN_KEYWORD
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(RETURN_STATEMENT)
     }
 
     private fun parseIfStatement(builder: PsiBuilder) {
@@ -438,7 +459,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
                 builder.tokenType == STRING_VARIABLE ||
                 builder.tokenType == INVALID_VARIABLE_NAME
 
-    private fun parseOnGotoStatement(builder: PsiBuilder) {
+    private fun parseOnBranchStatement(builder: PsiBuilder) {
         val stmtMarker = builder.mark()
         builder.advanceLexer() // consume ON_KEYWORD
         skipWhitespace(builder)
@@ -446,8 +467,9 @@ class TiBasicParser : PsiParser, LightPsiParser {
             parseExpression(builder)
             skipIntraLineWhitespace(builder)
         }
+        val isGosub = builder.tokenType == GOSUB_KEYWORD
         while (!isLineEnd(builder)) builder.advanceLexer()
-        stmtMarker.done(ON_GOTO_STATEMENT)
+        stmtMarker.done(if (isGosub) ON_GOSUB_STATEMENT else ON_GOTO_STATEMENT)
     }
 
     private fun parseUnknownStatement(builder: PsiBuilder) {

@@ -1480,4 +1480,79 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         configureFile("155 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">RANDOMIZE 6/6+123, dsaas</error>")
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun `test GOSUB with valid defined target no error`() {
+        configureFile("100 GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test GO SUB with valid defined target no error`() {
+        configureFile("100 GO SUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test GOSUB with undefined target gives warning`() {
+        configureFile("100 GOSUB <warning descr=\"Bad line number\">999</warning>\n200 RETURN")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test GOSUB with out-of-range line number gives error`() {
+        configureFile("100 GOSUB <error descr=\"Bad line number\">0</error>\n200 RETURN")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun `test GOSUB without line number gives Incorrect statement error`() {
+        configureFile("100 <error descr=\"Incorrect statement\">GOSUB</error>\n200 RETURN")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun `test RETURN no error when used after GOSUB`() {
+        configureFile("100 GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test RETURN lowercase no error`() {
+        configureFile("100 GOSUB 200\n200 PRINT \"OK\"\n300 return")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test RETURN with trailing content gives warning`() {
+        configureFile("100 <warning descr=\"Everything after RETURN statement is ignored\">RETURN EXTRA</warning>")
+        myFixture.checkHighlighting(false, false, true)
+    }
+
+    fun `test ON GOSUB with valid defined targets no error`() {
+        configureFile("100 ON X GOSUB 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 RETURN")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test ON GO SUB with valid defined targets no error`() {
+        configureFile("100 ON X GO SUB 200,300\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 RETURN")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test ON GOSUB with undefined target gives warning`() {
+        configureFile("100 ON X GOSUB <warning descr=\"Bad line number\">999</warning>\n200 RETURN")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test ON GOSUB with out-of-range line number gives error`() {
+        configureFile("100 ON X GOSUB <error descr=\"Bad line number\">0</error>\n200 RETURN")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun `test ON GOSUB with string expression gives string-number mismatch error`() {
+        configureFile("100 ON <error descr=\"String-number mismatch\">X$</error> GOSUB 200\n200 RETURN")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun `test ON GOSUB missing line number list gives Incorrect statement error`() {
+        configureFile("100 <error descr=\"Incorrect statement\">ON X GOSUB</error>\n200 RETURN")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun `test ON GOSUB with trailing comma gives Bad line number error`() {
+        configureFile("100 ON X GOSUB 200,<error descr=\"Bad line number\">,</error>\n200 RETURN")
+        myFixture.checkHighlighting(true, false, false)
+    }
 }

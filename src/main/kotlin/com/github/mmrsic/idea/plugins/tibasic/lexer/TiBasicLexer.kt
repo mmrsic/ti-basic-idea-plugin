@@ -23,7 +23,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE|DEF|DIM|OPTION[ \t]+BASE)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|GOSUB|GO[ \t]+SUB|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|RETURN|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE|DEF|DIM|OPTION[ \t]+BASE)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -136,6 +136,8 @@ class TiBasicLexer : LexerBase() {
             "END" -> TiBasicTokenTypes.END_KEYWORD
             "STOP" -> TiBasicTokenTypes.STOP_KEYWORD
             "GOTO", "GO TO" -> TiBasicTokenTypes.GOTO_KEYWORD
+            "GOSUB", "GO SUB" -> TiBasicTokenTypes.GOSUB_KEYWORD
+            "RETURN" -> TiBasicTokenTypes.RETURN_KEYWORD
             "ON" -> TiBasicTokenTypes.ON_KEYWORD
             "IF" -> TiBasicTokenTypes.IF_KEYWORD
             "FOR" -> TiBasicTokenTypes.FOR_KEYWORD
@@ -395,6 +397,14 @@ class TiBasicLexer : LexerBase() {
                 end = i; type = TiBasicTokenTypes.GOTO_KEYWORD
             }
 
+            "GOSUB" -> {
+                end = i; type = TiBasicTokenTypes.GOSUB_KEYWORD
+            }
+
+            "RETURN" -> {
+                end = i; type = TiBasicTokenTypes.RETURN_KEYWORD
+            }
+
             "THEN" -> {
                 end = i; type = TiBasicTokenTypes.THEN_KEYWORD
             }
@@ -420,7 +430,12 @@ class TiBasicLexer : LexerBase() {
                 if (endOfGoTo >= 0) {
                     end = endOfGoTo; type = TiBasicTokenTypes.GOTO_KEYWORD
                 } else {
-                    end = i; type = classifyIdentifierToken(text)
+                    val endOfGoSub = goSubEnd(s, i)
+                    if (endOfGoSub >= 0) {
+                        end = endOfGoSub; type = TiBasicTokenTypes.GOSUB_KEYWORD
+                    } else {
+                        end = i; type = classifyIdentifierToken(text)
+                    }
                 }
             }
 
@@ -489,6 +504,17 @@ class TiBasicLexer : LexerBase() {
         val afterTo = j + 2
         if (afterTo < s.length && (s[afterTo].isLetterOrDigit() || s[afterTo] in "_@")) return -1
         return afterTo
+    }
+
+    /** Returns end position of "GO SUB" in [s] starting at [i] (pointing just after "GO"), or -1 if not found. */
+    private fun goSubEnd(s: String, i: Int): Int {
+        var j = i
+        if (j >= s.length || !s[j].isWhitespace()) return -1
+        while (j < s.length && s[j].isWhitespace()) j++
+        if (j + 3 > s.length || !s.substring(j, j + 3).equals("SUB", ignoreCase = true)) return -1
+        val afterSub = j + 3
+        if (afterSub < s.length && (s[afterSub].isLetterOrDigit() || s[afterSub] in "_@")) return -1
+        return afterSub
     }
 
     private fun isVariableFirstChar(c: Char): Boolean =

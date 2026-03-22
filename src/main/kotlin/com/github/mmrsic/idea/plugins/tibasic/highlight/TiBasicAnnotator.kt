@@ -2,12 +2,7 @@ package com.github.mmrsic.idea.plugins.tibasic.highlight
 
 import com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceQuickFix
 import com.github.mmrsic.idea.plugins.tibasic.ext.*
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBuiltInFunctions
-import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_NAME_RUNTIME_ERROR
-import com.github.mmrsic.idea.plugins.tibasic.lang.INCORRECT_STATEMENT_RUNTIME_ERROR
-import com.github.mmrsic.idea.plugins.tibasic.lang.CallArgType
+import com.github.mmrsic.idea.plugins.tibasic.lang.*
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.*
@@ -17,6 +12,7 @@ import com.intellij.lang.annotation.Annotator
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
+import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
 
 class TiBasicAnnotator : Annotator {
@@ -45,7 +41,10 @@ class TiBasicAnnotator : Annotator {
             is TiBasicLineNumberListStatement -> annotateLineNumberListStatement(element, holder)
             is TiBasicDeleteStatement -> annotateDeleteStatement(element, holder)
             is TiBasicGotoStatement -> annotateGotoStatement(element, holder)
+            is TiBasicGosubStatement -> annotateGosubStatement(element, holder)
+            is TiBasicReturnStatement -> annotateTrailingContent(element.node, "RETURN", holder)
             is TiBasicOnGotoStatement -> annotateOnGotoStatement(element, holder)
+            is TiBasicOnGosubStatement -> annotateOnGosubStatement(element, holder)
             is TiBasicIfStatement -> annotateIfStatement(element, holder)
             is TiBasicForStatement -> annotateForStatement(element, holder)
             is TiBasicNextStatement -> annotateNextStatement(element, holder)
@@ -69,9 +68,14 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateTrailingContent(stmtNode: ASTNode, stmtName: String, holder: AnnotationHolder) {
+        val statementKeywords = setOf(
+            TiBasicTokenTypes.END_KEYWORD,
+            TiBasicTokenTypes.STOP_KEYWORD,
+            TiBasicTokenTypes.RETURN_KEYWORD,
+        )
         val trailing =
             stmtNode.allChildren
-                .dropWhile { it.elementType == TiBasicTokenTypes.END_KEYWORD || it.elementType == TiBasicTokenTypes.STOP_KEYWORD }
+                .dropWhile { it.elementType in statementKeywords }
                 .filter { it.elementType != TokenType.WHITE_SPACE }
         if (trailing.isEmpty()) return
         val range = TextRange(trailing.first().startOffset, trailing.last().startOffset + trailing.last().textLength)
@@ -165,9 +169,7 @@ class TiBasicAnnotator : Annotator {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
             return
         }
-        val lastContentNode = statement.node.nonWhitespaceChildren
-            .filter { it.elementType != TiBasicTokenTypes.DIM_KEYWORD }
-            .lastOrNull()
+        val lastContentNode = statement.node.nonWhitespaceChildren.lastOrNull { it.elementType != TiBasicTokenTypes.DIM_KEYWORD }
         if (lastContentNode?.elementType == TiBasicTokenTypes.COMMA) {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, lastContentNode.textRange)
             return
@@ -176,10 +178,13 @@ class TiBasicAnnotator : Annotator {
             when {
                 varAccess.node.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
                     holder.error("Bad variable name", varAccess)
+
                 !varAccess.hasSubscriptParens() ->
                     holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, varAccess)
+
                 !varAccess.hasClosingSubscriptParen() ->
                     holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, varAccess)
+
                 else -> annotateDimSubscripts(varAccess, holder)
             }
         }
@@ -225,15 +230,18 @@ class TiBasicAnnotator : Annotator {
             TiBasicTokenTypes.STRING_VARIABLE,
             TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
                 holder.error("Variable not allowed as OPTION BASE value", valueNode.textRange)
+
             TiBasicTokenTypes.NUMERIC_LITERAL -> {
                 val text = valueNode.text
                 when {
                     text.contains('.') || text.contains('E', ignoreCase = true) ->
                         holder.error("Float not allowed as OPTION BASE value", valueNode.textRange)
+
                     text.toIntOrNull().let { it != 0 && it != 1 } ->
                         holder.error("OPTION BASE value must be 0 or 1", valueNode.textRange)
                 }
             }
+
             else -> holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
         }
     }
@@ -426,28 +434,43 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateGotoStatement(statement: TiBasicGotoStatement, holder: AnnotationHolder) {
-        val contentNodes = statement.node.nonWhitespaceChildren.filter { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD }
+        annotateJumpStatement(statement, TiBasicTokenTypes.GOTO_KEYWORD, holder)
+    }
+
+    private fun annotateGosubStatement(statement: TiBasicGosubStatement, holder: AnnotationHolder) {
+        annotateJumpStatement(statement, TiBasicTokenTypes.GOSUB_KEYWORD, holder)
+    }
+
+    private fun annotateJumpStatement(statement: PsiElement, jumpKeyword: IElementType, holder: AnnotationHolder) {
+        val contentNodes = statement.node.nonWhitespaceChildren.filter { it.elementType != jumpKeyword }
         if (contentNodes.size != 1 || contentNodes[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
             holder.error("Incorrect statement", statement)
             return
         }
         val lineNumberNode = contentNodes[0]
         val lineNumber = lineNumberNode.text.toLongOrNull()?.toInt()
-        val definedLineNumbers =
-            statement.containingTiBasicFile
-                ?.lines()
-                ?.map { it.lineNumber() }
-                ?.filter { it in VALID_LINE_NUMBER_RANGE }
-                ?.toSet()
+        val definedLineNumbers = statement.containingTiBasicFile
+            ?.lines()
+            ?.map { it.lineNumber() }
+            ?.filter { it in VALID_LINE_NUMBER_RANGE }
+            ?.toSet()
         validateLineNumberExists(lineNumberNode, lineNumber, definedLineNumbers, holder)
     }
 
     private fun annotateOnGotoStatement(statement: TiBasicOnGotoStatement, holder: AnnotationHolder) {
+        annotateOnBranchStatement(statement, TiBasicTokenTypes.GOTO_KEYWORD, holder)
+    }
+
+    private fun annotateOnGosubStatement(statement: TiBasicOnGosubStatement, holder: AnnotationHolder) {
+        annotateOnBranchStatement(statement, TiBasicTokenTypes.GOSUB_KEYWORD, holder)
+    }
+
+    private fun annotateOnBranchStatement(statement: PsiElement, branchKeyword: IElementType, holder: AnnotationHolder) {
         val children = statement.node.nonWhitespaceChildren
         val expression = statement.firstChildOfType<TiBasicExpression>()
-        val gotoKeywordNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.GOTO_KEYWORD }
+        val branchKeywordNode = children.firstOrNull { it.elementType == branchKeyword }
 
-        if (expression == null || gotoKeywordNode == null) {
+        if (expression == null || branchKeywordNode == null) {
             holder.error("Incorrect statement", statement)
             return
         }
@@ -456,11 +479,11 @@ class TiBasicAnnotator : Annotator {
             holder.error("String-number mismatch", expression)
         }
 
-        val afterGoto = children
-            .dropWhile { it.elementType != TiBasicTokenTypes.GOTO_KEYWORD }
+        val afterBranch = children
+            .dropWhile { it.elementType != branchKeyword }
             .drop(1)
 
-        if (afterGoto.isEmpty() || afterGoto[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
+        if (afterBranch.isEmpty() || afterBranch[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
             holder.error("Incorrect statement", statement)
             return
         }
@@ -473,7 +496,7 @@ class TiBasicAnnotator : Annotator {
 
         var expectNumber = true
         var trailingComma: ASTNode? = null
-        for (child in afterGoto) {
+        for (child in afterBranch) {
             if (expectNumber) {
                 when {
                     child.elementType == TiBasicTokenTypes.NUMERIC_LITERAL -> {

@@ -1586,8 +1586,119 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testGosubProducesGosubStatement() {
+        val file = parseCode("100 GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGosubKeywordIsCaseInsensitive() {
+        val file = parseCode("100 gosub 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGoSubTwoWordsProducesGosubStatement() {
+        val file = parseCode("100 GO SUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGoSubTwoWordsCaseInsensitive() {
+        val file = parseCode("100 go sub 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGosubWithoutLineNumberProducesGosubStatement() {
+        val file = parseCode("100 GOSUB")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testGosubDoesNotProduceGotoStatement() {
+        val file = parseCode("100 GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        val gotoStmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGotoStatement>()
+        assertEquals(0, gotoStmts.size)
+    }
+
+    fun testReturnProducesReturnStatement() {
+        val file = parseCode("100 GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[2]
+            .children.filterIsInstance<TiBasicReturnStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testReturnKeywordIsCaseInsensitive() {
+        val file = parseCode("100 return")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicReturnStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testReturnDoesNotProduceGosubStatement() {
+        val file = parseCode("100 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicGosubStatement>()
+        assertEquals(0, stmts.size)
+    }
+
+    fun testOnGosubProducesOnGosubStatement() {
+        val file = parseCode("100 ON X GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testOnGosubKeywordIsCaseInsensitive() {
+        val file = parseCode("100 on x gosub 200\n200 PRINT \"OK\"\n300 return")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testOnGoSubTwoWordsProducesOnGosubStatement() {
+        val file = parseCode("100 ON X GO SUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testOnGosubWithMultipleLineNumbersProducesOnGosubStatement() {
+        val file = parseCode("100 ON X GOSUB 200,300,400\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 PRINT \"C\"\n500 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGosubStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testOnGosubContainsExpression() {
+        val file = parseCode("100 ON X GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGosubStatement>()[0]
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testOnGosubDoesNotProduceOnGotoStatement() {
+        val file = parseCode("100 ON X GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGotoStatement>()
+        assertEquals(0, stmts.size)
+    }
+
+    fun testOnGotoDoesNotProduceOnGosubStatement() {
+        val file = parseCode("100 ON X GOTO 200\n200 PRINT \"OK\"")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicOnGosubStatement>()
+        assertEquals(0, stmts.size)
+    }
+
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
-
 
 

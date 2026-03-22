@@ -47,7 +47,10 @@ statement         = printStatement
                   | endStatement
                   | stopStatement
                   | gotoStatement
+                  | gosubStatement
+                  | returnStatement
                   | onGotoStatement
+                  | onGosubStatement
                   | ifStatement
                   | forStatement
                   | nextStatement
@@ -106,8 +109,15 @@ stopStatement           = STOP ;
                           (* halts program; by convention used within the program body, not at the end *)
 gotoStatement           = ( GOTO | GO whitespace TO ) [ whitespace ] lineNumber ;
                           (* transfers control to the given line; lineNumber must be in 1..32767 *)
+gosubStatement          = ( GOSUB | GO whitespace SUB ) [ whitespace ] lineNumber ;
+                          (* calls subroutine at given line; lineNumber must be in 1..32767;
+                             returns to the statement after the call when RETURN is executed *)
+returnStatement         = RETURN ;
+                          (* returns to the statement after the most recent GOSUB *)
 onGotoStatement         = ON whitespace numericExpression whitespace ( GOTO | GO whitespace TO ) whitespace lineNumberList ;
                           (* computed branch; expression must be numeric; at least one lineNumber required *)
+onGosubStatement        = ON whitespace numericExpression whitespace ( GOSUB | GO whitespace SUB ) whitespace lineNumberList ;
+                          (* computed subroutine call; expression must be numeric; at least one lineNumber required *)
 ifStatement             = IF whitespace numericExpression whitespace THEN whitespace lineNumber
                           [ whitespace ELSE whitespace lineNumber ] ;
                           (* conditional branch; expression must be numeric; non-zero = true → THEN target, zero → ELSE target *)

@@ -30,8 +30,17 @@ private fun formattedLine(line: TiBasicLine): String {
         TiBasicTokenTypes.GOTO_KEYWORD ->
             return formattedGotoLine(line.lineNumber(), statement.node.firstChildNode!!.text, statementText)
 
+        TiBasicTokenTypes.GOSUB_KEYWORD ->
+            return formattedGosubLine(line.lineNumber(), statement.node.firstChildNode!!.text, statementText)
+
+        TiBasicTokenTypes.RETURN_KEYWORD ->
+            return formattedSimpleLine(line.lineNumber(), statement)
+
         TiBasicTokenTypes.ON_KEYWORD ->
-            return formattedOnGotoLine(line.lineNumber(), statement as TiBasicOnGotoStatement)
+            return when (statement) {
+                is TiBasicOnGosubStatement -> formattedOnGosubLine(line.lineNumber(), statement)
+                else -> formattedOnGotoLine(line.lineNumber(), statement as TiBasicOnGotoStatement)
+            }
 
         TiBasicTokenTypes.IF_KEYWORD ->
             return formattedIfLine(line.lineNumber(), statement as TiBasicIfStatement)
@@ -241,6 +250,13 @@ private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, stateme
     else "$lineNumber $canonicalKeyword $argText"
 }
 
+private fun formattedGosubLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {
+    val canonicalKeyword = canonicalGosubKeyword(keywordTokenText)
+    val argText = statementText.drop(keywordTokenText.length).trim()
+    return if (argText.isEmpty()) "$lineNumber $canonicalKeyword"
+    else "$lineNumber $canonicalKeyword $argText"
+}
+
 private fun formattedOnGotoLine(lineNumber: Int, statement: TiBasicOnGotoStatement): String {
     val stmtStart = statement.textRange.startOffset
     val onKeywordNode = statement.node.firstChildNode!!
@@ -264,9 +280,37 @@ private fun formattedOnGotoLine(lineNumber: Int, statement: TiBasicOnGotoStateme
     }
 }
 
+private fun formattedOnGosubLine(lineNumber: Int, statement: TiBasicOnGosubStatement): String {
+    val stmtStart = statement.textRange.startOffset
+    val onKeywordNode = statement.node.firstChildNode!!
+    val gosubNode = statement.node.firstChildOfType(TiBasicTokenTypes.GOSUB_KEYWORD)
+    val stmtText = statement.text
+    if (gosubNode == null) {
+        val argText = stmtText.drop(onKeywordNode.textLength).trim()
+        return if (argText.isEmpty()) "$lineNumber ON"
+        else "$lineNumber ON ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
+    }
+    val canonicalGosub = canonicalGosubKeyword(gosubNode.text)
+    val gosubRelStart = gosubNode.startOffset - stmtStart
+    val gosubRelEnd = gosubNode.startOffset + gosubNode.textLength - stmtStart
+    val exprPart = stmtText.substring(onKeywordNode.textLength, gosubRelStart).trim()
+    val lineNumsPart = stmtText.substring(gosubRelEnd).trim()
+    return buildString {
+        append("$lineNumber ON")
+        if (exprPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))}")
+        append(" $canonicalGosub")
+        if (lineNumsPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(lineNumsPart)}")
+    }
+}
+
 private fun canonicalGotoKeyword(rawText: String): String {
     val normalized = rawText.trim().replace(Regex("""[ \t]+"""), " ").uppercase()
     return if (normalized == "GO TO") "GO TO" else "GOTO"
+}
+
+private fun canonicalGosubKeyword(rawText: String): String {
+    val normalized = rawText.trim().replace(Regex("""[ \t]+"""), " ").uppercase()
+    return if (normalized == "GO SUB") "GO SUB" else "GOSUB"
 }
 
 fun uppercaseOutsideStrings(text: String): String =

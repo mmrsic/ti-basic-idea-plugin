@@ -66,7 +66,13 @@ class TiBasicRandomizeStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicGotoStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
+class TiBasicGosubStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
+class TiBasicReturnStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
 class TiBasicOnGotoStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
+class TiBasicOnGosubStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicIfStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 

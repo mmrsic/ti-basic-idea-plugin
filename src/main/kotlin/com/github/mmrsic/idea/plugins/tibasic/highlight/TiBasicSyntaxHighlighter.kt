@@ -48,6 +48,8 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.END_KEYWORD,
             TiBasicTokenTypes.STOP_KEYWORD,
             TiBasicTokenTypes.GOTO_KEYWORD,
+            TiBasicTokenTypes.GOSUB_KEYWORD,
+            TiBasicTokenTypes.RETURN_KEYWORD,
             TiBasicTokenTypes.ON_KEYWORD,
             TiBasicTokenTypes.IF_KEYWORD,
             TiBasicTokenTypes.THEN_KEYWORD,

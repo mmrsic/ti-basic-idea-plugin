@@ -14,31 +14,34 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 
 ### Supported statements
 
-| Statement                  | Description                                                                                                  |
-|----------------------------|--------------------------------------------------------------------------------------------------------------|
-| `LET`                      | Assign a value to a variable (`LET` keyword is optional)                                                     |
-| `DEF`                      | Define a user function: `DEF name[(param)] = expression`; name is a variable name (string if body is string) |
-| `DIM`                      | Declare array dimensions: `DIM name(size[,size…])`, comma-separated; must appear before first array use      |
-| `OPTION BASE`              | Set the minimum array index to `0` (default) or `1`; only integer literals 0 or 1 are allowed                |
-| `PRINT`                    | Output values or text to screen, printer, or file; multiple expressions separated by `;`, `,`, or `:`        |
-| `DISPLAY`                  | Output values or text to screen only; identical syntax to `PRINT`                                            |
-| `INPUT`                    | Read keyboard input into one or more variables (optional string prompt)                                      |
-| `READ`                     | Read values from DATA statements into one or more variables                                                  |
-| `DATA`                     | Supply a comma-separated list of values for `READ` statements                                                |
-| `RESTORE`                  | Reset the DATA pointer (optionally to a specific line number)                                                |
-| `CALL`                     | Invoke a built-in TI-Basic subprogram (see table below)                                                      |
-| `REM`                      | Remark / comment                                                                                             |
-| `END`                      | Halt program execution (by convention the last line)                                                         |
-| `STOP`                     | Halt program execution (by convention used mid-program)                                                      |
-| `RANDOMIZE`                | Seed the random-number generator; optional numeric expression (integer part used as seed)                    |
-| `GOTO` / `GO TO`           | Unconditional branch to the given line number                                                                |
-| `ON … GOTO` / `ON … GO TO` | Computed branch to one of several line numbers                                                               |
-| `IF … THEN … [ELSE …]`     | Conditional branch; numeric expression selects target                                                        |
-| `FOR … TO … [STEP …]`      | Counted loop with numeric control variable, start, limit, and optional step                                  |
-| `NEXT`                     | Marks the end of the counted loop body                                                                       |
-| `DELETE`                   | Delete a string expression                                                                                   |
-| `BREAK` / `UNBREAK`        | Set or clear breakpoints at given line numbers                                                               |
-| `TRACE` / `UNTRACE`        | Enable or disable execution tracing at given line numbers                                                    |
+| Statement                    | Description                                                                                                  |
+|------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `LET`                        | Assign a value to a variable (`LET` keyword is optional)                                                     |
+| `DEF`                        | Define a user function: `DEF name[(param)] = expression`; name is a variable name (string if body is string) |
+| `DIM`                        | Declare array dimensions: `DIM name(size[,size…])`, comma-separated; must appear before first array use      |
+| `OPTION BASE`                | Set the minimum array index to `0` (default) or `1`; only integer literals 0 or 1 are allowed                |
+| `PRINT`                      | Output values or text to screen, printer, or file; multiple expressions separated by `;`, `,`, or `:`        |
+| `DISPLAY`                    | Output values or text to screen only; identical syntax to `PRINT`                                            |
+| `INPUT`                      | Read keyboard input into one or more variables (optional string prompt)                                      |
+| `READ`                       | Read values from DATA statements into one or more variables                                                  |
+| `DATA`                       | Supply a comma-separated list of values for `READ` statements                                                |
+| `RESTORE`                    | Reset the DATA pointer (optionally to a specific line number)                                                |
+| `CALL`                       | Invoke a built-in TI-Basic subprogram (see table below)                                                      |
+| `REM`                        | Remark / comment                                                                                             |
+| `END`                        | Halt program execution (by convention the last line)                                                         |
+| `STOP`                       | Halt program execution (by convention used mid-program)                                                      |
+| `RANDOMIZE`                  | Seed the random-number generator; optional numeric expression (integer part used as seed)                    |
+| `GOTO` / `GO TO`             | Unconditional branch to the given line number                                                                |
+| `GOSUB` / `GO SUB`           | Call a subroutine at the given line number; execution returns after the matching `RETURN`                    |
+| `RETURN`                     | Return from a subroutine to the statement after the most recent `GOSUB`                                      |
+| `ON … GOTO` / `ON … GO TO`   | Computed branch to one of several line numbers                                                               |
+| `ON … GOSUB` / `ON … GO SUB` | Computed subroutine call to one of several line numbers                                                      |
+| `IF … THEN … [ELSE …]`       | Conditional branch; numeric expression selects target                                                        |
+| `FOR … TO … [STEP …]`        | Counted loop with numeric control variable, start, limit, and optional step                                  |
+| `NEXT`                       | Marks the end of the counted loop body                                                                       |
+| `DELETE`                     | Delete a string expression                                                                                   |
+| `BREAK` / `UNBREAK`          | Set or clear breakpoints at given line numbers                                                               |
+| `TRACE` / `UNTRACE`          | Enable or disable execution tracing at given line numbers                                                    |
 
 Lines whose keyword is not one of the above are flagged as unknown statements.
 
