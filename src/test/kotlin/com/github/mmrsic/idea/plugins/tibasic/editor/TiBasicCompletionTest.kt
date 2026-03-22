@@ -10,6 +10,14 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         assert(keywords.contains("PRINT"))
     }
 
+    fun testKeywordsOptionBaseExists() {
+        assertTrue("OPTION BASE must be in keywords", TiBasicKeywords.getKeywords().contains("OPTION BASE"))
+    }
+
+    fun testKeywordsOptionAloneNotPresent() {
+        assertFalse("bare OPTION must not be in keywords", TiBasicKeywords.getKeywords().contains("OPTION"))
+    }
+
     fun testKeywordsNotEmpty() {
         val keywords = TiBasicKeywords.getKeywords()
         assert(keywords.isNotEmpty())
@@ -78,6 +86,39 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         myFixture.completeBasic()
         val popupItems = myFixture.lookupElementStrings ?: emptyList()
         assertEquals("Variable A must appear exactly once", 1, popupItems.count { it == "A" })
+    }
+
+    fun testCompletionSuggestsOptionBaseKeyword() {
+        myFixture.configureByText("test.tibasic", "100 OPT<caret>")
+        myFixture.completeBasic()
+        val appliedText = myFixture.editor.document.text
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue(
+            "OPTION BASE must be applied or suggested when typing 'OPT'",
+            appliedText.contains("OPTION BASE") || popupItems.contains("OPTION BASE"),
+        )
+    }
+
+    fun testCompletionSuggestsBaseAfterOptionWithSpace() {
+        myFixture.configureByText("test.tibasic", "100 OPTION <caret>")
+        myFixture.completeBasic()
+        val appliedText = myFixture.editor.document.text
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue(
+            "BASE must be applied or suggested after 'OPTION '",
+            appliedText.contains("BASE") || popupItems.contains("BASE"),
+        )
+    }
+
+    fun testCompletionSuggestsBaseAfterOptionWithPartialPrefix() {
+        myFixture.configureByText("test.tibasic", "100 OPTION B<caret>")
+        myFixture.completeBasic()
+        val appliedText = myFixture.editor.document.text
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue(
+            "BASE must be applied or suggested after 'OPTION B'",
+            appliedText.contains("BASE") || popupItems.contains("BASE"),
+        )
     }
 }
 

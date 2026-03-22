@@ -35,6 +35,12 @@ class TiBasicCompletionContributor : CompletionContributor() {
             }
             return
         }
+        if (isOptionBaseContext(parameters)) {
+            val wordAtCursor = wordBeforeCaret(parameters)
+            result.withPrefixMatcher(wordAtCursor).caseInsensitive()
+                .addElement(LookupElementBuilder.create("BASE").withTypeText("keyword"))
+            return
+        }
         val functionNames = TiBasicBuiltInFunctions.allNames()
         functionNames.sorted()
             .forEach { name ->
@@ -67,5 +73,21 @@ class TiBasicCompletionContributor : CompletionContributor() {
         if (parent is TiBasicCallStatement) return true
         val prevLeaf = parameters.originalFile.findElementAt(parameters.offset - 1)
         return prevLeaf?.node?.elementType == TiBasicTokenTypes.CALL_KEYWORD
+    }
+
+    private fun isOptionBaseContext(parameters: CompletionParameters): Boolean {
+        val docText = parameters.editor.document.text
+        val lineStart = docText.lastIndexOf('\n', parameters.offset - 1) + 1
+        val textBeforeCaret = docText.substring(lineStart, parameters.offset)
+        val statementPart = textBeforeCaret.trimStart().dropWhile { it.isDigit() }.trimStart()
+        return Regex("""^OPTION\s+[A-Za-z0-9]*$""", RegexOption.IGNORE_CASE).matches(statementPart)
+    }
+
+    private fun wordBeforeCaret(parameters: CompletionParameters): String {
+        val docText = parameters.editor.document.text
+        val offset = parameters.offset
+        var start = offset
+        while (start > 0 && docText[start - 1].isLetterOrDigit()) start--
+        return docText.substring(start, offset)
     }
 }

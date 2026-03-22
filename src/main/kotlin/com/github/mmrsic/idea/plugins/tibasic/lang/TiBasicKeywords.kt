@@ -45,7 +45,7 @@ object TiBasicKeywords {
             "LOG",
             "NEXT",
             "ON",
-            "OPTION",
+            "OPTION BASE",
             "PRINT",
             "RANDOMIZE",
             "RND",

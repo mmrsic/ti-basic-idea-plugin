@@ -1019,7 +1019,10 @@ private data class DefSignature(val lineNumber: Int, val hasParameter: Boolean)
 
 private val COMMANDS_UPPERCASE = TiBasicKeywords.getCommands().map { it.uppercase() }.toSet()
 
-private val KEYWORDS_UPPERCASE = TiBasicKeywords.getKeywords().map { it.uppercase() }.toSet()
+private val KEYWORDS_UPPERCASE = TiBasicKeywords.getKeywords()
+    .flatMap { it.split(Regex("\\s+")) }
+    .map { it.uppercase() }
+    .toSet()
 
 private val COMPARISON_OP_TYPES = setOf(
     TiBasicTokenTypes.EQ_OP,
