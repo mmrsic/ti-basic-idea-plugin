@@ -57,6 +57,8 @@ class TiBasicAnnotator : Annotator {
             is TiBasicRestoreStatement -> annotateRestoreStatement(element, holder)
             is TiBasicCallStatement -> annotateCallStatement(element, holder)
             is TiBasicFunctionCall -> annotateFunctionCall(element, holder)
+            is TiBasicOpenStatement -> annotateOpenStatement(element, holder)
+            is TiBasicCloseStatement -> annotateCloseStatement(element, holder)
             is TiBasicUnknownStatement -> annotateUnknownStatement(element, holder)
             is TiBasicInvalidLine -> holder.error("Line number expected", element)
             is TiBasicVariableAccess -> annotateVariableAccess(element, holder)
@@ -1036,9 +1038,148 @@ class TiBasicAnnotator : Annotator {
         }
     }
 
+    private fun annotateOpenStatement(statement: TiBasicOpenStatement, holder: AnnotationHolder) {
+        val hashNode = statement.node.firstChildOfType(TiBasicTokenTypes.HASH)
+        if (hashNode == null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        val fileNumberExpr = statement.fileNumberExpr()
+        if (fileNumberExpr == null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        if (isStringExpression(fileNumberExpr)) {
+            holder.error("Numeric expression expected", fileNumberExpr)
+        } else {
+            annotateFileNumberRange(fileNumberExpr, holder)
+        }
+        val colonNode = statement.node.firstChildOfType(TiBasicTokenTypes.COLON)
+        if (colonNode == null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        val fileNameExpr = statement.fileNameExpr()
+        if (fileNameExpr == null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        if (!isStringExpression(fileNameExpr)) {
+            holder.error("String expression expected", fileNameExpr)
+        }
+        annotateOpenOptions(statement, holder)
+    }
+
+    private fun annotateOpenOptions(statement: TiBasicOpenStatement, holder: AnnotationHolder) {
+        val fileNameExpr = statement.fileNameExpr()
+        if (fileNameExpr != null) {
+            val trailingGarbage = statement.node.allChildren
+                .dropWhile { it != fileNameExpr.node }
+                .drop(1)
+                .filter { it.elementType != TokenType.WHITE_SPACE && it.elementType != TiBasicNodeTypes.OPEN_OPTION }
+            if (trailingGarbage.isNotEmpty()) {
+                holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+                return
+            }
+        }
+        val options = statement.options()
+        val organizationKeywords = mutableListOf<IElementType>()
+        val fileTypeKeywords = mutableListOf<IElementType>()
+        val modeKeywords = mutableListOf<IElementType>()
+        val recordFormatKeywords = mutableListOf<IElementType>()
+        val lifetimeKeywords = mutableListOf<IElementType>()
+        for (option in options) {
+            val keywordType = option.optionKeywordType()
+            when (keywordType) {
+                null -> holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, option)
+                in TiBasicTokenTypes.OPEN_ORGANIZATION_KEYWORDS -> {
+                    organizationKeywords.add(keywordType)
+                    val orgExpr = option.optionExpression()
+                    if (orgExpr != null && isStringExpression(orgExpr)) {
+                        holder.error("Numeric expression expected", orgExpr)
+                    }
+                }
+                in TiBasicTokenTypes.OPEN_FILE_TYPE_KEYWORDS -> fileTypeKeywords.add(keywordType)
+                in TiBasicTokenTypes.OPEN_MODE_KEYWORDS -> modeKeywords.add(keywordType)
+                in TiBasicTokenTypes.OPEN_RECORD_FORMAT_KEYWORDS -> {
+                    recordFormatKeywords.add(keywordType)
+                    val lenExpr = option.optionExpression()
+                    if (lenExpr != null && isStringExpression(lenExpr)) {
+                        holder.error("Numeric expression expected", lenExpr)
+                    }
+                }
+                in TiBasicTokenTypes.OPEN_LIFETIME_KEYWORDS -> lifetimeKeywords.add(keywordType)
+                else -> holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, option)
+            }
+        }
+        if (organizationKeywords.size > 1) {
+            holder.error("Duplicate file organization option", statement)
+        }
+        if (fileTypeKeywords.size > 1) {
+            holder.error("Duplicate file type option", statement)
+        }
+        if (modeKeywords.size > 1) {
+            holder.error("Duplicate open mode option", statement)
+        }
+        if (recordFormatKeywords.size > 1) {
+            holder.error("Duplicate record format option", statement)
+        }
+        if (lifetimeKeywords.size > 1) {
+            holder.error("Duplicate lifetime option", statement)
+        }
+        val hasRelative = organizationKeywords.contains(TiBasicTokenTypes.RELATIVE_KEYWORD)
+        val hasVariable = recordFormatKeywords.contains(TiBasicTokenTypes.VARIABLE_KEYWORD)
+        if (hasRelative && hasVariable) {
+            holder.error("RELATIVE files require fixed-length records", statement)
+        }
+    }
+
+    private fun annotateCloseStatement(statement: TiBasicCloseStatement, holder: AnnotationHolder) {
+        val hashNode = statement.node.firstChildOfType(TiBasicTokenTypes.HASH)
+        if (hashNode == null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        val expressions = statement.node.childrenOfType(TiBasicNodeTypes.EXPRESSION)
+        val fileNumberExpr = expressions.getOrNull(0)?.psi as? TiBasicExpression
+        if (fileNumberExpr == null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        if (isStringExpression(fileNumberExpr)) {
+            holder.error("Numeric expression expected", fileNumberExpr)
+        } else {
+            annotateFileNumberRange(fileNumberExpr, holder)
+        }
+        val colonNode = statement.node.firstChildOfType(TiBasicTokenTypes.COLON)
+        val deleteNode = statement.node.firstChildOfType(TiBasicTokenTypes.DELETE_KEYWORD)
+        val trailingGarbage = statement.node.childrenAfter(TiBasicTokenTypes.HASH)
+            .filter {
+                it.elementType != TokenType.WHITE_SPACE
+                    && it.elementType != TiBasicNodeTypes.EXPRESSION
+                    && it.elementType != TiBasicTokenTypes.COLON
+                    && it.elementType != TiBasicTokenTypes.DELETE_KEYWORD
+            }
+        if (trailingGarbage.isNotEmpty() || (colonNode != null) != (deleteNode != null)) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+        }
+    }
+
+    private fun annotateFileNumberRange(fileNumberExpr: TiBasicExpression, holder: AnnotationHolder) {
+        val children = fileNumberExpr.node.nonWhitespaceChildren
+        if (children.size != 1 || children[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) return
+        val value = children[0].text.toDoubleOrNull()?.let { Math.round(it).toInt() } ?: return
+        when {
+            value == 0 -> holder.error("File number 0 is reserved for screen", fileNumberExpr)
+            value !in FILE_NUMBER_RANGE -> holder.error("File number must be between 1 and 255", fileNumberExpr)
+        }
+    }
+
 }
 
 private data class DefSignature(val lineNumber: Int, val hasParameter: Boolean)
+
+private val FILE_NUMBER_RANGE = 1..255
 
 private val COMMANDS_UPPERCASE = TiBasicKeywords.getCommands().map { it.uppercase() }.toSet()
 

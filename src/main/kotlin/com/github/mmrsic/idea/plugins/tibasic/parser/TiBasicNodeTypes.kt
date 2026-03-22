@@ -38,4 +38,7 @@ object TiBasicNodeTypes {
     val GOSUB_STATEMENT = TiBasicElementType("GOSUB_STATEMENT")
     val RETURN_STATEMENT = TiBasicElementType("RETURN_STATEMENT")
     val ON_GOSUB_STATEMENT = TiBasicElementType("ON_GOSUB_STATEMENT")
+    val OPEN_STATEMENT = TiBasicElementType("OPEN_STATEMENT")
+    val CLOSE_STATEMENT = TiBasicElementType("CLOSE_STATEMENT")
+    val OPEN_OPTION = TiBasicElementType("OPEN_OPTION")
 }

@@ -3,6 +3,7 @@ package com.github.mmrsic.idea.plugins.tibasic.psi
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.intellij.extapi.psi.ASTWrapperPsiElement
@@ -130,4 +131,28 @@ class TiBasicDimStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
 }
 
 class TiBasicOptionBaseStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+
+class TiBasicOpenStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun fileNumberExpr(): TiBasicExpression? =
+        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(0)?.psi as? TiBasicExpression
+
+    fun fileNameExpr(): TiBasicExpression? =
+        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(1)?.psi as? TiBasicExpression
+
+    fun options(): List<TiBasicOpenOption> =
+        node.childrenOfType(TiBasicNodeTypes.OPEN_OPTION).map { it.psi as TiBasicOpenOption }
+}
+
+class TiBasicOpenOption(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun optionKeywordType() = node.nonWhitespaceChildren
+        .firstOrNull { it.elementType != TiBasicTokenTypes.COMMA }
+        ?.elementType
+
+    fun optionExpression(): TiBasicExpression? =
+        node.firstChildOfType(TiBasicNodeTypes.EXPRESSION)?.psi as? TiBasicExpression
+}
+
+class TiBasicCloseStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun hasDeleteModifier(): Boolean = node.firstChildOfType(TiBasicTokenTypes.DELETE_KEYWORD) != null
+}
 

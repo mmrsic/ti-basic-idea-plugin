@@ -1,9 +1,12 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.format
 
 import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.*
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
@@ -68,6 +71,12 @@ private fun formattedLine(line: TiBasicLine): String {
 
         TiBasicTokenTypes.OPTION_BASE_KEYWORD ->
             return formattedOptionBaseLine(line.lineNumber(), statement as TiBasicOptionBaseStatement)
+
+        TiBasicTokenTypes.OPEN_KEYWORD ->
+            return formattedOpenLine(line.lineNumber(), statement as TiBasicOpenStatement)
+
+        TiBasicTokenTypes.CLOSE_KEYWORD ->
+            return formattedCloseLine(line.lineNumber(), statement as TiBasicCloseStatement)
     }
 
     val keywordMatch = TiBasicKeywords.getKeywords()
@@ -241,6 +250,61 @@ private fun formattedOptionBaseLine(lineNumber: Int, statement: TiBasicOptionBas
     val argText = statement.text.drop(keywordNode.textLength).trim()
     return if (argText.isEmpty()) "$lineNumber OPTION BASE"
     else "$lineNumber OPTION BASE $argText"
+}
+
+private fun formattedOpenLine(lineNumber: Int, statement: TiBasicOpenStatement): String {
+    val stmtStart = statement.textRange.startOffset
+    val stmtText = statement.text
+    val hashNode = statement.node.firstChildOfType(TiBasicTokenTypes.HASH)
+    val colonNode = statement.node.firstChildOfType(TiBasicTokenTypes.COLON)
+    val fileNumberNode = statement.fileNumberExpr()?.node
+    val fileNameNode = statement.fileNameExpr()?.node
+    if (hashNode == null || colonNode == null || fileNumberNode == null || fileNameNode == null) {
+        val argText = stmtText.drop(statement.node.firstChildNode!!.textLength).trim()
+        return if (argText.isEmpty()) "$lineNumber OPEN"
+        else "$lineNumber OPEN ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
+    }
+    val fileNumberText = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(
+        stmtText.substring(fileNumberNode.startOffset - stmtStart, fileNumberNode.startOffset + fileNumberNode.textLength - stmtStart).trim()
+    ))
+    val fileNameText = uppercaseOutsideStrings(
+        stmtText.substring(fileNameNode.startOffset - stmtStart, fileNameNode.startOffset + fileNameNode.textLength - stmtStart).trim()
+    )
+    val optionsPart = statement.options().joinToString("") { formattedOpenOption(it, stmtStart, stmtText) }
+    return "$lineNumber OPEN #$fileNumberText:$fileNameText$optionsPart"
+}
+
+private fun formattedOpenOption(option: TiBasicOpenOption, stmtStart: Int, stmtText: String): String {
+    val keywordNode = option.node.nonWhitespaceChildren
+        .firstOrNull { it.elementType != TiBasicTokenTypes.COMMA } ?: return ""
+    val keywordText = keywordNode.text.uppercase()
+    val orgExpr = option.optionExpression()
+    return if (orgExpr != null) {
+        val exprText = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(
+            stmtText.substring(orgExpr.node.startOffset - stmtStart, orgExpr.node.startOffset + orgExpr.node.textLength - stmtStart).trim()
+        ))
+        ",$keywordText $exprText"
+    } else {
+        ",$keywordText"
+    }
+}
+
+private fun formattedCloseLine(lineNumber: Int, statement: TiBasicCloseStatement): String {
+    val stmtStart = statement.textRange.startOffset
+    val stmtText = statement.text
+    val hashNode = statement.node.firstChildOfType(TiBasicTokenTypes.HASH)
+    val expressions = statement.node.childrenOfType(TiBasicNodeTypes.EXPRESSION)
+    val fileNumberNode = expressions.getOrNull(0)
+    if (hashNode == null || fileNumberNode == null) {
+        val argText = stmtText.drop(statement.node.firstChildNode!!.textLength).trim()
+        return if (argText.isEmpty()) "$lineNumber CLOSE"
+        else "$lineNumber CLOSE ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
+    }
+    val fileNumberText = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(
+        stmtText.substring(fileNumberNode.startOffset - stmtStart, fileNumberNode.startOffset + fileNumberNode.textLength - stmtStart).trim()
+    ))
+    val deleteModifier = if (statement.hasDeleteModifier()) ":DELETE" else ""
+    return "$lineNumber CLOSE #$fileNumberText$deleteModifier"
 }
 
 private fun formattedGotoLine(lineNumber: Int, keywordTokenText: String, statementText: String): String {

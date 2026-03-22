@@ -89,6 +89,12 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RANDOMIZE_
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DEF_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DIM_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPTION_BASE_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.OPEN_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CLOSE_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.HASH
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPEN_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CLOSE_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPEN_OPTION
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -131,6 +137,14 @@ import com.intellij.psi.tree.IElementType
  * callStatement           ::= CALL_KEYWORD WHITE_SPACE? CALL_SUBPROGRAM_NAME (WHITE_SPACE? LPAREN expressionList? RPAREN)? trailingTokens*
  * deleteStatement         ::= DELETE_KEYWORD (WHITE_SPACE? expression)?
  * lineNumberListStatement ::= LINE_NUMBER_LIST_KEYWORD (WHITE_SPACE? NUMERIC_LITERAL (COMMA NUMERIC_LITERAL)*)?
+ * openStatement           ::= OPEN_KEYWORD WHITE_SPACE? HASH WHITE_SPACE? expression COLON expression
+ *                             (WHITE_SPACE? COMMA WHITE_SPACE? openOption)*
+ * openOption              ::= (SEQUENTIAL_KEYWORD | RELATIVE_KEYWORD) (WHITE_SPACE? expression)?
+ *                           | DISPLAY_KEYWORD | INTERNAL_KEYWORD
+ *                           | INPUT_KEYWORD | OUTPUT_KEYWORD | APPEND_KEYWORD | UPDATE_KEYWORD
+ *                           | FIXED_KEYWORD | VARIABLE_KEYWORD
+ *                           | PERMANENT_KEYWORD
+ * closeStatement          ::= CLOSE_KEYWORD WHITE_SPACE? HASH WHITE_SPACE? expression
  * unknownStatement        ::= UNKNOWN_STATEMENT_TEXT
  * invalidLine             ::= NO_LINE_NUMBER_TEXT
  * variablesList           ::= variableAccess (COMMA variableAccess)*
@@ -201,6 +215,8 @@ class TiBasicParser : PsiParser, LightPsiParser {
             DEF_KEYWORD -> parseDefStatement(builder)
             DIM_KEYWORD -> parseDimStatement(builder)
             OPTION_BASE_KEYWORD -> parseOptionBaseStatement(builder)
+            OPEN_KEYWORD -> parseOpenStatement(builder)
+            CLOSE_KEYWORD -> parseCloseStatement(builder)
             LET_KEYWORD, NUMERIC_VARIABLE, STRING_VARIABLE, INVALID_VARIABLE_NAME -> parseLetStatement(builder)
             UNKNOWN_STATEMENT_TEXT -> parseUnknownStatement(builder)
             else -> { /* line number only — valid, no statement */
@@ -304,6 +320,70 @@ class TiBasicParser : PsiParser, LightPsiParser {
         skipWhitespace(builder)
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(OPTION_BASE_STATEMENT)
+    }
+
+    private fun parseOpenStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume OPEN_KEYWORD
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == HASH) builder.advanceLexer()
+        skipIntraLineWhitespace(builder)
+        if (isExpressionStart(builder)) {
+            val exprMarker = builder.mark()
+            parseNumericCmp(builder)
+            exprMarker.done(EXPRESSION)
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == COLON) builder.advanceLexer()
+        skipIntraLineWhitespace(builder)
+        if (isExpressionStart(builder)) {
+            val exprMarker = builder.mark()
+            parseNumericCmp(builder)
+            exprMarker.done(EXPRESSION)
+        }
+        while (!isLineEnd(builder) && builder.tokenType == COMMA) {
+            val optionMarker = builder.mark()
+            builder.advanceLexer() // consume COMMA
+            skipIntraLineWhitespace(builder)
+            val optType = builder.tokenType
+            if (optType in TiBasicTokenTypes.OPEN_OPTION_KEYWORDS) {
+                builder.advanceLexer() // consume option keyword
+                if (optType in TiBasicTokenTypes.OPEN_ORGANIZATION_KEYWORDS || optType in TiBasicTokenTypes.OPEN_RECORD_FORMAT_KEYWORDS) {
+                    skipIntraLineWhitespace(builder)
+                    if (isExpressionStart(builder)) {
+                        val exprMarker = builder.mark()
+                        parseNumericCmp(builder)
+                        exprMarker.done(EXPRESSION)
+                    }
+                }
+            } else {
+                while (!isLineEnd(builder) && builder.tokenType != COMMA) builder.advanceLexer()
+            }
+            optionMarker.done(OPEN_OPTION)
+        }
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(OPEN_STATEMENT)
+    }
+
+    private fun parseCloseStatement(builder: PsiBuilder) {
+        val stmtMarker = builder.mark()
+        builder.advanceLexer() // consume CLOSE_KEYWORD
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == HASH) builder.advanceLexer()
+        skipIntraLineWhitespace(builder)
+        if (isExpressionStart(builder)) {
+            val exprMarker = builder.mark()
+            parseNumericCmp(builder)
+            exprMarker.done(EXPRESSION)
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == COLON) {
+            builder.advanceLexer() // consume COLON
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == DELETE_KEYWORD) builder.advanceLexer() // consume DELETE
+        }
+        while (!isLineEnd(builder)) builder.advanceLexer()
+        stmtMarker.done(CLOSE_STATEMENT)
     }
 
     private fun parseGotoStatement(builder: PsiBuilder) {

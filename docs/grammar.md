@@ -55,6 +55,8 @@ statement         = printStatement
                   | forStatement
                   | nextStatement
                   | deleteStatement
+                  | openStatement
+                  | closeStatement
                   | callStatement
                   | randomizeStatement
                   | lineNumberListStatement
@@ -128,6 +130,24 @@ forStatement            = FOR whitespace numericVariable whitespace EQ whitespac
 nextStatement           = NEXT whitespace numericVariable ;
                           (* control variable must match a preceding FOR variable *)
 deleteStatement         = DELETE    [ whitespace ] [ stringExpression ] ;
+openStatement           = OPEN [ whitespace ] HASH fileNumber COLON fileNameExpr
+                          { COMMA openOption } ;
+                          (* HASH is mandatory; fileNumber is a numeric expression rounded to int, must be 1..255;
+                             file number 0 is reserved for the screen; fileNameExpr is a string expression;
+                             options may appear in any order *)
+openOption              = ( SEQUENTIAL | RELATIVE ) [ whitespace numericExpression ]
+                        | DISPLAY | INTERNAL
+                        | INPUT | OUTPUT | APPEND | UPDATE
+                        | FIXED | VARIABLE
+                        | PERMANENT ;
+                          (* SEQUENTIAL / RELATIVE: optional numeric expression is the initial record count;
+                             RELATIVE requires fixed-length records — combining RELATIVE with VARIABLE is an error;
+                             duplicate options within the same category are errors *)
+closeStatement          = CLOSE [ whitespace ] HASH fileNumber [ COLON DELETE ] ;
+                          (* HASH is mandatory; same fileNumber rules as openStatement;
+                             :DELETE is optional and causes the file to be deleted on close *)
+fileNumber              = numericExpression ;   (* literal values are validated to 1..255 *)
+fileNameExpr            = stringExpression ;
 lineNumberListStatement = listKeyword whitespace lineNumberList ;
 callStatement           = CALL [ whitespace ] CALL_SUBPROGRAM_NAME
                           [ LPAREN [ callArgList ] RPAREN ]
@@ -250,6 +270,8 @@ Recognised as statement-starting keywords (case-insensitive):
 | `FOR … TO` / `FOR … TO … STEP`         | Counted loop — start, limit, optional step    |
 | `NEXT`                                 | End of counted loop body                      |
 | `DELETE`                               | Delete string                                 |
+| `OPEN`                                 | Open a file for I/O                           |
+| `CLOSE`                                | Close an open file                            |
 | `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                   |
 
 ### Commands (not valid as statements)
@@ -275,6 +297,7 @@ These identifiers are recognized by the annotator and produce a specific error:
 | `LE_OP`     | `<=`   |
 | `GE_OP`     | `>=`   |
 | `COLON`     | `:`    |
+| `HASH`      | `#`    |
 | `SEMICOLON` | `;`    |
 | `COMMA`     | `,`    |
 
@@ -381,6 +404,29 @@ PRINT "no number"               ✗ error — line number expected
 850 OPTION BASE 2               ✗ error — OPTION BASE value must be 0 or 1
 860 OPTION BASE X               ✗ error — variable not allowed as OPTION BASE value
 870 OPTION BASE 1.0             ✗ error — float not allowed as OPTION BASE value
+880 OPEN #1:"DSK1.FILE"                    ✓ valid — open file with literal file number and literal file name
+890 OPEN #N:"DSK1.FILE"                    ✓ valid — file number as variable (no static range check)
+900 OPEN #(A+1):"DSK1.FILE"               ✓ valid — file number as expression
+910 CLOSE #1                               ✓ valid — close file with literal file number
+911 CLOSE #1:DELETE                         ✓ valid — close and delete the file
+920 CLOSE #N                               ✓ valid — close file with variable file number
+921 CLOSE #N:DELETE                         ✓ valid — close and delete file by variable number
+921 OPEN #1:"FILE",SEQUENTIAL              ✓ valid — default file organization
+922 OPEN #1:"FILE",RELATIVE 100            ✓ valid — relative organization with initial record count
+923 OPEN #1:"FILE",INTERNAL,OUTPUT,FIXED 128 ✓ valid — FIXED with explicit record length
+924 OPEN #1:"FILE",UPDATE,RELATIVE,PERMANENT ✓ valid — five categories may appear in any order
+930 OPEN 1:"DSK1.FILE"                     ✗ error — # is mandatory (Incorrect statement)
+940 CLOSE 1                                ✗ error — # is mandatory (Incorrect statement)
+941 CLOSE #1:                              ✗ error — colon without DELETE (Incorrect statement)
+942 CLOSE #1 DELETE                        ✗ error — DELETE without colon (Incorrect statement)
+950 OPEN #0:"DSK1.FILE"                    ✗ error — file number 0 is reserved for screen
+960 OPEN #300:"DSK1.FILE"                  ✗ error — file number must be between 1 and 255
+970 CLOSE #300                             ✗ error — file number must be between 1 and 255
+980 OPEN #"X":"DSK1.FILE"                  ✗ error — file number must be a numeric expression
+990 OPEN #1:42                             ✗ error — file name must be a string expression
+995 OPEN #1                                ✗ error — colon and file name required (Incorrect statement)
+996 OPEN #1:"FILE",SEQUENTIAL,RELATIVE     ✗ error — duplicate file organization option
+997 OPEN #1:"FILE",RELATIVE,VARIABLE       ✗ error — RELATIVE requires fixed-length records
 ```
 
 ## Scope and dialect notes

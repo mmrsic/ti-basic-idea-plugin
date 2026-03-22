@@ -417,5 +417,40 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 ON X GO  SUB 200\n200 PRINT \"OK\"\n300 RETURN")
         assertEquals("100 ON X GO SUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
     }
+
+    fun testOpenFormatted() {
+        val file = configureFile("100 OPEN #1:\"DSK1.FILE\"")
+        assertEquals("100 OPEN #1:\"DSK1.FILE\"", formattedText(file))
+    }
+
+    fun testOpenExtraSpacesNormalized() {
+        val file = configureFile("100  OPEN  # 1 : \"DSK1.FILE\"")
+        assertEquals("100 OPEN #1:\"DSK1.FILE\"", formattedText(file))
+    }
+
+    fun testOpenLowercaseUppercased() {
+        val file = configureFile("100 open #1:\"file\"")
+        assertEquals("100 OPEN #1:\"file\"", formattedText(file))
+    }
+
+    fun testOpenVariableFileNumber() {
+        val file = configureFile("100 OPEN # N : \"FILE\"")
+        assertEquals("100 OPEN #N:\"FILE\"", formattedText(file))
+    }
+
+    fun testCloseFormatted() {
+        val file = configureFile("100 CLOSE #1")
+        assertEquals("100 CLOSE #1", formattedText(file))
+    }
+
+    fun testCloseExtraSpacesNormalized() {
+        val file = configureFile("100  CLOSE  # 1  ")
+        assertEquals("100 CLOSE #1", formattedText(file))
+    }
+
+    fun testCloseLowercaseUppercased() {
+        val file = configureFile("100 close #1")
+        assertEquals("100 CLOSE #1", formattedText(file))
+    }
 }
 

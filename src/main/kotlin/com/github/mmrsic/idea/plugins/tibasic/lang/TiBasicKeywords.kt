@@ -70,5 +70,16 @@ object TiBasicKeywords {
             "TRACE",
             "UNBREAK",
             "UNTRACE",
+            "OPEN",
+            "CLOSE",
+            "SEQUENTIAL",
+            "RELATIVE",
+            "INTERNAL",
+            "OUTPUT",
+            "APPEND",
+            "UPDATE",
+            "FIXED",
+            "VARIABLE",
+            "PERMANENT",
         )
 }

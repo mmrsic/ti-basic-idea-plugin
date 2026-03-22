@@ -23,7 +23,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|GOSUB|GO[ \t]+SUB|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|RETURN|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE|DEF|DIM|OPTION[ \t]+BASE)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|GOSUB|GO[ \t]+SUB|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|RETURN|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE|DEF|DIM|OPTION[ \t]+BASE|OPEN|CLOSE)([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
@@ -152,6 +152,8 @@ class TiBasicLexer : LexerBase() {
             "DEF" -> TiBasicTokenTypes.DEF_KEYWORD
             "DIM" -> TiBasicTokenTypes.DIM_KEYWORD
             "OPTION BASE" -> TiBasicTokenTypes.OPTION_BASE_KEYWORD
+            "OPEN" -> TiBasicTokenTypes.OPEN_KEYWORD
+            "CLOSE" -> TiBasicTokenTypes.CLOSE_KEYWORD
             else -> TiBasicTokenTypes.PRINT_KEYWORD
         }
         offset = appendToken(result, offset, printStr, keywordType)
@@ -306,6 +308,10 @@ class TiBasicLexer : LexerBase() {
                     result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.SEMICOLON)); i++
                 }
 
+                ch == '#' -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.HASH)); i++
+                }
+
                 ch.isDigit() || (ch == '.' && i + 1 < argStr.length && argStr[i + 1].isDigit()) -> {
                     val token = tokenizeNumber(argStr, offset, i)
                     result.add(token); i = token.end - offset
@@ -423,6 +429,54 @@ class TiBasicLexer : LexerBase() {
 
             "STEP" -> {
                 end = i; type = TiBasicTokenTypes.STEP_KEYWORD
+            }
+
+            "DISPLAY" -> {
+                end = i; type = TiBasicTokenTypes.DISPLAY_KEYWORD
+            }
+
+            "INPUT" -> {
+                end = i; type = TiBasicTokenTypes.INPUT_KEYWORD
+            }
+
+            "SEQUENTIAL" -> {
+                end = i; type = TiBasicTokenTypes.SEQUENTIAL_KEYWORD
+            }
+
+            "RELATIVE" -> {
+                end = i; type = TiBasicTokenTypes.RELATIVE_KEYWORD
+            }
+
+            "INTERNAL" -> {
+                end = i; type = TiBasicTokenTypes.INTERNAL_KEYWORD
+            }
+
+            "OUTPUT" -> {
+                end = i; type = TiBasicTokenTypes.OUTPUT_KEYWORD
+            }
+
+            "APPEND" -> {
+                end = i; type = TiBasicTokenTypes.APPEND_KEYWORD
+            }
+
+            "UPDATE" -> {
+                end = i; type = TiBasicTokenTypes.UPDATE_KEYWORD
+            }
+
+            "FIXED" -> {
+                end = i; type = TiBasicTokenTypes.FIXED_KEYWORD
+            }
+
+            "VARIABLE" -> {
+                end = i; type = TiBasicTokenTypes.VARIABLE_KEYWORD
+            }
+
+            "PERMANENT" -> {
+                end = i; type = TiBasicTokenTypes.PERMANENT_KEYWORD
+            }
+
+            "DELETE" -> {
+                end = i; type = TiBasicTokenTypes.DELETE_KEYWORD
             }
 
             "GO" -> {
