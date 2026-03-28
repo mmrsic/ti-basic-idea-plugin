@@ -1429,6 +1429,16 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
+    fun testFilePrintTrailingTokensAfterRecordNumberIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">PRINT #1.REC 3(47+1):A;B;C;E;F</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintTrailingTokensAfterFileNumberIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">PRINT #1(2):A</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
     fun testReadWithValidVariablesNoError() {
         configureFile("100 READ A,B$,C")
         myFixture.checkHighlighting(true, false, true)
@@ -1508,6 +1518,56 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     fun testRestoreWithMultipleNumbersIsError() {
         configureFile("100 <error descr=\"Incorrect statement\">RESTORE 100 200</error>",
         )
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantNoError() {
+        configureFile("100 RESTORE #1")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantWithRecordNumberNoError() {
+        configureFile("100 RESTORE #2,REC 5")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantBoundaryFileNumberNoError() {
+        configureFile("100 RESTORE #255")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantFileNumberZeroIsError() {
+        configureFile("100 RESTORE #<error descr=\"File number 0 is reserved for screen\">0</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantFileNumberTooLargeIsError() {
+        configureFile("100 RESTORE #<error descr=\"File number must be between 1 and 255\">256</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantStringFileNumberIsError() {
+        configureFile("100 RESTORE #<error descr=\"Numeric expression expected\">\"A\"</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantStringRecordNumberIsError() {
+        configureFile("100 RESTORE #1,REC <error descr=\"Numeric expression expected\">\"A\"</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantCommaWithoutRecIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">RESTORE #1,5</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantRecWithoutRecordNumberIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">RESTORE #1,REC</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testRestoreFileVariantTrailingTokensIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">RESTORE #X+1,REC 3(47+1)</error>")
         myFixture.checkHighlighting(true, false, true)
     }
 

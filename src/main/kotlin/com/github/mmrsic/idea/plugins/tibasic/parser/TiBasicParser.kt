@@ -553,8 +553,38 @@ class TiBasicParser : PsiParser, LightPsiParser {
     private fun parseRestoreStatement(builder: PsiBuilder) {
         val stmtMarker = builder.mark()
         builder.advanceLexer() // consume RESTORE_KEYWORD
-        while (!isLineEnd(builder)) builder.advanceLexer()
+        skipWhitespace(builder)
+        if (builder.tokenType == HASH) {
+            parseRestoreFileBody(builder)
+        } else {
+            while (!isLineEnd(builder)) builder.advanceLexer()
+        }
         stmtMarker.done(RESTORE_STATEMENT)
+    }
+
+    private fun parseRestoreFileBody(builder: PsiBuilder) {
+        builder.advanceLexer() // consume HASH
+        skipIntraLineWhitespace(builder)
+        if (isExpressionStart(builder)) {
+            val exprMarker = builder.mark()
+            parseNumericCmp(builder)
+            exprMarker.done(EXPRESSION)
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == COMMA) {
+            builder.advanceLexer() // consume COMMA
+            skipIntraLineWhitespace(builder)
+            if (builder.tokenType == REC_KEYWORD) {
+                builder.advanceLexer() // consume REC_KEYWORD
+                skipIntraLineWhitespace(builder)
+                if (isExpressionStart(builder)) {
+                    val exprMarker = builder.mark()
+                    parseNumericCmp(builder)
+                    exprMarker.done(EXPRESSION)
+                }
+            }
+        }
+        while (!isLineEnd(builder)) builder.advanceLexer()
     }
 
     private fun parseInputVariableList(builder: PsiBuilder, trailingCommaAllowed: Boolean = false) {

@@ -96,7 +96,10 @@ dataItem                = STRING_LITERAL               (* quoted string; may con
                         | unquotedText                 (* unquoted string; leading/trailing spaces are stripped *)
                         | ε ;                          (* empty item from consecutive commas *)
                           (* whitespace around commas is ignored *)
-restoreStatement        = RESTORE   [ whitespace lineNumber ] ;
+restoreStatement        = RESTORE   [ whitespace lineNumber ]
+                        | RESTORE whitespace HASH numericExpression
+                          [ COMMA REC numericExpression ] ;
+                          (* file variant: reposition within an open file *)
 variablesList           = variableAccess { COMMA variableAccess } ;
 letStatement            = [ LET whitespace ] variableAccess EQ expression ;
                           (* LET keyword is optional; annotator checks type compatibility *)

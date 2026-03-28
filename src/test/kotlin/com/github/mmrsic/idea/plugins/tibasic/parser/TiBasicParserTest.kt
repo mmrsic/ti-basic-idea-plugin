@@ -1672,6 +1672,55 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, lines[0].children.filterIsInstance<TiBasicRestoreStatement>().size)
     }
 
+    fun testRestoreFileVariantCreatesRestoreStatement() {
+        val file = parseCode("100 RESTORE #1")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicRestoreStatement>()[0]
+        assertTrue(stmt.isFileRestore())
+        assertNotNull(stmt.fileNumberExpr())
+        assertNull(stmt.recordNumberExpr())
+    }
+
+    fun testRestoreFileVariantWithRecordNumber() {
+        val file = parseCode("100 RESTORE #1,REC 5")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicRestoreStatement>()[0]
+        assertTrue(stmt.isFileRestore())
+        assertNotNull(stmt.fileNumberExpr())
+        assertNotNull(stmt.recordNumberExpr())
+    }
+
+    fun testRestoreFileVariantWithSpacesAroundHash() {
+        val file = parseCode("100 RESTORE  # 2")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicRestoreStatement>()[0]
+        assertTrue(stmt.isFileRestore())
+        assertNotNull(stmt.fileNumberExpr())
+    }
+
+    fun testRestoreFileVariantFileNumberExprText() {
+        val file = parseCode("100 RESTORE #10")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicRestoreStatement>()[0]
+        assertEquals("10", stmt.fileNumberExpr()?.text)
+    }
+
+    fun testRestoreFileVariantRecordNumberExprText() {
+        val file = parseCode("100 RESTORE #2,REC 42")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicRestoreStatement>()[0]
+        assertEquals("42", stmt.recordNumberExpr()?.text)
+    }
+
+    fun testRestoreScreenVariantIsNotFileRestore() {
+        val file = parseCode("100 RESTORE 200")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicRestoreStatement>()[0]
+        assertFalse(stmt.isFileRestore())
+        assertNull(stmt.fileNumberExpr())
+        assertNull(stmt.recordNumberExpr())
+    }
+
     fun testPrintWithTabFunctionCreatesTabFunction() {
         val file = parseCode("100 PRINT TAB(5);\"TEXT\"")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]

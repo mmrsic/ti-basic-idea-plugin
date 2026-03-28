@@ -25,7 +25,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 | `INPUT`                      | Read keyboard input into one or more variables (optional string prompt); file I/O variant: `INPUT #fileNumber[.REC recordNumber]:variableList` (trailing comma allowed)                                                                                 |
 | `READ`                       | Read values from DATA statements into one or more variables                                                                                                                                                                                             |
 | `DATA`                       | Supply a comma-separated list of values for `READ` statements                                                                                                                                                                                           |
-| `RESTORE`                    | Reset the DATA pointer (optionally to a specific line number)                                                                                                                                                                                           |
+| `RESTORE`                    | Reset the DATA pointer (optionally to a specific line number); or reposition within an open file (`RESTORE #fileNumber [,REC recordNumber]`) |
 | `CALL`                       | Invoke a built-in TI-Basic subprogram (see table below)                                                                                                                                                                                                 |
 | `REM`                        | Remark / comment                                                                                                                                                                                                                                        |
 | `END`                        | Halt program execution (by convention the last line)                                                                                                                                                                                                    |
@@ -158,6 +158,11 @@ The annotator inspects every file and highlights:
 | Error    | `PRINT #….` with unrecognised modifier instead of `REC` (Incorrect statement)                                                         |
 | Error    | `RESTORE` with invalid argument — not a single numeric literal (Incorrect statement)                                                  |
 | Warning  | `RESTORE` references a line number that does not exist in the program                                                                 |
+| Error    | `RESTORE #0` — file number 0 is reserved for screen (File number 0 is reserved for screen)                                           |
+| Error    | `RESTORE #…` with literal file number outside 1–255 (File number must be between 1 and 255)                                          |
+| Error    | `RESTORE #…` with a string expression as file number (Numeric expression expected)                                                    |
+| Error    | `RESTORE #…,REC` with a string expression as record number (Numeric expression expected)                                             |
+| Error    | `RESTORE #…` with malformed file spec (Incorrect statement)                                                                          |
 | Error    | `CALL` with unknown subprogram name                                                                                                   |
 | Error    | `CALL SCREEN`, `HCHAR`, `VCHAR`, `GCHAR`, `COLOR` with wrong argument count or type — will cause run-time error `INCORRECT STATEMENT` |
 | Error    | `CALL` with wrong number of arguments for other subprograms                                                                           |

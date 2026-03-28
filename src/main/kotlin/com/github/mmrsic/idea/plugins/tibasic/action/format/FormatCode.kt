@@ -247,8 +247,18 @@ private fun formattedDataLine(lineNumber: Int, statement: TiBasicDataStatement):
     return "$lineNumber DATA $itemsText"
 }
 
-private fun formattedRestoreLine(lineNumber: Int, statement: TiBasicRestoreStatement): String =
-    formattedSimpleLine(lineNumber, statement)
+private fun formattedRestoreLine(lineNumber: Int, statement: TiBasicRestoreStatement): String {
+    if (!statement.isFileRestore()) {
+        return formattedSimpleLine(lineNumber, statement)
+    }
+    val fileNumberExpr = statement.fileNumberExpr()
+        ?: return formattedSimpleLine(lineNumber, statement)
+    val fileNumberText = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(fileNumberExpr.text.trim()))
+    val recPart = statement.recordNumberExpr()?.let { recExpr ->
+        ",REC ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(recExpr.text.trim()))}"
+    } ?: ""
+    return "$lineNumber RESTORE #$fileNumberText$recPart"
+}
 
 private fun formattedCallLine(lineNumber: Int, statement: TiBasicCallStatement): String {
     val name = statement.subprogramName() ?: return "$lineNumber CALL"

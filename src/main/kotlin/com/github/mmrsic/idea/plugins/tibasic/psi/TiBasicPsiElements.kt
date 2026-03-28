@@ -116,7 +116,20 @@ class TiBasicReadStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicDataStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
-class TiBasicRestoreStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+class TiBasicRestoreStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun isFileRestore(): Boolean =
+        node.firstChildOfType(TiBasicTokenTypes.HASH) != null
+
+    fun fileNumberExpr(): TiBasicExpression? {
+        if (!isFileRestore()) return null
+        return node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(0)?.psi as? TiBasicExpression
+    }
+
+    fun recordNumberExpr(): TiBasicExpression? {
+        if (node.firstChildOfType(TiBasicTokenTypes.REC_KEYWORD) == null) return null
+        return node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(1)?.psi as? TiBasicExpression
+    }
+}
 
 class TiBasicUnknownStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 

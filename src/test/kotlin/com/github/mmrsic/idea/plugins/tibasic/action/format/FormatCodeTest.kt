@@ -487,5 +487,31 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 PRINT # 3 . REC  10 :")
         assertEquals("100 PRINT #3.REC 10:", formattedText(file))
     }
+
+    fun testRestoreFileVariantFormattedCorrectly() {
+        val file = configureFile("100 RESTORE #1")
+        assertEquals("100 RESTORE #1", formattedText(file))
+    }
+
+    fun testRestoreFileVariantExtraSpacesNormalized() {
+        val file = configureFile("100 RESTORE  # 2")
+        assertEquals("100 RESTORE #2", formattedText(file))
+    }
+
+    fun testRestoreFileVariantWithRecordNumberFormattedCorrectly() {
+        val file = configureFile("100 RESTORE #1,REC 5")
+        assertEquals("100 RESTORE #1,REC 5", formattedText(file))
+    }
+
+    fun testRestoreFileVariantWithRecordNumberExtraSpacesNormalized() {
+        val file = configureFile("100 RESTORE # 1 , REC  5")
+        assertEquals("100 RESTORE #1,REC 5", formattedText(file))
+    }
+
+    fun testRestoreFileVariantLowercaseUppercased() {
+        val file = configureFile("100 restore #1,rec 5")
+        assertEquals("100 RESTORE #1,REC 5", formattedText(file))
+    }
 }
+
 

@@ -415,10 +415,54 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateRestoreStatement(statement: TiBasicRestoreStatement, holder: AnnotationHolder) {
-        val contentNodes = statement.node.nonWhitespaceChildren
-            .filter { it.elementType != TiBasicTokenTypes.RESTORE_KEYWORD }
-        if (contentNodes.isEmpty()) return
-        annotateLineNumber(contentNodes, holder, statement)
+        if (statement.isFileRestore()) {
+            annotateFileRestoreStatement(statement, holder)
+        } else {
+            val contentNodes = statement.node.nonWhitespaceChildren
+                .filter { it.elementType != TiBasicTokenTypes.RESTORE_KEYWORD }
+            if (contentNodes.isEmpty()) return
+            annotateLineNumber(contentNodes, holder, statement)
+        }
+    }
+
+    private fun annotateFileRestoreStatement(statement: TiBasicRestoreStatement, holder: AnnotationHolder) {
+        val fileNumberExpr = statement.fileNumberExpr()
+        if (fileNumberExpr == null) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+        if (isStringExpression(fileNumberExpr)) {
+            holder.error("Numeric expression expected", fileNumberExpr)
+        } else {
+            annotateFileNumberRange(fileNumberExpr, holder)
+        }
+        val commaNode = statement.node.firstChildOfType(TiBasicTokenTypes.COMMA)
+        val recNode = statement.node.firstChildOfType(TiBasicTokenTypes.REC_KEYWORD)
+        if (commaNode != null && recNode == null) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+        if (recNode != null) {
+            val recordNumberExpr = statement.recordNumberExpr()
+            if (recordNumberExpr == null) {
+                holder.error("Incorrect statement", statement)
+                return
+            }
+            if (isStringExpression(recordNumberExpr)) {
+                holder.error("Numeric expression expected", recordNumberExpr)
+            }
+        }
+        val validChildTypes = setOf(
+            TiBasicTokenTypes.RESTORE_KEYWORD,
+            TokenType.WHITE_SPACE,
+            TiBasicTokenTypes.HASH,
+            TiBasicNodeTypes.EXPRESSION,
+            TiBasicTokenTypes.COMMA,
+            TiBasicTokenTypes.REC_KEYWORD,
+        )
+        if (statement.node.allChildren.any { it.elementType !in validChildTypes }) {
+            holder.error("Incorrect statement", statement)
+        }
     }
 
     private fun annotateLineNumber(contentNodes: List<ASTNode>, holder: AnnotationHolder, statement: PsiElement) {
@@ -733,6 +777,19 @@ class TiBasicAnnotator : Annotator {
         if (colonNode == null) {
             holder.error("Incorrect statement", statement)
             return
+        }
+        val lastSpecExprNode = statement.recordNumberExpr()?.node ?: statement.fileNumberExpr()?.node
+        if (lastSpecExprNode != null) {
+            var passedSpec = false
+            for (child in statement.node.allChildren) {
+                if (child === lastSpecExprNode) { passedSpec = true; continue }
+                if (!passedSpec) continue
+                if (child === colonNode) break
+                if (child.elementType != TokenType.WHITE_SPACE) {
+                    holder.error("Incorrect statement", statement)
+                    return
+                }
+            }
         }
         val argNodes = statement.node.allChildren.toList()
             .dropWhile { it.elementType != TiBasicTokenTypes.COLON }
