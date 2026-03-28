@@ -1419,6 +1419,171 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testFileInputStatementMinimal() {
+        val file = parseCode("100 INPUT #1:A")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+        val stmt = stmts[0]
+        assertTrue(stmt.isFileInput())
+        assertNotNull(stmt.fileNumberExpr())
+        assertNull(stmt.recordNumberExpr())
+        assertEquals(1, stmt.inputVariableAccesses().size)
+    }
+
+    fun testFileInputStatementWithMultipleVariables() {
+        val file = parseCode("100 INPUT #2:A,B$,C")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+        assertEquals(3, stmts[0].inputVariableAccesses().size)
+    }
+
+    fun testFileInputStatementWithRecordNumber() {
+        val file = parseCode("100 INPUT #1.REC 5:A")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+        val stmt = stmts[0]
+        assertTrue(stmt.isFileInput())
+        assertNotNull(stmt.fileNumberExpr())
+        assertNotNull(stmt.recordNumberExpr())
+        assertEquals(1, stmt.inputVariableAccesses().size)
+    }
+
+    fun testFileInputStatementWithExpressionAsFileNumber() {
+        val file = parseCode("100 INPUT #X+5:A")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+        assertTrue(stmts[0].isFileInput())
+        assertNotNull(stmts[0].fileNumberExpr())
+    }
+
+    fun testFileInputStatementWithTrailingComma() {
+        val file = parseCode("100 INPUT #1:A,B,")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+        assertEquals(2, stmts[0].inputVariableAccesses().size)
+    }
+
+    fun testFileInputStatementWithRecordNumberExpression() {
+        val file = parseCode("100 INPUT #1.REC N*2:A,B$")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+        val stmt = stmts[0]
+        assertNotNull(stmt.recordNumberExpr())
+        assertEquals(2, stmt.inputVariableAccesses().size)
+    }
+
+    fun testFileInputStatementLowercaseIsRecognized() {
+        val file = parseCode("100 input #1.rec 3:a,b$")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+        assertTrue(stmts[0].isFileInput())
+        assertNotNull(stmts[0].recordNumberExpr())
+    }
+
+    fun testFilePrintStatementMinimal() {
+        val file = parseCode("100 PRINT #1:")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertNotNull(stmt.fileNumberExpr())
+        assertNull(stmt.recordNumberExpr())
+    }
+
+    fun testFilePrintStatementWithStringLiteralArg() {
+        // file number expr + "hello" arg expr = 2 expressions total in the statement node
+        val file = parseCode("100 PRINT #1:\"hello\"")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testFilePrintStatementWithSemicolonSeparatorBetweenArgs() {
+        // file number expr + two arg exprs = 3 expressions total; semicolon used between args
+        val file = parseCode("100 PRINT #1:\"hello\";\"world\"")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertEquals(3, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testFilePrintStatementWithRecordNumber() {
+        val file = parseCode("100 PRINT #1.REC 5:\"hello\"")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertNotNull(stmt.fileNumberExpr())
+        assertNotNull(stmt.recordNumberExpr())
+    }
+
+    fun testFilePrintStatementWithRecordNumberAndNoArgs() {
+        // file number expr + record number expr = 2 expressions; no print-arg expressions after colon
+        val file = parseCode("100 PRINT #1.REC 5:")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertNotNull(stmt.recordNumberExpr())
+        assertNull(stmt.recordNumberExpr()?.nextSibling?.let { it as? TiBasicExpression })
+        assertEquals(2, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testFilePrintStatementWithOnlySeparatorsAfterColon() {
+        // file number expr only; no print-arg expressions after the colon
+        val file = parseCode("100 PRINT #1:;,")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertEquals(1, stmt.children.filterIsInstance<TiBasicExpression>().size)
+    }
+
+    fun testFilePrintStatementWithSpacesAroundHash() {
+        val file = parseCode("100 PRINT # 1 : \"hello\"")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertNotNull(stmt.fileNumberExpr())
+    }
+
+    fun testFilePrintStatementWithExpressionAsFileNumber() {
+        val file = parseCode("100 PRINT #N+1:\"hello\"")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertNotNull(stmt.fileNumberExpr())
+    }
+
+    fun testFilePrintStatementLowercaseIsRecognized() {
+        val file = parseCode("100 print #1.rec 3:\"hello\"")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmt = lines[0].children.filterIsInstance<TiBasicPrintStatement>()[0]
+        assertTrue(stmt.isFileOutput())
+        assertNotNull(stmt.recordNumberExpr())
+    }
+
+
     fun testReadStatementWithSingleVariable() {
         val file = parseCode("100 READ A")
         val lines = file.children.filterIsInstance<TiBasicLine>()

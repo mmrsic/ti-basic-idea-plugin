@@ -57,6 +57,9 @@ private fun formattedLine(line: TiBasicLine): String {
         TiBasicTokenTypes.INPUT_KEYWORD ->
             return formattedInputLine(line.lineNumber(), statement as TiBasicInputStatement)
 
+        TiBasicTokenTypes.PRINT_KEYWORD ->
+            return formattedPrintLine(line.lineNumber(), statement as TiBasicPrintStatement)
+
         TiBasicTokenTypes.READ_KEYWORD ->
             return formattedReadLine(line.lineNumber(), statement as TiBasicReadStatement)
 
@@ -204,6 +207,26 @@ private fun formattedInputLine(lineNumber: Int, statement: TiBasicInputStatement
             if (varsPart.isNotEmpty()) append(removeWhitespaceOutsideStrings(uppercaseOutsideStrings(varsPart)))
         }
     }
+}
+
+private fun formattedPrintLine(lineNumber: Int, statement: TiBasicPrintStatement): String {
+    val keyword = statement.node.firstChildNode!!.text.uppercase()
+    if (!statement.isFileOutput()) {
+        return formattedSimpleLine(lineNumber, statement) { removeWhitespaceOutsideStrings(uppercaseOutsideStrings(it)) }
+    }
+    val fileNumberExpr = statement.fileNumberExpr()
+        ?: return formattedSimpleLine(lineNumber, statement) { removeWhitespaceOutsideStrings(uppercaseOutsideStrings(it)) }
+    val fileNumberText = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(fileNumberExpr.text.trim()))
+    val recPart = statement.recordNumberExpr()?.let { recExpr ->
+        ".REC ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(recExpr.text.trim()))}"
+    } ?: ""
+    val colonNode = statement.node.firstChildOfType(TiBasicTokenTypes.COLON)
+    val argsPart = if (colonNode != null) {
+        val colonRelEnd = colonNode.startOffset - statement.textRange.startOffset + colonNode.textLength
+        val argsText = statement.text.substring(colonRelEnd).trim()
+        if (argsText.isEmpty()) ":" else ":${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argsText))}"
+    } else ""
+    return "$lineNumber $keyword #$fileNumberText$recPart$argsPart"
 }
 
 private fun formattedReadLine(lineNumber: Int, statement: TiBasicReadStatement): String =

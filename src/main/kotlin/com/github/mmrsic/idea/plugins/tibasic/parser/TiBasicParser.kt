@@ -92,6 +92,8 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPTION_BAS
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.OPEN_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CLOSE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.HASH
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DOT
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.REC_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPEN_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CLOSE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPEN_OPTION
@@ -115,11 +117,18 @@ import com.intellij.psi.tree.IElementType
  *                           | forStatement | nextStatement
  *                           | deleteStatement | lineNumberListStatement | unknownStatement
  * printStatement          ::= PRINT_KEYWORD (WHITE_SPACE printArgList)?
+ *                           | PRINT_KEYWORD WHITE_SPACE? HASH WHITE_SPACE? expression
+ *                             (DOT REC_KEYWORD WHITE_SPACE? expression)?
+ *                             WHITE_SPACE? COLON printArgList
  * displayStatement        ::= DISPLAY_KEYWORD (WHITE_SPACE printArgList)?
  * printArgList            ::= (printSep | WHITE_SPACE | tabFunction | expression)*
  * tabFunction             ::= TAB_KEYWORD (LPAREN expression? RPAREN)?
  * printSep                ::= COLON | SEMICOLON | COMMA
  * inputStatement          ::= INPUT_KEYWORD (WHITE_SPACE? stringExpr COLON)? WHITE_SPACE? variablesList
+ *                           | INPUT_KEYWORD WHITE_SPACE? HASH WHITE_SPACE? expression
+ *                             (DOT REC_KEYWORD WHITE_SPACE? expression)?
+ *                             WHITE_SPACE? COLON WHITE_SPACE? fileInputVariableList
+ * fileInputVariableList   ::= variableAccess (COMMA variableAccess)* COMMA?
  * readStatement           ::= READ_KEYWORD WHITE_SPACE? variablesList
  * dataStatement           ::= DATA_KEYWORD WHITE_SPACE? dataList
  * dataList                ::= dataItem (COMMA dataItem)*
@@ -472,26 +481,57 @@ class TiBasicParser : PsiParser, LightPsiParser {
         val stmtMarker = builder.mark()
         builder.advanceLexer() // consume INPUT_KEYWORD
         skipWhitespace(builder)
-        val promptCheckpoint = builder.mark()
-        val hasPrompt = if (isStringOperand(builder)) {
-            parseStringExpr(builder)
-            skipIntraLineWhitespace(builder)
-            if (builder.tokenType == COLON) {
-                promptCheckpoint.drop()
-                builder.advanceLexer() // consume COLON
-                true
+        if (builder.tokenType == HASH) {
+            parseFileInputBody(builder)
+        } else {
+            val promptCheckpoint = builder.mark()
+            val hasPrompt = if (isStringOperand(builder)) {
+                parseStringExpr(builder)
+                skipIntraLineWhitespace(builder)
+                if (builder.tokenType == COLON) {
+                    promptCheckpoint.drop()
+                    builder.advanceLexer() // consume COLON
+                    true
+                } else {
+                    promptCheckpoint.rollbackTo()
+                    false
+                }
             } else {
-                promptCheckpoint.rollbackTo()
+                promptCheckpoint.drop()
                 false
             }
-        } else {
-            promptCheckpoint.drop()
-            false
+            if (hasPrompt) skipIntraLineWhitespace(builder)
+            parseInputVariableList(builder)
         }
-        if (hasPrompt) skipIntraLineWhitespace(builder)
-        parseInputVariableList(builder)
         while (!isLineEnd(builder)) builder.advanceLexer()
         stmtMarker.done(INPUT_STATEMENT)
+    }
+
+    private fun parseFileInputBody(builder: PsiBuilder) {
+        builder.advanceLexer() // consume HASH
+        skipIntraLineWhitespace(builder)
+        if (isExpressionStart(builder)) {
+            val exprMarker = builder.mark()
+            parseNumericCmp(builder)
+            exprMarker.done(EXPRESSION)
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == DOT) {
+            builder.advanceLexer() // consume DOT
+            if (builder.tokenType == REC_KEYWORD) {
+                builder.advanceLexer() // consume REC_KEYWORD
+                skipIntraLineWhitespace(builder)
+                if (isExpressionStart(builder)) {
+                    val exprMarker = builder.mark()
+                    parseNumericCmp(builder)
+                    exprMarker.done(EXPRESSION)
+                }
+            }
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == COLON) builder.advanceLexer() // consume COLON
+        skipIntraLineWhitespace(builder)
+        parseInputVariableList(builder, trailingCommaAllowed = true)
     }
 
     private fun parseReadStatement(builder: PsiBuilder) {
@@ -517,7 +557,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
         stmtMarker.done(RESTORE_STATEMENT)
     }
 
-    private fun parseInputVariableList(builder: PsiBuilder) {
+    private fun parseInputVariableList(builder: PsiBuilder, trailingCommaAllowed: Boolean = false) {
         if (!isVariableStart(builder)) return
         parseVariableAccess(builder)
         while (true) {
@@ -527,7 +567,8 @@ class TiBasicParser : PsiParser, LightPsiParser {
             }
             builder.advanceLexer()
             if (!isVariableStart(builder)) {
-                cp.rollbackTo(); break
+                if (trailingCommaAllowed) { cp.drop(); break }
+                else { cp.rollbackTo(); break }
             }
             cp.drop()
             parseVariableAccess(builder)
@@ -585,8 +626,39 @@ class TiBasicParser : PsiParser, LightPsiParser {
     private fun parsePrintStatement(builder: PsiBuilder) {
         val stmtMarker = builder.mark()
         builder.advanceLexer() // consume PRINT_KEYWORD
-        parsePrintArgList(builder)
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == HASH) {
+            parsePrintFileOutputBody(builder)
+        } else {
+            parsePrintArgList(builder)
+        }
         stmtMarker.done(PRINT_STATEMENT)
+    }
+
+    private fun parsePrintFileOutputBody(builder: PsiBuilder) {
+        builder.advanceLexer() // consume HASH
+        skipIntraLineWhitespace(builder)
+        if (isExpressionStart(builder)) {
+            val exprMarker = builder.mark()
+            parseNumericCmp(builder)
+            exprMarker.done(EXPRESSION)
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == DOT) {
+            builder.advanceLexer() // consume DOT
+            if (builder.tokenType == REC_KEYWORD) {
+                builder.advanceLexer() // consume REC_KEYWORD
+                skipIntraLineWhitespace(builder)
+                if (isExpressionStart(builder)) {
+                    val exprMarker = builder.mark()
+                    parseNumericCmp(builder)
+                    exprMarker.done(EXPRESSION)
+                }
+            }
+        }
+        skipIntraLineWhitespace(builder)
+        if (builder.tokenType == COLON) builder.advanceLexer() // consume delimiter colon
+        parsePrintArgList(builder)
     }
 
     private fun parseDisplayStatement(builder: PsiBuilder) {

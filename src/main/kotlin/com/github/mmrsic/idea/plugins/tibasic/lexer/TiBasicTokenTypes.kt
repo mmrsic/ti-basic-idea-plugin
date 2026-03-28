@@ -66,6 +66,8 @@ object TiBasicTokenTypes {
     val GOSUB_KEYWORD = TiBasicElementType("GOSUB_KEYWORD")
     val RETURN_KEYWORD = TiBasicElementType("RETURN_KEYWORD")
     val HASH = TiBasicElementType("HASH")
+    val DOT = TiBasicElementType("DOT")
+    val REC_KEYWORD = TiBasicElementType("REC_KEYWORD")
     val OPEN_KEYWORD = TiBasicElementType("OPEN_KEYWORD")
     val CLOSE_KEYWORD = TiBasicElementType("CLOSE_KEYWORD")
     val SEQUENTIAL_KEYWORD = TiBasicElementType("SEQUENTIAL_KEYWORD")

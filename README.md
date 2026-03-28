@@ -20,9 +20,9 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 | `DEF`                        | Define a user function: `DEF name[(param)] = expression`; name is a variable name (string if body is string)                                                                                                                                            |
 | `DIM`                        | Declare array dimensions: `DIM name(size[,size…])`, comma-separated; must appear before first array use                                                                                                                                                 |
 | `OPTION BASE`                | Set the minimum array index to `0` (default) or `1`; only integer literals 0 or 1 are allowed                                                                                                                                                           |
-| `PRINT`                      | Output values or text to screen, printer, or file; multiple expressions separated by `;`, `,`, or `:`                                                                                                                                                   |
+| `PRINT`                      | Output values or text to screen or file; screen form: `PRINT [args]`; file form: `PRINT #fileNumber[.REC recordNumber]:args`; multiple expressions separated by `;`, `,`, or `:`                                                                    |
 | `DISPLAY`                    | Output values or text to screen only; identical syntax to `PRINT`                                                                                                                                                                                       |
-| `INPUT`                      | Read keyboard input into one or more variables (optional string prompt)                                                                                                                                                                                 |
+| `INPUT`                      | Read keyboard input into one or more variables (optional string prompt); file I/O variant: `INPUT #fileNumber[.REC recordNumber]:variableList` (trailing comma allowed)                                                                                 |
 | `READ`                       | Read values from DATA statements into one or more variables                                                                                                                                                                                             |
 | `DATA`                       | Supply a comma-separated list of values for `READ` statements                                                                                                                                                                                           |
 | `RESTORE`                    | Reset the DATA pointer (optionally to a specific line number)                                                                                                                                                                                           |
@@ -41,7 +41,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 | `NEXT`                       | Marks the end of the counted loop body                                                                                                                                                                                                                  |
 | `DELETE`                     | Delete a string expression                                                                                                                                                                                                                              |
 | `OPEN`                       | Open a file: `OPEN #fileNumber:fileName[,org][,type][,mode][,format][,PERMANENT]`; `#` is mandatory; file number 1–255; options in any order: `SEQUENTIAL`/`RELATIVE [n]`, `DISPLAY`/`INTERNAL`, `INPUT`/`OUTPUT`/`APPEND`/`UPDATE`, `FIXED`/`VARIABLE` |
-| `CLOSE`                      | Close a file: `CLOSE #fileNumber[:DELETE]`; `#` is mandatory; file number 1–255; optional `:DELETE` deletes the file on close |
+| `CLOSE`                      | Close a file: `CLOSE #fileNumber[:DELETE]`; `#` is mandatory; file number 1–255; optional `:DELETE` deletes the file on close                                                                                                                           |
 | `BREAK` / `UNBREAK`          | Set or clear breakpoints at given line numbers                                                                                                                                                                                                          |
 | `TRACE` / `UNTRACE`          | Enable or disable execution tracing at given line numbers                                                                                                                                                                                               |
 
@@ -84,6 +84,7 @@ stand-alone statements).
 | `ABS(x)`             | 1 numeric            | numeric | Absolute value                           |
 | `ATN(x)`             | 1 numeric            | numeric | Arctangent in radians                    |
 | `COS(x)`             | 1 numeric            | numeric | Cosine in radians                        |
+| `EOF(n)`             | 1 numeric            | numeric | End-of-file status for file *n*: 0 = not at end, 1 = logical end, −1 = physical end |
 | `EXP(x)`             | 1 numeric            | numeric | *e* to the power *x*                     |
 | `INT(x)`             | 1 numeric            | numeric | Greatest integer ≤ *x*                   |
 | `LOG(x)`             | 1 numeric            | numeric | Natural logarithm                        |
@@ -137,10 +138,24 @@ The annotator inspects every file and highlights:
 | Error    | `NEXT` without a control variable (Incorrect statement)                                                                               |
 | Error    | `INPUT` without a variable list (Incorrect statement)                                                                                 |
 | Error    | `INPUT` with a bad variable name (Bad variable name)                                                                                  |
+| Error    | `INPUT #…` missing `:` separator before variable list (Incorrect statement)                                                           |
+| Error    | `INPUT #…` missing variable list after `:` (Incorrect statement)                                                                      |
+| Error    | `INPUT #…` with file number 0 — reserved for screen (File number 0 is reserved for screen)                                            |
+| Error    | `INPUT #…` with literal file number outside 1–255 (File number must be between 1 and 255)                                             |
+| Error    | `INPUT #…` with a string expression as file number (Numeric expression expected)                                                      |
+| Error    | `INPUT #….REC` with a string expression as record number (Numeric expression expected)                                                |
+| Error    | `INPUT #….` with unrecognised modifier instead of `REC` (Incorrect statement)                                                         |
 | Error    | `READ` without a variable list (Incorrect statement)                                                                                  |
 | Error    | `READ` with a bad variable name (Bad variable name)                                                                                   |
 | Error    | `PRINT` or `DISPLAY` with two adjacent expressions missing a separator (Separator expected between expressions)                       |
 | Error    | `PRINT` or `DISPLAY` with an invalid token that is not an expression or separator (PRINT argument must be an expression)              |
+| Error    | `PRINT #…` missing file number expression after `#` (Incorrect statement)                                                             |
+| Error    | `PRINT #…` missing `:` separator before argument list (Incorrect statement)                                                           |
+| Error    | `PRINT #…` with file number 0 — reserved for screen (File number 0 is reserved for screen)                                            |
+| Error    | `PRINT #…` with literal file number outside 1–255 (File number must be between 1 and 255)                                             |
+| Error    | `PRINT #…` with a string expression as file number (Numeric expression expected)                                                      |
+| Error    | `PRINT #….REC` with a string expression as record number (Numeric expression expected)                                                |
+| Error    | `PRINT #….` with unrecognised modifier instead of `REC` (Incorrect statement)                                                         |
 | Error    | `RESTORE` with invalid argument — not a single numeric literal (Incorrect statement)                                                  |
 | Warning  | `RESTORE` references a line number that does not exist in the program                                                                 |
 | Error    | `CALL` with unknown subprogram name                                                                                                   |

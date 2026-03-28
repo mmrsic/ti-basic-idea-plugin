@@ -14,6 +14,7 @@ object TiBasicBuiltInFunctions {
         "ABS" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
         "ATN" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
         "COS" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
+        "EOF" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
         "EXP" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
         "INT" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),
         "LOG" to BuiltInFunctionSignature(1, listOf(CallArgType.NUMERIC), FunctionReturnType.NUMERIC),

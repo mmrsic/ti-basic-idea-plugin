@@ -1299,6 +1299,136 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
+    fun testFileInputMinimalNoError() {
+        configureFile("100 INPUT #1:A")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputWithMultipleVariablesNoError() {
+        configureFile("100 INPUT #2:A,B$,C")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputWithTrailingCommaNoError() {
+        configureFile("100 INPUT #1:A,B,")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputWithRecordNumberNoError() {
+        configureFile("100 INPUT #1.REC 5:A")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputWithExpressionFileNumberNoError() {
+        configureFile("100 INPUT #X+5:A")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputWithRecordNumberExpressionNoError() {
+        configureFile("100 INPUT #1.REC N*2:A,B$")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputMissingColonIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">INPUT #1 A</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputMissingVariablesIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">INPUT #1:</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputFileNumberZeroIsError() {
+        configureFile("100 INPUT #<error descr=\"File number 0 is reserved for screen\">0</error>:A")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputFileNumberOutOfRangeIsError() {
+        configureFile("100 INPUT #<error descr=\"File number must be between 1 and 255\">256</error>:A")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputStringExpressionAsFileNumberIsError() {
+        configureFile("100 INPUT #<error descr=\"Numeric expression expected\">A$</error>:B")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputStringExpressionAsRecordNumberIsError() {
+        configureFile("100 INPUT #1.REC <error descr=\"Numeric expression expected\">A$</error>:B")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputDotWithoutRecIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">INPUT #1.FOO:A</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFileInputWithInvalidVariableNameIsError() {
+        configureFile("100 INPUT #1:<error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintMinimalNoError() {
+        configureFile("100 PRINT #1:")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintWithStringLiteralNoError() {
+        configureFile("100 PRINT #1:\"hello\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintWithVariablesNoError() {
+        configureFile("100 PRINT #1:A;B$")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintWithRecordNumberNoError() {
+        configureFile("100 PRINT #2.REC 1:\"hello\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintWithMaxFileNumberNoError() {
+        configureFile("100 PRINT #255:")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintFileNumberZeroIsError() {
+        configureFile("100 PRINT #<error descr=\"File number 0 is reserved for screen\">0</error>:\"x\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintFileNumberOutOfRangeIsError() {
+        configureFile("100 PRINT #<error descr=\"File number must be between 1 and 255\">256</error>:\"x\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintStringExpressionAsFileNumberIsError() {
+        configureFile("100 PRINT #<error descr=\"Numeric expression expected\">A$</error>:\"x\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintStringExpressionAsRecordNumberIsError() {
+        configureFile("100 PRINT #1.REC <error descr=\"Numeric expression expected\">A$</error>:\"x\"")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintDotWithoutRecIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">PRINT #1.FOO:\"x\"</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintMissingColonIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">PRINT #1</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testFilePrintMissingRecordNumberIsError() {
+        configureFile("100 <error descr=\"Incorrect statement\">PRINT #1.REC</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
     fun testReadWithValidVariablesNoError() {
         configureFile("100 READ A,B$,C")
         myFixture.checkHighlighting(true, false, true)

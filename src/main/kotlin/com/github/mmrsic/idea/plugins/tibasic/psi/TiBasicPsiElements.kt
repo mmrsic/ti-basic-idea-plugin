@@ -47,7 +47,20 @@ class TiBasicLine(node: ASTNode) : ASTWrapperPsiElement(node) {
 
 abstract class TiBasicScreenPrintStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
-class TiBasicPrintStatement(node: ASTNode) : TiBasicScreenPrintStatement(node)
+class TiBasicPrintStatement(node: ASTNode) : TiBasicScreenPrintStatement(node) {
+    fun isFileOutput(): Boolean =
+        node.firstChildOfType(TiBasicTokenTypes.HASH) != null
+
+    fun fileNumberExpr(): TiBasicExpression? {
+        if (!isFileOutput()) return null
+        return node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(0)?.psi as? TiBasicExpression
+    }
+
+    fun recordNumberExpr(): TiBasicExpression? {
+        if (node.firstChildOfType(TiBasicTokenTypes.REC_KEYWORD) == null) return null
+        return node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(1)?.psi as? TiBasicExpression
+    }
+}
 
 class TiBasicDisplayStatement(node: ASTNode) : TiBasicScreenPrintStatement(node)
 
@@ -81,7 +94,23 @@ class TiBasicForStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicNextStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
-class TiBasicInputStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+class TiBasicInputStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun isFileInput(): Boolean =
+        node.firstChildOfType(TiBasicTokenTypes.HASH) != null
+
+    fun fileNumberExpr(): TiBasicExpression? {
+        if (!isFileInput()) return null
+        return node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(0)?.psi as? TiBasicExpression
+    }
+
+    fun recordNumberExpr(): TiBasicExpression? {
+        if (node.firstChildOfType(TiBasicTokenTypes.REC_KEYWORD) == null) return null
+        return node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(1)?.psi as? TiBasicExpression
+    }
+
+    fun inputVariableAccesses(): List<TiBasicVariableAccess> =
+        node.childrenOfType(TiBasicNodeTypes.VARIABLE_ACCESS).map { it.psi as TiBasicVariableAccess }
+}
 
 class TiBasicReadStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 

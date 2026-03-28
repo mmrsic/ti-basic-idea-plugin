@@ -452,5 +452,40 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 close #1")
         assertEquals("100 CLOSE #1", formattedText(file))
     }
+
+    fun testEofFunctionLowercaseUppercased() {
+        val file = configureFile("100 LET X= eof (1 ) ")
+        assertEquals("100 LET X=EOF(1)", formattedText(file))
+    }
+
+    fun testFilePrintFormattedCorrectly() {
+        val file = configureFile("140 PRINT #1:A;B;C")
+        assertEquals("140 PRINT #1:A;B;C", formattedText(file))
+    }
+
+    fun testFilePrintExtraSpacesNormalized() {
+        val file = configureFile("140 PRINT  # 1 : A ; B")
+        assertEquals("140 PRINT #1:A;B", formattedText(file))
+    }
+
+    fun testFilePrintWithRecordNumberSpacePreserved() {
+        val file = configureFile("140 PRINT #1.REC  47:A;B;C;E;F")
+        assertEquals("140 PRINT #1.REC 47:A;B;C;E;F", formattedText(file))
+    }
+
+    fun testFilePrintWithRecordNumberLowercaseUppercased() {
+        val file = configureFile("140 print #1.rec 5:\"hello\"")
+        assertEquals("140 PRINT #1.REC 5:\"hello\"", formattedText(file))
+    }
+
+    fun testFilePrintWithEmptyArgList() {
+        val file = configureFile("100 PRINT #2:")
+        assertEquals("100 PRINT #2:", formattedText(file))
+    }
+
+    fun testFilePrintWithRecordNumberAndEmptyArgList() {
+        val file = configureFile("100 PRINT # 3 . REC  10 :")
+        assertEquals("100 PRINT #3.REC 10:", formattedText(file))
+    }
 }
 

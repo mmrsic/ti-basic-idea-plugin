@@ -35,6 +35,7 @@ object TiBasicKeywords {
             "DIM",
             "ELSE",
             "END",
+            "EOF",
             "EXP",
             "GO TO",
             "GOTO",
@@ -81,5 +82,6 @@ object TiBasicKeywords {
             "FIXED",
             "VARIABLE",
             "PERMANENT",
+            "REC",
         )
 }

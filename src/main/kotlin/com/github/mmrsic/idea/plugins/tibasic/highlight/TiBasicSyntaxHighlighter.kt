@@ -81,7 +81,8 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.UPDATE_KEYWORD,
             TiBasicTokenTypes.FIXED_KEYWORD,
             TiBasicTokenTypes.VARIABLE_KEYWORD,
-            TiBasicTokenTypes.PERMANENT_KEYWORD -> arrayOf(KEYWORD)
+            TiBasicTokenTypes.PERMANENT_KEYWORD,
+            TiBasicTokenTypes.REC_KEYWORD -> arrayOf(KEYWORD)
 
             TiBasicTokenTypes.REM_TEXT -> arrayOf(COMMENT)
             TiBasicTokenTypes.LINE_NUMBER -> arrayOf(LINE_NUMBER)
@@ -109,6 +110,7 @@ class TiBasicSyntaxHighlighter : SyntaxHighlighterBase() {
             TiBasicTokenTypes.RPAREN -> arrayOf(PAREN)
 
             TiBasicTokenTypes.HASH -> arrayOf(ARITH_OP)
+            TiBasicTokenTypes.DOT -> arrayOf(ARITH_OP)
 
             TiBasicTokenTypes.PRINT_ARGUMENT -> arrayOf(PRINT_ARGUMENT)
             TiBasicTokenTypes.CALL_SUBPROGRAM_NAME -> arrayOf(CALL_SUBPROGRAM)

@@ -312,6 +312,10 @@ class TiBasicLexer : LexerBase() {
                     result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.HASH)); i++
                 }
 
+                ch == '.' && (i + 1 >= argStr.length || !argStr[i + 1].isDigit()) -> {
+                    result.add(LineToken(offset + i, offset + i + 1, TiBasicTokenTypes.DOT)); i++
+                }
+
                 ch.isDigit() || (ch == '.' && i + 1 < argStr.length && argStr[i + 1].isDigit()) -> {
                     val token = tokenizeNumber(argStr, offset, i)
                     result.add(token); i = token.end - offset
@@ -373,7 +377,7 @@ class TiBasicLexer : LexerBase() {
             while (i < s.length && s[i].isDigit()) i++
         } else {
             while (i < s.length && s[i].isDigit()) i++
-            if (i < s.length && s[i] == '.') {
+            if (i < s.length && s[i] == '.' && i + 1 < s.length && s[i + 1].isDigit()) {
                 i++
                 while (i < s.length && s[i].isDigit()) i++
             }
@@ -437,6 +441,10 @@ class TiBasicLexer : LexerBase() {
 
             "INPUT" -> {
                 end = i; type = TiBasicTokenTypes.INPUT_KEYWORD
+            }
+
+            "REC" -> {
+                end = i; type = TiBasicTokenTypes.REC_KEYWORD
             }
 
             "SEQUENTIAL" -> {

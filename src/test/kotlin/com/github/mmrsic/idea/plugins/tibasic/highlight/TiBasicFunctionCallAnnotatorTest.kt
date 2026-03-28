@@ -114,6 +114,36 @@ class TiBasicFunctionCallAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
+    fun `test EOF with numeric argument no error`() {
+        configureFile("100 LET X=EOF(1)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test EOF with numeric expression argument no error`() {
+        configureFile("100 LET X=EOF(N+1)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test EOF with no arguments gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET X=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">EOF()</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test EOF with two arguments gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET X=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">EOF(1,2)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test EOF with string argument gives INCORRECT STATEMENT error`() {
+        configureFile("100 LET X=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">EOF(A$)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test EOF used as variable name gives error`() {
+        configureFile("100 LET <error descr=\"Function name cannot be used as variable\">EOF</error>=1")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
     fun `test EXP with two arguments gives INCORRECT STATEMENT error`() {
         configureFile("100 LET Y=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">EXP(X,2)</error>")
         myFixture.checkHighlighting(true, false, true)

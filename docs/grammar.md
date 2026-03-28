@@ -62,9 +62,16 @@ statement         = printStatement
                   | lineNumberListStatement
                   | unknownStatement ;
 
-printStatement          = PRINT     [ whitespace ] [ printArgList ] ;
+printStatement          = PRINT     [ whitespace ] [ printArgList ]
+                        | PRINT     whitespace? HASH whitespace? numericExpression
+                          [ DOT REC whitespace? numericExpression ]
+                          whitespace? COLON [ printArgList ] ;
+                          (* screen form: no # prefix; outputs to screen *)
+                          (* file form: # is mandatory; file number is a numeric expression (1–255);
+                             optional .REC specifies a record number (no whitespace between . and REC);
+                             COLON is mandatory before the argument list; DISPLAY does not support file output *)
 displayStatement        = DISPLAY   [ whitespace ] [ printArgList ] ;
-                          (* identical syntax to printStatement; screen output only *)
+                          (* identical syntax to screen form of printStatement; screen output only *)
 printArgList            = { printItem } ;
 printItem               = printSep | tabFunction | expression ;
                           (* expressions must be separated by at least one separator;
@@ -72,8 +79,13 @@ printItem               = printSep | tabFunction | expression ;
                              tabFunction may appear in any position where an expression is allowed *)
 printSep                = COLON | SEMICOLON | COMMA ;
 tabFunction             = TAB LPAREN numericExpression RPAREN ;
-inputStatement          = INPUT     [ whitespace ] [ stringExpression whitespace? COLON whitespace? ] variablesList ;
-                          (* prompt is optional; if present it must be a string expression followed by a colon *)
+inputStatement          = INPUT     [ whitespace ] [ stringExpression whitespace? COLON whitespace? ] variablesList
+                        | INPUT     whitespace? HASH whitespace? numericExpression
+                          [ DOT REC whitespace? numericExpression ]
+                          whitespace? COLON whitespace? fileInputVariablesList ;
+                          (* screen form: prompt is optional; if present it must be a string expression *)
+                          (* file form: # is mandatory; file number is a numeric expression (1–255);
+                             .REC recordNumber is optional; variable list may end with a trailing comma *)
 readStatement           = READ      [ whitespace ] variablesList ;
                           (* variable list is mandatory *)
 dataStatement           = DATA      [ whitespace ] dataList ;
@@ -213,23 +225,24 @@ Built-in functions appear inside expressions and return a value. They are distin
 
 All take one or more parenthesised arguments unless noted; all return a numeric value.
 
-| Function       | Arguments             | Description                             |
-|----------------|-----------------------|-----------------------------------------|
-| `ABS(x)`       | 1 numeric             | Absolute value                          |
-| `ATN(x)`       | 1 numeric             | Arctangent (result in radians)          |
-| `COS(x)`       | 1 numeric             | Cosine (argument in radians)            |
-| `EXP(x)`       | 1 numeric             | *e* raised to the power *x*             |
-| `INT(x)`       | 1 numeric             | Greatest integer ≤ *x*                  |
-| `LOG(x)`       | 1 numeric             | Natural logarithm                       |
-| `RND`          | none (no parentheses) | Random number in [0, 1)                 |
-| `SGN(x)`       | 1 numeric             | Sign of *x* (−1, 0, or 1)               |
-| `SIN(x)`       | 1 numeric             | Sine (argument in radians)              |
-| `SQR(x)`       | 1 numeric             | Square root                             |
-| `TAN(x)`       | 1 numeric             | Tangent (argument in radians)           |
-| `ASC(s$)`      | 1 string              | ASCII code of first character           |
-| `LEN(s$)`      | 1 string              | Length of string                        |
-| `POS(s$,t$,n)` | 2 strings, 1 numeric  | Starting position of *t$* in *s$* ≥ *n* |
-| `VAL(s$)`      | 1 string              | Numeric value of string                 |
+| Function       | Arguments             | Description                                                            |
+|----------------|-----------------------|------------------------------------------------------------------------|
+| `ABS(x)`       | 1 numeric             | Absolute value                                                         |
+| `ATN(x)`       | 1 numeric             | Arctangent (result in radians)                                         |
+| `COS(x)`       | 1 numeric             | Cosine (argument in radians)                                           |
+| `EOF(n)`       | 1 numeric             | End-of-file status: 0 = not at end, 1 = logical end, −1 = physical end |
+| `EXP(x)`       | 1 numeric             | *e* raised to the power *x*                                            |
+| `INT(x)`       | 1 numeric             | Greatest integer ≤ *x*                                                 |
+| `LOG(x)`       | 1 numeric             | Natural logarithm                                                      |
+| `RND`          | none (no parentheses) | Random number in [0, 1)                                                |
+| `SGN(x)`       | 1 numeric             | Sign of *x* (−1, 0, or 1)                                              |
+| `SIN(x)`       | 1 numeric             | Sine (argument in radians)                                             |
+| `SQR(x)`       | 1 numeric             | Square root                                                            |
+| `TAN(x)`       | 1 numeric             | Tangent (argument in radians)                                          |
+| `ASC(s$)`      | 1 string              | ASCII code of first character                                          |
+| `LEN(s$)`      | 1 string              | Length of string                                                       |
+| `POS(s$,t$,n)` | 2 strings, 1 numeric  | Starting position of *t$* in *s$* ≥ *n*                                |
+| `VAL(s$)`      | 1 string              | Numeric value of string                                                |
 
 #### String-returning functions (`STRING_FUNCTION_KEYWORD`)
 
@@ -248,31 +261,31 @@ These functions return a string value and are valid in string expression positio
 
 Recognised as statement-starting keywords (case-insensitive):
 
-| Token                                  | Statement kind                                |
-|----------------------------------------|-----------------------------------------------|
-| `LET`                                  | Variable assignment                           |
-| `DEF`                                  | User-defined function                         |
-| `DIM`                                  | Array dimension declaration                   |
-| `OPTION BASE`                          | Minimum array index (0 or 1)                  |
-| `PRINT`                                | Print to screen, printer, or file             |
-| `DISPLAY`                              | Print to screen only                          |
-| `TAB`                                  | Column-positioning function (PRINT/DISPLAY)   |
-| `INPUT`                                | Keyboard input (with optional string prompt)  |
-| `READ`                                 | Read values from DATA into variables          |
-| `DATA`                                 | Supply data values for READ statements        |
-| `RESTORE`                              | Reset DATA pointer (optionally to given line) |
-| `REM`                                  | Remark/comment                                |
-| `END`                                  | Halt program (end of program by convention)   |
-| `STOP`                                 | Halt program (mid-program by convention)      |
-| `GOTO` / `GO TO`                       | Unconditional branch to a line number         |
-| `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines       |
-| `IF … THEN` / `IF … THEN … ELSE`       | Conditional branch to a line number           |
-| `FOR … TO` / `FOR … TO … STEP`         | Counted loop — start, limit, optional step    |
-| `NEXT`                                 | End of counted loop body                      |
-| `DELETE`                               | Delete string                                 |
-| `OPEN`                                 | Open a file for I/O                           |
-| `CLOSE`                                | Close an open file                            |
-| `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                   |
+| Token                                  | Statement kind                                                                     |
+|----------------------------------------|------------------------------------------------------------------------------------|
+| `LET`                                  | Variable assignment                                                                |
+| `DEF`                                  | User-defined function                                                              |
+| `DIM`                                  | Array dimension declaration                                                        |
+| `OPTION BASE`                          | Minimum array index (0 or 1)                                                       |
+| `PRINT`                                | Print to screen, printer, or file                                                  |
+| `DISPLAY`                              | Print to screen only                                                               |
+| `TAB`                                  | Column-positioning function (PRINT/DISPLAY)                                        |
+| `INPUT`                                | Keyboard input (with optional string prompt); or file I/O: `INPUT #n[.REC r]:vars` |
+| `READ`                                 | Read values from DATA into variables                                               |
+| `DATA`                                 | Supply data values for READ statements                                             |
+| `RESTORE`                              | Reset DATA pointer (optionally to given line)                                      |
+| `REM`                                  | Remark/comment                                                                     |
+| `END`                                  | Halt program (end of program by convention)                                        |
+| `STOP`                                 | Halt program (mid-program by convention)                                           |
+| `GOTO` / `GO TO`                       | Unconditional branch to a line number                                              |
+| `ON … GOTO` / `ON … GO TO`             | Computed branch to one of several lines                                            |
+| `IF … THEN` / `IF … THEN … ELSE`       | Conditional branch to a line number                                                |
+| `FOR … TO` / `FOR … TO … STEP`         | Counted loop — start, limit, optional step                                         |
+| `NEXT`                                 | End of counted loop body                                                           |
+| `DELETE`                               | Delete string                                                                      |
+| `OPEN`                                 | Open a file for I/O                                                                |
+| `CLOSE`                                | Close an open file                                                                 |
+| `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE` | Line-number-list statements                                                        |
 
 ### Commands (not valid as statements)
 
@@ -298,6 +311,7 @@ These identifiers are recognized by the annotator and produce a specific error:
 | `GE_OP`     | `>=`   |
 | `COLON`     | `:`    |
 | `HASH`      | `#`    |
+| `DOT`       | `.`    |
 | `SEMICOLON` | `;`    |
 | `COMMA`     | `,`    |
 
@@ -355,6 +369,10 @@ These identifiers are recognized by the annotator and produce a specific error:
 320 NEXT I                      ✓valid — end of loop body
 400 INPUT A,B$                 ✓ valid — keyboard input, two variables
 410 INPUT "Enter name: ":A$    ✓ valid — keyboard input with string prompt (no space before variable)
+415 INPUT #1:A                 ✓ valid — file input, file number 1, one variable
+416 INPUT #X+5:A,B$            ✓ valid — file input, file number expression, two variables
+417 INPUT #1.REC 5:A           ✓ valid — file input with record number
+418 INPUT #1:A,B,              ✓ valid — file input with trailing comma
 420 READ A,B$                  ✓ valid — read into two variables
 430 DATA 42,"hello",world      ✓ valid — data list with number, quoted string, unquoted string
 435 DATA 1,,3                  ✓ valid — empty item from consecutive commas (second item is empty string)
