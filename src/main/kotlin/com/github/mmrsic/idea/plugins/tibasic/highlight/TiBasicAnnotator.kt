@@ -490,6 +490,10 @@ class TiBasicAnnotator : Annotator {
             holder.error("Incorrect statement", statement)
             return
         }
+        if (children.any { it.elementType !in ALLOWED_FOR_STATEMENT_CHILD_TYPES }) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
 
         when (varAccessNode.firstChildType) {
             TiBasicTokenTypes.INVALID_VARIABLE_NAME ->
@@ -713,7 +717,16 @@ class TiBasicAnnotator : Annotator {
             holder.error("Bad variable name", varAccessNode.textRange)
             return
         }
-        val expression = statement.firstChildOfType<TiBasicExpression>() ?: return
+        val expression = statement.firstChildOfType<TiBasicExpression>()
+        if (expression == null) {
+            val hasEqOp = statement.node.firstChildOfType(TiBasicTokenTypes.EQ_OP) != null
+            if (hasEqOp && statement.node.childrenAfter(TiBasicTokenTypes.EQ_OP)
+                    .any { it.elementType == TiBasicTokenTypes.PRINT_ARGUMENT }
+            ) {
+                holder.error("Incorrect statement", statement)
+            }
+            return
+        }
         if (varAccessNode == null) return
         val allowedLetStatementTypes = setOf(
             TiBasicTokenTypes.LET_KEYWORD,
@@ -946,7 +959,9 @@ class TiBasicAnnotator : Annotator {
     private fun annotateVariableAccess(varAccess: TiBasicVariableAccess, holder: AnnotationHolder) {
         if (!varAccess.hasSubscriptParens()) return
         if (!varAccess.hasClosingSubscriptParen()) {
-            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, varAccess)
+            if (varAccess.parent !is TiBasicDimStatement) {
+                holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, varAccess)
+            }
             return
         }
         val dimCount = varAccess.subscriptDimCount()
@@ -960,6 +975,10 @@ class TiBasicAnnotator : Annotator {
         val openParens = children.count { it.elementType == TiBasicTokenTypes.LPAREN }
         val closeParens = children.count { it.elementType == TiBasicTokenTypes.RPAREN }
         if (openParens > closeParens) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, expr)
+            return
+        }
+        if (children.isNotEmpty() && children.none { it.elementType in EXPRESSION_VALUE_NODE_TYPES }) {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, expr)
             return
         }
@@ -1389,3 +1408,20 @@ private val NUMERIC_MISMATCH_TYPES = setOf(
     TiBasicTokenTypes.DIV_OP,
     TiBasicTokenTypes.POW_OP,
 )
+
+private val EXPRESSION_VALUE_NODE_TYPES = setOf(
+    TiBasicTokenTypes.NUMERIC_LITERAL,
+    TiBasicTokenTypes.STRING_LITERAL,
+    TiBasicNodeTypes.VARIABLE_ACCESS,
+    TiBasicNodeTypes.FUNCTION_CALL,
+)
+
+private val ALLOWED_FOR_STATEMENT_CHILD_TYPES = setOf(
+    TiBasicTokenTypes.FOR_KEYWORD,
+    TiBasicNodeTypes.VARIABLE_ACCESS,
+    TiBasicTokenTypes.EQ_OP,
+    TiBasicNodeTypes.EXPRESSION,
+    TiBasicTokenTypes.TO_KEYWORD,
+    TiBasicTokenTypes.STEP_KEYWORD,
+)
+

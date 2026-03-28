@@ -1018,6 +1018,44 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testErrorForImplicitLetWithInvalidRhsCharacter() {
+        configureFile(
+            "160 <error descr=\"Incorrect statement\">XDIR=!</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForImplicitLetWithLoneUnaryPlus() {
+        configureFile(
+            "160 XDIR=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">+</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForImplicitLetWithLoneUnaryMinus() {
+        configureFile(
+            "160 XDIR=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">-</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForExplicitLetWithLoneUnaryPlus() {
+        configureFile(
+            "160 LET XDIR=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">+</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForUnaryPlusWithOperand() {
+        configureFile("160 XDIR=+5")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForUnaryMinusWithOperand() {
+        configureFile("160 XDIR=-5")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testNoErrorForEndStatement() {
         configureFile("100 END")
         myFixture.checkHighlighting(true, false, false)
@@ -1384,6 +1422,11 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
 
     fun testForWithLeadingDotValuesNoError() {
         configureFile("110 FOR X= .1 TO 1 STEP .2\n120 NEXT X")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testErrorForForWithTrailingClosingParenthesis() {
+        configureFile("130 <error descr=\"Incorrect statement\">FOR S=2 TO 16)</error>\n140 NEXT S")
         myFixture.checkHighlighting(true, false, true)
     }
 
