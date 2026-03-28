@@ -35,13 +35,15 @@ The parser only structures pre-classified token streams — it is intentionally 
 
 ## Critical domain constants and registries
 
-| Symbol                    | Location                          | Purpose                                                 |
-|---------------------------|-----------------------------------|---------------------------------------------------------|
-| `VALID_LINE_NUMBER_RANGE` | `psi/TiBasicPsiElements.kt`       | `1..32767` — used by annotator and resequence           |
-| `TiBasicTokenTypes`       | `lexer/TiBasicTokenTypes.kt`      | All leaf token `IElementType` constants                 |
-| `TiBasicNodeTypes`        | `parser/TiBasicNodeTypes.kt`      | All composite AST node constants                        |
-| `TiBasicCallSubprograms`  | `lang/TiBasicCallSubprograms.kt`  | Registry for all 10 `CALL` subprograms                  |
-| `TiBasicBuiltInFunctions` | `lang/TiBasicBuiltInFunctions.kt` | Registry for all expression functions (`ABS`, `SIN`, …) |
+| Symbol                              | Location                          | Purpose                                                                                                                        |
+|-------------------------------------|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| `VALID_LINE_NUMBER_RANGE`           | `psi/TiBasicPsiElements.kt`       | `1..32767` — used by annotator and resequence                                                                                  |
+| `TiBasicTokenTypes`                 | `lexer/TiBasicTokenTypes.kt`      | All leaf token `IElementType` constants                                                                                        |
+| `TiBasicNodeTypes`                  | `parser/TiBasicNodeTypes.kt`      | All composite AST node constants                                                                                               |
+| `TiBasicCallSubprograms`            | `lang/TiBasicCallSubprograms.kt`  | Registry for all 10 `CALL` subprograms                                                                                         |
+| `TiBasicBuiltInFunctions`           | `lang/TiBasicBuiltInFunctions.kt` | Registry for all expression functions (`ABS`, `SIN`, …)                                                                        |
+| `BAD_NAME_RUNTIME_ERROR`            | `lang/TiBasicCallSubprograms.kt`  | Message constant: `"Will cause run-time error 'BAD NAME'"` — used in `CallSubprogramSignature.syntaxViolationError`            |
+| `INCORRECT_STATEMENT_RUNTIME_ERROR` | `lang/TiBasicCallSubprograms.kt`  | Message constant: `"Will cause run-time error 'INCORRECT STATEMENT'"` — used in `CallSubprogramSignature.syntaxViolationError` |
 
 **Adding a built-in function**: add one entry to `TiBasicBuiltInFunctions.signatures` — no other change needed (works for both numeric-returning and string-returning functions).
 **Adding a CALL subprogram**: add one entry to `TiBasicCallSubprograms.signatures` — annotator picks it up automatically.
@@ -57,22 +59,26 @@ node.allChildren          // instead of node.getChildren(null)
 node.nonWhitespaceChildren
 node.childrenOfType(type)
 node.firstChildOfType(type)
+node.firstChildType       // shorthand for firstChildNode?.elementType
 node.childrenAfter(type)
 node.childSequence
 
 // AnnotationHolderExtensions.kt
 holder.error("Bad line number", element, quickFix)
+holder.error("Bad line number", range)            // TextRange overload
 holder.warning("Undefined line", element)
+holder.warning("Undefined line", range)           // TextRange overload
 
 // ext/PsiElementExtensions.kt + psi/PsiElementExtensions.kt
 element.firstChildOfType<T>()
+element.containingTiBasicFile  // from psi/PsiElementExtensions.kt — casts containingFile to TiBasicFile?
 ```
 
 Never call `node.getChildren(null)` directly.
 
 ## Test base class
 
-All test classes extend `TiBasicTestBase` (`src/test/kotlin/…/tibasic/TiBasicTestBase.kt`):
+Annotator, action, and editor test classes extend `TiBasicTestBase` (`src/test/kotlin/…/tibasic/TiBasicTestBase.kt`):
 
 ```kotlin
 val file = configureFile("100 PRINT \"HELLO\"")  // creates in-memory .tibasic, runs full pipeline
@@ -80,6 +86,25 @@ val annotations = myFixture.doHighlighting()      // annotator tests
 myFixture.completeBasic()                         // completion tests
 myFixture.performEditorAction("EditorStartNewLine") // editor handler tests
 ```
+
+Parser-only tests extend `ParsingTestCase` directly (not `TiBasicTestBase`):
+
+```kotlin
+class TiBasicCallParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition()) {
+    override fun getTestDataPath(): String = "src/test/testData"
+    private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
+}
+```
+
+Annotator tests are split into focused classes by statement type:
+`TiBasicAnnotatorTest` (general), `TiBasicCallAnnotatorTest`, `TiBasicDefAnnotatorTest`,
+`TiBasicDimAnnotatorTest`, `TiBasicFunctionCallAnnotatorTest`, `TiBasicOpenCloseAnnotatorTest`.
+
+Parser tests follow the same split:
+`TiBasicParserTest` (general), `TiBasicCallParserTest`, `TiBasicDefParserTest`,
+`TiBasicDimParserTest`, `TiBasicFunctionCallParserTest`, `TiBasicOpenCloseParserTest`.
+
+Format tests: `FormatCodeTest`, `FormatCallCodeTest`, `FormatActionTest`.
 
 Every non-trivial change needs a happy-path test **and** an error-case test.
 

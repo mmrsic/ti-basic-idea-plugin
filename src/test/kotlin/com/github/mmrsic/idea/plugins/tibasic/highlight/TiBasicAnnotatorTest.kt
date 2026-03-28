@@ -10,19 +10,22 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testWarningForEqualLineNumber() {
-        configureFile("100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
+        configureFile(
+            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForDescendingLineNumber() {
-        configureFile("200 PRINT \"A\"\n<warning descr=\"Line number 100 does not follow ascending order (previous: 200)\">100 PRINT \"B\"</warning>"
+        configureFile(
+            "200 PRINT \"A\"\n<warning descr=\"Line number 100 does not follow ascending order (previous: 200)\">100 PRINT \"B\"</warning>"
         )
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testWarningOnlyForNonAscendingLineInSequence() {
-        configureFile("100 PRINT \"A\"\n200 PRINT \"B\"\n<warning descr=\"Line number 150 does not follow ascending order (previous: 200)\">150 PRINT \"C\"</warning>"
+        configureFile(
+            "100 PRINT \"A\"\n200 PRINT \"B\"\n<warning descr=\"Line number 150 does not follow ascending order (previous: 200)\">150 PRINT \"C\"</warning>"
         )
         myFixture.checkHighlighting(false, false, true)
     }
@@ -33,19 +36,22 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForDuplicateLineNumber() {
-        configureFile("100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
+        configureFile(
+            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testErrorForTriplicateLineNumber() {
-        configureFile("100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>\n<error descr=\"Duplicate line number 100\">100 PRINT \"C\"</error>"
+        configureFile(
+            "100 PRINT \"A\"\n<error descr=\"Duplicate line number 100\">100 PRINT \"B\"</error>\n<error descr=\"Duplicate line number 100\">100 PRINT \"C\"</error>"
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorAndWarningForDuplicateNonAscendingLineNumber() {
-        configureFile("200 PRINT \"A\"\n<error descr=\"Duplicate line number 200\">200 PRINT \"B\"</error>"
+        configureFile(
+            "200 PRINT \"A\"\n<error descr=\"Duplicate line number 200\">200 PRINT \"B\"</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -81,13 +87,15 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForTrailingConcatOpWithNoRightOperand() {
-        configureFile("100 PRINT \"a\" <error descr=\"PRINT argument must be an expression\">&</error>",
+        configureFile(
+            "100 PRINT \"a\" <error descr=\"PRINT argument must be an expression\">&</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForLeadingConcatOpWithNoLeftOperand() {
-        configureFile("100 PRINT <error descr=\"PRINT argument must be an expression\">&</error> \"b\"",
+        configureFile(
+            "100 PRINT <error descr=\"PRINT argument must be an expression\">&</error> \"b\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -138,7 +146,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForConcatWithNonStringRightOperand() {
-        configureFile("100 PRINT \"a\" " +
+        configureFile(
+            "100 PRINT \"a\" " +
                     "<error descr=\"PRINT argument must be an expression\">&</error> " +
                     "42",
         )
@@ -162,26 +171,27 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
 
     fun testErrorForDigitAsFirstCharInVariableName() {
         // 1 is a numeric literal, A$ is a string variable after numeric expr → separator expected
-        configureFile("100 PRINT 1<error descr=\"Separator expected between expressions\">A$</error>",
-        )
+        configureFile("100 PRINT 1<error descr=\"Separator expected between expressions\">A$</error>")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForTooLongVariableName() {
-        configureFile("100 PRINT <error descr=\"Bad variable name\">TOOLONGVARIABLE$</error>",
-        )
+        configureFile("100 PRINT <error descr=\"Bad variable name\">TOOLONGVARIABLE$</error>")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForFourDimensionalSubscript() {
-        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A$(1,2,3,4)</error>",
-        )
+        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A$(1,2,3,4)</error>")
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForEmptySubscript() {
-        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A$()</error>",
-        )
+        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A$()</error>")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForStringVariableMissingClosingSubscriptParen() {
+        configureFile("100 PRINT <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">A$(1</error>")
         myFixture.checkHighlighting(true, false, false)
     }
 
@@ -208,14 +218,16 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testConflictBetweenArraysWithDifferentDimensions() {
-        configureFile("100 PRINT <error descr=\"Name conflict\">A$(1)</error>\n" +
+        configureFile(
+            "100 PRINT <error descr=\"Name conflict\">A$(1)</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A$(1,2)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testConflictAnnotatedOnAllThreeOccurrences() {
-        configureFile("100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
+        configureFile(
+            "100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A$(1)</error>\n" +
                     "300 PRINT <error descr=\"Name conflict\">A$</error>",
         )
@@ -264,44 +276,51 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
 
     fun testBadLineNumberDoesNotTriggerDuplicateError() {
         // Two lines with out-of-range numbers should not be flagged as duplicates of each other
-        configureFile("<error descr=\"Bad line number\">32768</error> PRINT\n" +
+        configureFile(
+            "<error descr=\"Bad line number\">32768</error> PRINT\n" +
                     "<error descr=\"Bad line number\">32769</error> PRINT",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithValidLineNumber() {
-        configureFile("100 <error descr=\"Incorrect statement\">BEEP</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">BEEP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLeadingZerosLineNumber() {
-        configureFile("0100 <error descr=\"Incorrect statement\">BEEP</error>",
+        configureFile(
+            "0100 <error descr=\"Incorrect statement\">BEEP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLineNumberAboveMax() {
-        configureFile("<error descr=\"Bad line number\">32768</error> <error descr=\"Incorrect statement\">BEEP</error>",
+        configureFile(
+            "<error descr=\"Bad line number\">32768</error> <error descr=\"Incorrect statement\">BEEP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForUnknownStatementWithLineNumberZero() {
-        configureFile("<error descr=\"Bad line number\">0</error> <error descr=\"Incorrect statement\">BEEP</error>",
+        configureFile(
+            "<error descr=\"Bad line number\">0</error> <error descr=\"Incorrect statement\">BEEP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForLineWithNoLineNumber() {
-        configureFile("<error descr=\"Line number expected\">this is not valid</error>",
+        configureFile(
+            "<error descr=\"Line number expected\">this is not valid</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForLineWithLeadingWhitespaceAndNoLineNumber() {
-        configureFile("<error descr=\"Line number expected\">   NOT A LINE</error>",
+        configureFile(
+            "<error descr=\"Line number expected\">   NOT A LINE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -344,7 +363,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
 
     fun testErrorForTokenStartingWithDigitNotNumericLiteral() {
         // 1 is a numeric literal expression; A is a second expression without separator
-        configureFile("100 PRINT 1<error descr=\"Separator expected between expressions\">A</error>",
+        configureFile(
+            "100 PRINT 1<error descr=\"Separator expected between expressions\">A</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -376,19 +396,29 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForNumericVariableWithTooManySubscripts() {
-        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A(1,2,3,4)</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Bad subscript definition\">A(1,2,3,4)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableWithEmptySubscript() {
-        configureFile("100 PRINT <error descr=\"Bad subscript definition\">A()</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Bad subscript definition\">A()</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForNumericVariableMissingClosingSubscriptParen() {
+        configureFile(
+            "100 PRINT <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">A(1</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableTooLong() {
-        configureFile("100 PRINT <error descr=\"Bad variable name\">ABCDEFGHIJKLMNOP</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Bad variable name\">ABCDEFGHIJKLMNOP</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -401,14 +431,16 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     // --- Numeric variable name conflict tests ---
 
     fun testNameConflictSimpleNumericAndArraySameName() {
-        configureFile("100 PRINT <error descr=\"Name conflict\">A</error>\n" +
+        configureFile(
+            "100 PRINT <error descr=\"Name conflict\">A</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A(1)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNameConflictTwoNumericArraysDifferentDims() {
-        configureFile("100 PRINT <error descr=\"Name conflict\">A(1)</error>\n" +
+        configureFile(
+            "100 PRINT <error descr=\"Name conflict\">A(1)</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A(1,2)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
@@ -434,43 +466,50 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     // --- Command-as-statement tests ---
 
     fun testErrorForCommandByeUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">BYE</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">BYE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandListUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">LIST</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">LIST</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandNewUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">NEW</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">NEW</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandRunUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">RUN</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">RUN</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandNumberUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">NUMBER</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">NUMBER</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandNumUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">NUM</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">NUM</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandCaseInsensitiveUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">bye</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">bye</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -483,7 +522,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     // --- Keyword conflict tests ---
 
     fun testErrorForNumericVariableMatchingKeyword() {
-        configureFile("100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -494,7 +534,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForNumericVariableMatchingKeywordCaseInsensitive() {
-        configureFile("100 PRINT <error descr=\"Keyword cannot be used as variable name\">print</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">print</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -510,127 +551,148 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForNumericArrayMatchingKeyword() {
-        configureFile("100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT(1)</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Keyword cannot be used as variable name\">PRINT(1)</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordNew() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">NEW</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">NEW</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordList() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">LIST</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">LIST</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordRun() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">RUN</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">RUN</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingKeywordBye() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">BYE</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">BYE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandNumber() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">NUMBER</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">NUMBER</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandNum() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">NUM</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">NUM</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandRes() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">RES</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">RES</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandResequence() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">RESEQUENCE</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">RESEQUENCE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandCon() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">CON</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">CON</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandContinue() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">CONTINUE</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">CONTINUE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandEdit() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">EDIT</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">EDIT</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandSave() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">SAVE</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">SAVE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericVariableMatchingCommandOld() {
-        configureFile("100 PRINT <error descr=\"Command must not be used as variable name\">OLD</error>",
+        configureFile(
+            "100 PRINT <error descr=\"Command must not be used as variable name\">OLD</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandResUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">RES</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">RES</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandResequenceUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">RESEQUENCE</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">RESEQUENCE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandConUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">CON</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">CON</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandContinueUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">CONTINUE</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">CONTINUE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandEditUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">EDIT</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">EDIT</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandSaveUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">SAVE</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">SAVE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForCommandOldUsedAsStatement() {
-        configureFile("100 <error descr=\"Command must not be used as statement\">OLD</error>",
+        configureFile(
+            "100 <error descr=\"Command must not be used as statement\">OLD</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -695,25 +757,29 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testStringNumberMismatchStringLiteralInNumericExpression() {
-        configureFile("100 PRINT A+<error descr=\"String-number mismatch\">\"hello\"</error>",
+        configureFile(
+            "100 PRINT A+<error descr=\"String-number mismatch\">\"hello\"</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchStringVarAfterNumericExpression() {
-        configureFile("100 PRINT 1<error descr=\"Separator expected between expressions\">A$</error>",
+        configureFile(
+            "100 PRINT 1<error descr=\"Separator expected between expressions\">A$</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchConcatOpAfterNumericExpression() {
-        configureFile("100 PRINT A<error descr=\"String-number mismatch\">&</error>B",
+        configureFile(
+            "100 PRINT A<error descr=\"String-number mismatch\">&</error>B",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testStringNumberMismatchNumericLiteralAfterStringExpression() {
-        configureFile("100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> 42",
+        configureFile(
+            "100 PRINT \"hello\" <error descr=\"PRINT argument must be an expression\">&</error> 42",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -784,49 +850,57 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForBreakWithLineNumberZero() {
-        configureFile("100 BREAK <error descr=\"Line number must be between 1 and 32767\">0</error>",
+        configureFile(
+            "100 BREAK <error descr=\"Line number must be between 1 and 32767\">0</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForBreakWithLineNumberAboveMax() {
-        configureFile("100 BREAK <error descr=\"Line number must be between 1 and 32767\">32768</error>",
+        configureFile(
+            "100 BREAK <error descr=\"Line number must be between 1 and 32767\">32768</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForBreakWithNonNumericArgument() {
-        configureFile("100 BREAK <error descr=\"Line number expected\">A</error>",
+        configureFile(
+            "100 BREAK <error descr=\"Line number expected\">A</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForBreakWithLeadingComma() {
-        configureFile("100 BREAK <error descr=\"Line number expected\">,</error>200",
+        configureFile(
+            "100 BREAK <error descr=\"Line number expected\">,</error>200",
         )
         myFixture.checkHighlighting(false, false, false)
     }
 
     fun testErrorForBreakWithTrailingComma() {
-        configureFile("100 BREAK 200<error descr=\"Line number expected\">,</error>",
+        configureFile(
+            "100 BREAK 200<error descr=\"Line number expected\">,</error>",
         )
         myFixture.checkHighlighting(false, false, false)
     }
 
     fun testErrorForBreakWithConsecutiveCommas() {
-        configureFile("100 BREAK 200,<error descr=\"Line number expected\">,</error>",
+        configureFile(
+            "100 BREAK 200,<error descr=\"Line number expected\">,</error>",
         )
         myFixture.checkHighlighting(false, false, false)
     }
 
     fun testErrorForBreakWithMissingComma() {
-        configureFile("100 BREAK 200 <error descr=\"Comma expected\">300</error>",
+        configureFile(
+            "100 BREAK 200 <error descr=\"Comma expected\">300</error>",
         )
         myFixture.checkHighlighting(false, false, false)
     }
 
     fun testWarningForBreakWithUndefinedLineNumber() {
-        configureFile("100 BREAK <warning descr=\"Bad line number\">200</warning>",
+        configureFile(
+            "100 BREAK <warning descr=\"Bad line number\">200</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -837,13 +911,15 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testWarningOnlyForUndefinedLineNumbersInList() {
-        configureFile("100 BREAK 200,<warning descr=\"Bad line number\">300</warning>\n200 PRINT",
+        configureFile(
+            "100 BREAK 200,<warning descr=\"Bad line number\">300</warning>\n200 PRINT",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForTraceWithUndefinedLineNumber() {
-        configureFile("100 TRACE <warning descr=\"Bad line number\">500</warning>",
+        configureFile(
+            "100 TRACE <warning descr=\"Bad line number\">500</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -879,19 +955,22 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForDeleteWithoutArgument() {
-        configureFile("100 <error descr=\"String expression expected\">DELETE</error>",
+        configureFile(
+            "100 <error descr=\"String expression expected\">DELETE</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForDeleteWithNumericLiteral() {
-        configureFile("100 DELETE <error descr=\"String expression expected\">42</error>",
+        configureFile(
+            "100 DELETE <error descr=\"String expression expected\">42</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForDeleteWithNumericVariable() {
-        configureFile("100 DELETE <error descr=\"String expression expected\">X</error>",
+        configureFile(
+            "100 DELETE <error descr=\"String expression expected\">X</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -912,25 +991,29 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testErrorForStringExpressionAssignedToNumericVariable() {
-        configureFile("100 <error descr=\"String-number mismatch\">A = \"hello\"</error>",
+        configureFile(
+            "100 <error descr=\"String-number mismatch\">A = \"hello\"</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForNumericExpressionAssignedToStringVariable() {
-        configureFile("100 <error descr=\"String-number mismatch\">A$ = 5</error>",
+        configureFile(
+            "100 <error descr=\"String-number mismatch\">A$ = 5</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForStringExpressionAssignedToNumericVariableWithLetKeyword() {
-        configureFile("100 LET <error descr=\"String-number mismatch\">A = \"hello\"</error>",
+        configureFile(
+            "100 LET <error descr=\"String-number mismatch\">A = \"hello\"</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForImplicitLetWithTrailingTokens() {
-        configureFile("190 <error descr=\"Incorrect statement\">p = i n t</error>",
+        configureFile(
+            "190 <error descr=\"Incorrect statement\">p = i n t</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -961,25 +1044,29 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testWarningForTrailingContentAfterEnd() {
-        configureFile("100 END<warning descr=\"Everything after END statement is ignored\">=5</warning>",
+        configureFile(
+            "100 END<warning descr=\"Everything after END statement is ignored\">=5</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForTrailingContentAfterEndWithSpace() {
-        configureFile("100 END <warning descr=\"Everything after END statement is ignored\">X</warning>",
+        configureFile(
+            "100 END <warning descr=\"Everything after END statement is ignored\">X</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForTrailingContentAfterStop() {
-        configureFile("100 STOP<warning descr=\"Everything after STOP statement is ignored\">*3</warning>",
+        configureFile(
+            "100 STOP<warning descr=\"Everything after STOP statement is ignored\">*3</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForTrailingContentAfterStopWithSpace() {
-        configureFile("100 STOP <warning descr=\"Everything after STOP statement is ignored\">A</warning>",
+        configureFile(
+            "100 STOP <warning descr=\"Everything after STOP statement is ignored\">A</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -995,121 +1082,141 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testWarningForGotoWithUndefinedLineNumber() {
-        configureFile("100 GOTO <warning descr=\"Bad line number\">999</warning>",
+        configureFile(
+            "100 GOTO <warning descr=\"Bad line number\">999</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForGoToTwoWordsWithUndefinedLineNumber() {
-        configureFile("100 GO TO <warning descr=\"Bad line number\">999</warning>",
+        configureFile(
+            "100 GO TO <warning descr=\"Bad line number\">999</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testErrorForGotoWithLineNumberZero() {
-        configureFile("100 GOTO <error descr=\"Bad line number\">0</error>",
+        configureFile(
+            "100 GOTO <error descr=\"Bad line number\">0</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGotoWithLineNumberTooLarge() {
-        configureFile("100 GOTO <error descr=\"Bad line number\">99999</error>",
+        configureFile(
+            "100 GOTO <error descr=\"Bad line number\">99999</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGotoWithoutLineNumber() {
-        configureFile("100 <error descr=\"Incorrect statement\">GOTO</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">GOTO</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGotoWithNonNumericArgument() {
-        configureFile("100 <error descr=\"Incorrect statement\">GOTO ABC</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">GOTO ABC</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGotoWithMultipleLineNumbers() {
-        configureFile("100 <error descr=\"Incorrect statement\">GOTO 200 300</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">GOTO 200 300</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForGoWithoutTo() {
-        configureFile("100 <error descr=\"Incorrect statement\">GO 200</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">GO 200</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForOnGotoWithExistingLineNumber() {
-        configureFile("100 ON X GOTO 200\n200 PRINT \"OK\"",
+        configureFile(
+            "100 ON X GOTO 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForOnGoToTwoWordsWithExistingLineNumber() {
-        configureFile("100 ON X GO TO 200\n200 PRINT \"OK\"",
+        configureFile(
+            "100 ON X GO TO 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testNoErrorForOnGotoWithMultipleExistingLineNumbers() {
-        configureFile("100 ON X GOTO 200,300,400\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 PRINT \"C\"",
+        configureFile(
+            "100 ON X GOTO 200,300,400\n200 PRINT \"A\"\n300 PRINT \"B\"\n400 PRINT \"C\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testWarningForOnGotoWithUndefinedLineNumber() {
-        configureFile("100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,300\n300 PRINT \"OK\"",
+        configureFile(
+            "100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,300\n300 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testWarningForEachUndefinedLineNumberInOnGoto() {
-        configureFile("100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,<warning descr=\"Bad line number\">300</warning>",
+        configureFile(
+            "100 ON X GOTO <warning descr=\"Bad line number\">200</warning>,<warning descr=\"Bad line number\">300</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testErrorForOnGotoWithLineNumberZero() {
-        configureFile("100 ON X GOTO <error descr=\"Bad line number\">0</error>",
+        configureFile(
+            "100 ON X GOTO <error descr=\"Bad line number\">0</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithLineNumberTooLarge() {
-        configureFile("100 ON X GOTO <error descr=\"Bad line number\">32768</error>",
+        configureFile(
+            "100 ON X GOTO <error descr=\"Bad line number\">32768</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithoutExpression() {
-        configureFile("100 <error descr=\"Incorrect statement\">ON GOTO 200</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">ON GOTO 200</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithoutGotoKeyword() {
-        configureFile("100 <error descr=\"Incorrect statement\">ON X 200</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">ON X 200</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithoutLineNumbers() {
-        configureFile("100 <error descr=\"Incorrect statement\">ON X GOTO</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">ON X GOTO</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithStringExpression() {
-        configureFile("100 ON <error descr=\"String-number mismatch\">A$</error> GOTO 200\n200 PRINT \"OK\"",
+        configureFile(
+            "100 ON <error descr=\"String-number mismatch\">A$</error> GOTO 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForOnGotoWithTrailingComma() {
-        configureFile("100 <error descr=\"Incorrect statement\">ON X GOTO ,</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">ON X GOTO ,</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
@@ -1125,55 +1232,64 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testWarningForIfThenWithUndefinedLineNumber() {
-        configureFile("100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning>",
+        configureFile(
+            "100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning>",
         )
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testWarningForIfThenElseWithUndefinedElseLineNumber() {
-        configureFile("100 IF X>0 THEN 200 ELSE <warning descr=\"Bad line number\">999</warning>\n200 PRINT \"OK\"",
+        configureFile(
+            "100 IF X>0 THEN 200 ELSE <warning descr=\"Bad line number\">999</warning>\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(false, false, true)
     }
 
     fun testErrorForIfWithoutThen() {
-        configureFile("100 <error descr=\"Incorrect statement\">IF X>0</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">IF X>0</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfThenWithoutLineNumber() {
-        configureFile("100 <error descr=\"Incorrect statement\">IF X>0 THEN</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">IF X>0 THEN</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfThenWithElseButNoElseLineNumber() {
-        configureFile("100 <error descr=\"Incorrect statement\">IF X>0 THEN 200 ELSE</error>\n200 PRINT \"OK\"",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">IF X>0 THEN 200 ELSE</error>\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfWithStringExpression() {
-        configureFile("100 IF <error descr=\"String-number mismatch\">A$</error> THEN 200\n200 PRINT \"OK\"",
+        configureFile(
+            "100 IF <error descr=\"String-number mismatch\">A$</error> THEN 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfThenWithInvalidLineNumber() {
-        configureFile("100 IF X>0 THEN <error descr=\"Bad line number\">99999</error>",
+        configureFile(
+            "100 IF X>0 THEN <error descr=\"Bad line number\">99999</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testErrorForIfThenElseWithInvalidElseLineNumber() {
-        configureFile("100 IF X>0 THEN 200 ELSE <error descr=\"Bad line number\">99999</error>\n200 PRINT \"OK\"",
+        configureFile(
+            "100 IF X>0 THEN 200 ELSE <error descr=\"Bad line number\">99999</error>\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(true, false, false)
     }
 
     fun testWarningForIfThenElseWithUndefinedThenLineNumber() {
-        configureFile("100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning> ELSE 200\n200 PRINT \"OK\"",
+        configureFile(
+            "100 IF X>0 THEN <warning descr=\"Bad line number\">999</warning> ELSE 200\n200 PRINT \"OK\"",
         )
         myFixture.checkHighlighting(false, false, true)
     }
@@ -1277,13 +1393,15 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testInputWithNoVariablesIsError() {
-        configureFile("100 <error descr=\"Incorrect statement\">INPUT</error>"
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">INPUT</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testInputWithInvalidVariableNameIsError() {
-        configureFile("100 INPUT <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
+        configureFile(
+            "100 INPUT <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -1294,7 +1412,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testInputWithNumericPromptResultsInIncorrectStatement() {
-        configureFile("100 <error descr=\"Incorrect statement\">INPUT 42: A</error>"
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">INPUT 42: A</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -1445,13 +1564,15 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testReadWithNoVariablesIsError() {
-        configureFile("100 <error descr=\"Incorrect statement\">READ</error>"
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">READ</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testReadWithInvalidVariableNameIsError() {
-        configureFile("100 READ <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
+        configureFile(
+            "100 READ <error descr=\"Bad variable name\">AVERYLONGNAMES1$</error>"
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -1482,7 +1603,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testDataWithNoItemsIsError() {
-        configureFile("100 <error descr=\"Incorrect statement\">DATA</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">DATA</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
@@ -1498,25 +1620,29 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testRestoreWithUndefinedLineNumberIsWarning() {
-        configureFile("100 RESTORE <warning descr=\"Bad line number\">999</warning>",
+        configureFile(
+            "100 RESTORE <warning descr=\"Bad line number\">999</warning>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithOutOfRangeLineNumberIsError() {
-        configureFile("100 RESTORE <error descr=\"Bad line number\">99999</error>",
+        configureFile(
+            "100 RESTORE <error descr=\"Bad line number\">99999</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithNonNumericArgIsError() {
-        configureFile("100 <error descr=\"Incorrect statement\">RESTORE A</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">RESTORE A</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }
 
     fun testRestoreWithMultipleNumbersIsError() {
-        configureFile("100 <error descr=\"Incorrect statement\">RESTORE 100 200</error>",
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">RESTORE 100 200</error>",
         )
         myFixture.checkHighlighting(true, false, true)
     }

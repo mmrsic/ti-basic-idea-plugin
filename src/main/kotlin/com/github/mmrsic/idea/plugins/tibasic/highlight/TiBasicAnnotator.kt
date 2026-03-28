@@ -945,6 +945,10 @@ class TiBasicAnnotator : Annotator {
 
     private fun annotateVariableAccess(varAccess: TiBasicVariableAccess, holder: AnnotationHolder) {
         if (!varAccess.hasSubscriptParens()) return
+        if (!varAccess.hasClosingSubscriptParen()) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, varAccess)
+            return
+        }
         val dimCount = varAccess.subscriptDimCount()
         if (dimCount == 0 || dimCount > 3) {
             holder.error("Bad subscript definition", varAccess)
@@ -988,6 +992,21 @@ class TiBasicAnnotator : Annotator {
                 holder.error("Incorrect statement", statement)
             }
             return
+        }
+        val hasOpenParen = statement.node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
+        val hasCloseParen = statement.node.firstChildOfType(TiBasicTokenTypes.RPAREN) != null
+        if (hasOpenParen && !hasCloseParen) {
+            holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
+        if (hasCloseParen) {
+            val trailingAfterCloseParen = statement.node
+                .childrenAfter(TiBasicTokenTypes.RPAREN)
+                .filter { it.elementType != TokenType.WHITE_SPACE }
+            if (trailingAfterCloseParen.isNotEmpty()) {
+                holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+                return
+            }
         }
         val argNodes = statement.node.childrenOfType(TiBasicNodeTypes.EXPRESSION)
         val argCount = argNodes.size

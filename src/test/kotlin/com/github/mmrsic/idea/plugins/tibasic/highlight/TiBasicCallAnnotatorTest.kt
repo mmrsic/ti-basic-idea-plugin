@@ -103,4 +103,29 @@ class TiBasicCallAnnotatorTest : TiBasicTestBase() {
         configureFile("170 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL HCHAR(12*3-45+A,3/56,42-1,)</error>")
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun `test CALL SOUND with missing closing parenthesis gives INCORRECT STATEMENT error`() {
+        configureFile("370 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL SOUND(30,380,2</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL SCREEN with missing closing parenthesis gives INCORRECT STATEMENT error`() {
+        configureFile("100 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL SCREEN(2</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL CHAR with missing closing parenthesis gives INCORRECT STATEMENT error`() {
+        configureFile("100 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL CHAR(96,\"FFFFFFFFFFFFFFFF\"</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL COLOR with extra trailing closing parenthesis gives INCORRECT STATEMENT error`() {
+        configureFile("140 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL COLOR(2,C,C))</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL SOUND with extra trailing closing parenthesis gives INCORRECT STATEMENT error`() {
+        configureFile("370 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL SOUND(30,380,2))</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
 }
