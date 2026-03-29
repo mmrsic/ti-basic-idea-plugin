@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-29
+
+### Added
+
+- **CALL CHAR gutter preview**: shows a preview of the custom character bitmap directly in the gutter
+- **CALL COLOR gutter preview**: shows a color swatch for the defined foreground/background colors in the gutter
+- **Variables Tool Window**: lists all variables defined in the current TI-Basic file
+- **Find Variable Usages**: supports finding all usages of a variable across the file
+
+### Changed
+
+- IDEA standard formatter is now used for TI-Basic files (replaces the custom format action shortcut path)
+
+### Fixed
+
+- Auto-completion of variable names was not offered inside `CALL` statements
+- Incorrect statements such as `XDIR=!`, `XDIR=+`, and `FOR S=2 TO 16)` were not highlighted as errors
+- Missing or superfluous right parenthesis was not highlighted as an error
+
 ## [1.0.0] - 2026-03-28
 
 ### Added
