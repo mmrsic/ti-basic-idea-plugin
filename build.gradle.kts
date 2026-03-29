@@ -32,22 +32,14 @@ intellijPlatform {
 
         changeNotes = """
             <ul>
-                <li>Initial release of TI-Basic / TI Extended Basic language support for IntelliJ IDEA</li>
-                <li><b>Syntax highlighting</b> for keywords, operators, string literals, and line numbers</li>
-                <li><b>Error and warning annotations</b>: invalid/out-of-range line numbers, type mismatches,
-                    undefined labels, bad file I/O specifications, duplicate line numbers, non-ascending order,
-                    and many more</li>
-                <li><b>Code completion</b> (Ctrl+Space) for variables and array subscripts</li>
-                <li><b>Shift+Enter</b> smart handler: auto-inserts the next available line number</li>
-                <li><b>Format TI-Basic Code</b> action: uppercases keywords, normalizes whitespace,
-                    preserves string literals</li>
-                <li><b>Resequence Line Numbers</b> action: renumbers all lines with configurable start and step</li>
-                <li>Full statement set: LET, DEF, PRINT (incl. file output), INPUT (incl. file), DISPLAY,
-                    READ, DATA, RESTORE (incl. file), CALL, GOTO, GOSUB/RETURN, ON GOTO/GOSUB,
-                    IF/THEN/ELSE, FOR/NEXT, DIM, OPTION BASE, RANDOMIZE, OPEN, CLOSE, REM, END, STOP, …</li>
-                <li>All 10 CALL subprograms: CLEAR, SCREEN, COLOR, HCHAR, VCHAR, GCHAR, CHAR, KEY, JOYST, SOUND</li>
-                <li>All built-in numeric and string functions: ABS, SIN, COS, TAN, ATN, EXP, LOG, SQR, INT, RND,
-                    SGN, ASC, LEN, POS, VAL, STR$, CHR$, SEG$</li>
+                <li><b>CALL CHAR gutter preview</b>: shows a preview of the custom character bitmap in the gutter</li>
+                <li><b>CALL COLOR gutter preview</b>: shows a color swatch for foreground/background colors in the gutter</li>
+                <li><b>Variables Tool Window</b>: lists all variables defined in the current TI-Basic file</li>
+                <li><b>Find Variable Usages</b>: find all usages of a variable across the file</li>
+                <li>IDEA standard formatter is now used for TI-Basic files</li>
+                <li>Fix: auto-completion of variable names now works inside CALL statements</li>
+                <li>Fix: incorrect statements like XDIR=! and FOR S=2 TO 16) are now highlighted as errors</li>
+                <li>Fix: missing or superfluous right parenthesis is now highlighted as an error</li>
             </ul>
         """.trimIndent()
     }
