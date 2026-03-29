@@ -89,5 +89,9 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
+        <action
+                id="ReformatCode"
+                class="com.github.mmrsic.idea.plugins.tibasic.action.format.TiBasicReformatCodeAction"
+                overrides="true"/>
     </actions>
 </idea-plugin>
