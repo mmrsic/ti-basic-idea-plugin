@@ -75,6 +75,12 @@
                 action="EditorStartNewLine"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicShiftEnterHandler"
         />
+        <toolWindow
+                id="TI Basic Variables"
+                anchor="bottom"
+                icon="/icons/ti99_4a_icon_small.svg"
+                factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableToolWindowFactory"
+        />
     </extensions>
     <actions>
         <action

@@ -204,12 +204,13 @@ The annotator inspects every file and highlights:
 
 ### Code actions
 
-**Format File** (`Tools › TI-Basic › Format`)
+**Format File** (`Tools › TI-Basic › Format` or Ctrl+Alt+L)
 
 - Converts all keywords outside string literals to uppercase
 - Removes extraneous whitespace outside string literals
 - Normalizes exactly one space between the line number and the first keyword
 - Can be applied to the whole file or to the current selection
+- Ctrl+Alt+L (standard IDEA Reformat Code) is mapped to this action for TI-Basic files via `TiBasicReformatCodeAction`
 
 **Resequence Line Numbers** (`Tools › TI-Basic › Resequence`)
 
@@ -228,6 +229,16 @@ The annotator inspects every file and highlights:
 - **CALL CHAR gutter preview** — for lines containing `CALL CHAR(code,"<16-hex-chars>")` with a valid 16-character hex
   pattern, a 16×16 px black-and-white pictogram appears in the gutter showing the defined 8×8 character
   (1-bit → black, 0-bit → white, with a dark-gray border)
+- **CALL COLOR gutter preview** — for lines containing `CALL COLOR(spriteNum,fg,bg)` with numeric constant
+  arguments, a split color square appears in the gutter (left half = foreground, right half = background TI color;
+  transparent checkerboard shown for non-constant arguments)
+- **Reformat Code** (Ctrl+Alt+L) — the standard IDEA "Reformat Code" action is mapped to **Format TI-BASIC** for
+  TI-Basic files; for all other file types the default behavior is preserved
+- **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file
+  in a sortable table with columns Name, Type, Writes, Reads, and Lines; clicking any line number navigates to
+  that position in the editor; the table refreshes automatically on every document change
+- **Find Usages** (Alt+F7) — finds all occurrences of a TI-Basic variable across the file; the Usages panel
+  distinguishes read accesses (blue) from write accesses (orange/red); usable from any occurrence of the variable
 - **Shift+Enter** — inserts a new line and automatically prepends the next logical line number
 
 ## Project structure
@@ -253,6 +264,10 @@ src/
 │   │   │   ├── ASTNodeExtensions.kt            Kotlin extensions on ASTNode
 │   │   │   ├── AnnotationHolderExtensions.kt   Kotlin extensions on AnnotationHolder
 │   │   │   └── PsiElementExtensions.kt         Kotlin extensions on PsiElement
+│   │   ├── findusages/
+│   │   │   ├── TiBasicFindUsagesProvider.kt    Find Usages provider (words scanner, display names)
+│   │   │   ├── TiBasicReadWriteAccessDetector.kt Read/write distinction in Usages panel
+│   │   │   └── TiBasicVariableReference.kt     PsiReference with semantic isReferenceTo
 │   │   ├── highlight/
 │   │   │   ├── TiBasicAnnotator.kt             Semantic error/warning annotations
 │   │   │   ├── TiBasicSyntaxHighlighter.kt     Token-based syntax colours
@@ -274,6 +289,15 @@ src/
 │   │   ├── psi/
 │   │   │   ├── TiBasicFile.kt                  PSI file root element
 │   │   │   └── TiBasicPsiElements.kt           PSI node elements (Line, statements, expressions)
+│   │   ├── toolwindow/
+│   │   │   ├── TiBasicVariableCollector.kt     PSI analysis: builds variable entry list
+│   │   │   ├── TiBasicVariableEntry.kt         Data class: name, type, read/write occurrences
+│   │   │   ├── TiBasicVariableLineNumberRenderer.kt Clickable line-number cell renderer
+│   │   │   ├── TiBasicVariableOccurrence.kt    Data class: line number, offset, access type
+│   │   │   ├── TiBasicVariableTableModel.kt    AbstractTableModel for the variable table
+│   │   │   ├── TiBasicVariableToolWindowContent.kt Tool window panel + navigation logic
+│   │   │   ├── TiBasicVariableToolWindowFactory.kt ToolWindowFactory
+│   │   │   └── TiBasicVariableType.kt          Enum: NUMERIC/STRING/NUMERIC_ARRAY/STRING_ARRAY/DIM/DEF
 │   │   └── util/
 │   │       └── PsiFileUtils.kt                 Document write-action helpers
 │   └── resources/META-INF/plugin.xml           Plugin descriptor
@@ -290,15 +314,19 @@ src/
         ├── editor/
         │   ├── TiBasicCompletionTest.kt
         │   └── TiBasicShiftEnterHandlerTest.kt
+        ├── findusages/
+        │   └── TiBasicFindUsagesTest.kt
         ├── highlight/
         │   ├── TiBasicAnnotatorTest.kt
         │   ├── TiBasicOpenCloseAnnotatorTest.kt
         │   └── TiBasicSyntaxHighlightingTest.kt
         ├── lang/
         │   └── IconLoadTest.kt
-        └── parser/
-            ├── TiBasicOpenCloseParserTest.kt
-            └── TiBasicParserTest.kt
+        ├── parser/
+        │   ├── TiBasicOpenCloseParserTest.kt
+        │   └── TiBasicParserTest.kt
+        └── toolwindow/
+            └── TiBasicVariableCollectorTest.kt
 ```
 
 ## Prerequisites
