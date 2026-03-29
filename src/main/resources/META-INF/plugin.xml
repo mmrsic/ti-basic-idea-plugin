@@ -75,6 +75,13 @@
                 action="EditorStartNewLine"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicShiftEnterHandler"
         />
+        <lang.findUsagesProvider
+                language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesProvider"
+        />
+        <readWriteAccessDetector
+                implementation="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicReadWriteAccessDetector"
+        />
         <toolWindow
                 id="TI Basic Variables"
                 anchor="bottom"

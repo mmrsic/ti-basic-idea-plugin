@@ -4,10 +4,15 @@ import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
+import com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicVariableReference
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.lang.ASTNode
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.PsiReference
+import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.tree.IElementType
 
 val VALID_LINE_NUMBER_RANGE = 1..32767
@@ -147,7 +152,11 @@ class TiBasicCallStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
         node.childrenOfType(TiBasicNodeTypes.EXPRESSION).map { it.psi as TiBasicExpression }
 }
 
-class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node) {
+class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node), PsiNamedElement {
+    override fun getName(): String? = node.firstChildNode?.text?.uppercase()
+    override fun setName(name: String): PsiElement = this
+    override fun getReference(): PsiReference = TiBasicVariableReference(this)
+    override fun getUseScope() = LocalSearchScope(containingFile)
     fun hasSubscriptParens(): Boolean =
         node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
 

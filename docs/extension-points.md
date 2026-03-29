@@ -116,16 +116,80 @@ on-the-fly using `Graphics2D` (HiDPI-safe, no static image files needed).
 
 ---
 
+### `codeInsight.lineMarkerProvider` — CALL COLOR
+
+| Attribute             | Value                                               |
+|-----------------------|-----------------------------------------------------|
+| `language`            | `TI-Basic`                                          |
+| `implementationClass` | `tibasic.editor.TiBasicCallColorLineMarkerProvider` |
+
+Displays a split 16×16 color square in the gutter for every `CALL COLOR(spriteNum,fg,bg)` line
+where `fg` and `bg` are integer literals. The left half shows the foreground TI color,
+the right half the background TI color. If an argument is not a constant, the corresponding
+half is rendered as a checkerboard (transparent). Colors map via `TiColor.at(index)` (1-based,
+index 1 = Transparent through 16 = White). The rendering uses `JBColor` to stay compatible
+with IntelliJ's theme system while keeping the fixed TI color palette.
+
+---
+
 ### Actions
 
 Both actions are added to the editor popup menu (`EditorPopupMenu`) and the `Code` menu (`CodeMenu`).
 
-| Action ID                       | Class                                        | Description                                           |
-|---------------------------------|----------------------------------------------|-------------------------------------------------------|
-| `TiBasic.ResequenceLineNumbers` | `tibasic.action.resequence.ResequenceAction` | Renumbers all lines with user-selected start and step |
-| `TiBasic.FormatCode`            | `tibasic.action.format.FormatAction`         | Uppercases keywords and removes extraneous whitespace |
+| Action ID                       | Class                                             | Description                                                                                                                                                                                                                            |
+|---------------------------------|---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TiBasic.ResequenceLineNumbers` | `tibasic.action.resequence.ResequenceAction`      | Renumbers all lines with user-selected start and step                                                                                                                                                                                  |
+| `TiBasic.FormatCode`            | `tibasic.action.format.FormatAction`              | Uppercases keywords and removes extraneous whitespace                                                                                                                                                                                  |
+| `ReformatCode` (override)       | `tibasic.action.format.TiBasicReformatCodeAction` | Maps Ctrl+Alt+L to FormatAction for TI-Basic files; delegates to the standard IntelliJ action for all other file types. Registered with `overrides="true"` (IDEA schema warning suppressed with `<!--suppress PluginXmlValidity -->`). |
 
-Both actions extend `TiBasicFileAction`, which gates execution to TI-Basic files only.
+Both `TiBasic.*` actions extend `TiBasicFileAction`, which gates execution to TI-Basic files only.
+
+---
+
+### `lang.findUsagesProvider`
+
+| Attribute             | Value                                            |
+|-----------------------|--------------------------------------------------|
+| `language`            | `TI-Basic`                                       |
+| `implementationClass` | `tibasic.findusages.TiBasicFindUsagesProvider`   |
+
+Enables **Alt+F7 Find Usages** for TI-Basic variables. Provides a `DefaultWordsScanner`
+backed by `TiBasicLexer` so IDEA can find candidate files. `getNodeText` returns the
+variable name; `getWordsScanner` indexes `NUMERIC_VARIABLE` and `STRING_VARIABLE` tokens
+as identifier words.
+
+`TiBasicVariableAccess` implements `PsiNamedElement` and overrides `getReference()` to
+return a `TiBasicVariableReference`. The reference's `isReferenceTo` uses a semantic
+comparison (name + token type + isArray flag) so that Find Usages on any occurrence of a
+variable finds all occurrences symmetrically.
+
+---
+
+### `readWriteAccessDetector`
+
+| Attribute        | Value                                                    |
+|------------------|----------------------------------------------------------|
+| `implementation` | `tibasic.findusages.TiBasicReadWriteAccessDetector`      |
+
+Classifies each usage in the Find Usages panel as read (blue) or write (orange/red).
+Delegates to `TiBasicVariableCollector.determineAccessType` for the classification logic
+(same rules as the Variables tool window).
+
+---
+
+### `toolWindow` — TI Basic Variables
+
+| Attribute       | Value                                                         |
+|-----------------|---------------------------------------------------------------|
+| `id`            | `TI Basic Variables`                                          |
+| `anchor`        | `bottom`                                                      |
+| `icon`          | `/icons/ti99_4a_icon_small.svg`                               |
+| `factoryClass`  | `tibasic.toolwindow.TiBasicVariableToolWindowFactory`         |
+
+Provides a dockable bottom panel that lists all variables in the currently active TI-Basic
+file in a sortable table (columns: Name, Type, Writes, Reads, Lines). Clicking any line
+number in the Writes, Reads, or Lines column navigates the editor to that line.
+The table refreshes automatically on every document edit and whenever the active file changes.
 
 ---
 
