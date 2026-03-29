@@ -79,11 +79,13 @@ object TiBasicVariableCollector {
                 val isLhs = directParent.node.firstChildOfType(TiBasicNodeTypes.VARIABLE_ACCESS) == varAccess.node
                 if (isLhs) AccessType.WRITE else AccessType.READ
             }
+
             is TiBasicForStatement -> {
                 val isLoopVar = directParent.node.nonWhitespaceChildren
                     .firstOrNull { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS } == varAccess.node
                 if (isLoopVar) AccessType.WRITE else AccessType.READ
             }
+
             is TiBasicExpression -> {
                 val exprParent = directParent.parent
                 if (exprParent is TiBasicCallStatement) {
@@ -98,6 +100,7 @@ object TiBasicVariableCollector {
                     AccessType.READ
                 }
             }
+
             else -> AccessType.READ
         }
 

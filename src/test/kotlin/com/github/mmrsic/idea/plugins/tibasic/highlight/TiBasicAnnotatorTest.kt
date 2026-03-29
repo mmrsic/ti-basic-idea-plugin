@@ -211,7 +211,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     }
 
     fun testConflictBetweenSimpleVariableAndArray() {
-        configureFile("100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
+        configureFile(
+            "100 PRINT <error descr=\"Name conflict\">A$</error>\n" +
                     "200 PRINT <error descr=\"Name conflict\">A$(1)</error>",
         )
         myFixture.checkHighlighting(true, false, false)

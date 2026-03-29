@@ -297,9 +297,11 @@ private fun formattedOpenLine(lineNumber: Int, statement: TiBasicOpenStatement):
         return if (argText.isEmpty()) "$lineNumber OPEN"
         else "$lineNumber OPEN ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
     }
-    val fileNumberText = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(
-        stmtText.substring(fileNumberNode.startOffset - stmtStart, fileNumberNode.startOffset + fileNumberNode.textLength - stmtStart).trim()
-    ))
+    val fileNumberText = removeWhitespaceOutsideStrings(
+        uppercaseOutsideStrings(
+            stmtText.substring(fileNumberNode.startOffset - stmtStart, fileNumberNode.startOffset + fileNumberNode.textLength - stmtStart).trim()
+        )
+    )
     val fileNameText = uppercaseOutsideStrings(
         stmtText.substring(fileNameNode.startOffset - stmtStart, fileNameNode.startOffset + fileNameNode.textLength - stmtStart).trim()
     )
@@ -313,9 +315,11 @@ private fun formattedOpenOption(option: TiBasicOpenOption, stmtStart: Int, stmtT
     val keywordText = keywordNode.text.uppercase()
     val orgExpr = option.optionExpression()
     return if (orgExpr != null) {
-        val exprText = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(
-            stmtText.substring(orgExpr.node.startOffset - stmtStart, orgExpr.node.startOffset + orgExpr.node.textLength - stmtStart).trim()
-        ))
+        val exprText = removeWhitespaceOutsideStrings(
+            uppercaseOutsideStrings(
+                stmtText.substring(orgExpr.node.startOffset - stmtStart, orgExpr.node.startOffset + orgExpr.node.textLength - stmtStart).trim()
+            )
+        )
         ",$keywordText $exprText"
     } else {
         ",$keywordText"
@@ -333,9 +337,11 @@ private fun formattedCloseLine(lineNumber: Int, statement: TiBasicCloseStatement
         return if (argText.isEmpty()) "$lineNumber CLOSE"
         else "$lineNumber CLOSE ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
     }
-    val fileNumberText = removeWhitespaceOutsideStrings(uppercaseOutsideStrings(
-        stmtText.substring(fileNumberNode.startOffset - stmtStart, fileNumberNode.startOffset + fileNumberNode.textLength - stmtStart).trim()
-    ))
+    val fileNumberText = removeWhitespaceOutsideStrings(
+        uppercaseOutsideStrings(
+            stmtText.substring(fileNumberNode.startOffset - stmtStart, fileNumberNode.startOffset + fileNumberNode.textLength - stmtStart).trim()
+        )
+    )
     val deleteModifier = if (statement.hasDeleteModifier()) ":DELETE" else ""
     return "$lineNumber CLOSE #$fileNumberText$deleteModifier"
 }

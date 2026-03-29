@@ -1,26 +1,33 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_SUBPROGRAM_NAME
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CLOSE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COLON
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.COMMA
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CONCAT_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DATA_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DEF_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DELETE_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIM_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DISPLAY_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIV_OP
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DOT
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.ELSE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.END_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.EQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.FOR_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GE_OP
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOTO_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOSUB_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RETURN_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GOTO_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.GT_OP
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.HASH
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.IF_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INPUT_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.INVALID_VARIABLE_NAME
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LE_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LET_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LE_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LINE_NUMBER
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LINE_NUMBER_LIST_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.LPAREN
@@ -30,31 +37,44 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.MUL_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NEQ_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NEXT_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NO_LINE_NUMBER_TEXT
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_VARIABLE
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.ON_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.OPEN_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.OPTION_BASE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.PLUS_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.POW_OP
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.PRINT_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RANDOMIZE_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.READ_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.REC_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.REM_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RESTORE_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RETURN_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RPAREN
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STEP_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STOP_KEYWORD
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_LITERAL
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_VARIABLE
+import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.TAB_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.THEN_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.TO_KEYWORD
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.UNKNOWN_STATEMENT_TEXT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CALL_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CLOSE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DATA_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DEF_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DELETE_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DIM_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DISPLAY_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.END_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.EXPRESSION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FOR_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOTO_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FUNCTION_CALL
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOSUB_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RETURN_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.IF_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INPUT_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.INVALID_LINE
@@ -62,41 +82,21 @@ import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LET_STATEM
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.NEXT_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOTO_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOSUB_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.ON_GOTO_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPEN_OPTION
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPEN_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPTION_BASE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.PRINT_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DISPLAY_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RANDOMIZE_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.READ_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.REM_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RESTORE_STATEMENT
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RETURN_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.STOP_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.TAB_FUNCTION
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.UNKNOWN_STATEMENT
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.VARIABLE_ACCESS
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.TAB_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DISPLAY_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CALL_SUBPROGRAM_NAME
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CALL_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.FUNCTION_CALL
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.RANDOMIZE_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DEF_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DIM_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.OPTION_BASE_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.RANDOMIZE_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DEF_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.DIM_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPTION_BASE_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.OPEN_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.CLOSE_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.HASH
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.DOT
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.REC_KEYWORD
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPEN_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.CLOSE_STATEMENT
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes.OPEN_OPTION
 import com.intellij.lang.ASTNode
 import com.intellij.lang.LightPsiParser
 import com.intellij.lang.PsiBuilder
@@ -597,8 +597,11 @@ class TiBasicParser : PsiParser, LightPsiParser {
             }
             builder.advanceLexer()
             if (!isVariableStart(builder)) {
-                if (trailingCommaAllowed) { cp.drop(); break }
-                else { cp.rollbackTo(); break }
+                if (trailingCommaAllowed) {
+                    cp.drop(); break
+                } else {
+                    cp.rollbackTo(); break
+                }
             }
             cp.drop()
             parseVariableAccess(builder)
@@ -986,7 +989,17 @@ class TiBasicParser : PsiParser, LightPsiParser {
                 builder.tokenType == STRING_FUNCTION_KEYWORD
 
     private fun isNumericPrimaryStart(builder: PsiBuilder): Boolean =
-        builder.tokenType in setOf(NUMERIC_LITERAL, NUMERIC_VARIABLE, PLUS_OP, MINUS_OP, LPAREN, STRING_LITERAL, STRING_VARIABLE, NUMERIC_FUNCTION_KEYWORD, STRING_FUNCTION_KEYWORD)
+        builder.tokenType in setOf(
+            NUMERIC_LITERAL,
+            NUMERIC_VARIABLE,
+            PLUS_OP,
+            MINUS_OP,
+            LPAREN,
+            STRING_LITERAL,
+            STRING_VARIABLE,
+            NUMERIC_FUNCTION_KEYWORD,
+            STRING_FUNCTION_KEYWORD
+        )
 
     private fun skipNewlines(builder: PsiBuilder) {
         while (!builder.eof() && builder.tokenType == TokenType.WHITE_SPACE) builder.advanceLexer()

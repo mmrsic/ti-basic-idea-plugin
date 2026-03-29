@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFunctionCall
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFunctionCall
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
 import com.intellij.testFramework.ParsingTestCase

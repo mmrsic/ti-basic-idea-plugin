@@ -47,11 +47,11 @@ Framework class improvements via Kotlin extensions
   PSI types they return (e.g., `val PsiElement.containingTiBasicFile`) may live in `tibasic.psi` alongside those
   types.
 - **Current `tibasic.ext` files**:
-  - `ASTNodeExtensions.kt` — `allChildren`, `nonWhitespaceChildren`, `firstChildType`, `childrenOfType`,
-    `firstChildOfType`, `childrenAfter`
-  - `PsiElementExtensions.kt` — `firstChildOfType<T>()`
-  - `AnnotationHolderExtensions.kt` — `error(message, element/range, quickFix?)`,
-    `warning(message, element/range, quickFix?)`
+    - `ASTNodeExtensions.kt` — `allChildren`, `nonWhitespaceChildren`, `firstChildType`, `childrenOfType`,
+      `firstChildOfType`, `childrenAfter`
+    - `PsiElementExtensions.kt` — `firstChildOfType<T>()`
+    - `AnnotationHolderExtensions.kt` — `error(message, element/range, quickFix?)`,
+      `warning(message, element/range, quickFix?)`
 - **Extensions go in the main source set** (`src/main/kotlin/.../tibasic/`) unless they are exclusively needed in
   tests, in which case they belong in the test source set.
 - **Check the extensions file before calling a raw framework method**: if `ASTNodeExtensions.kt`,
@@ -110,10 +110,10 @@ Documentation maintenance
   Project structure). The README must always reflect what the plugin actually does.
 - **Keep `docs/` current for contributors**: whenever a change affects architecture, grammar, extension points, or
   testing conventions, update the corresponding file in `docs/`:
-  - `docs/architecture.md` — package map, data-flow, annotator checks, threading, design decisions
-  - `docs/grammar.md` — EBNF grammar, token reference, valid/invalid examples
-  - `docs/extension-points.md` — all registered extension points and `tibasic.ext` extensions
-  - `docs/testing.md` — test setup, base class, conventions
+    - `docs/architecture.md` — package map, data-flow, annotator checks, threading, design decisions
+    - `docs/grammar.md` — EBNF grammar, token reference, valid/invalid examples
+    - `docs/extension-points.md` — all registered extension points and `tibasic.ext` extensions
+    - `docs/testing.md` — test setup, base class, conventions
 - **Docs are part of the definition of done**: a PR that adds or changes a feature is not complete until the
   documentation is updated. Add doc updates to the same commit or PR as the code change.
 - **Do not duplicate content between `README.md` and `docs/`**: `README.md` is user-facing and summarizes features;

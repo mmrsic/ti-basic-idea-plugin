@@ -45,9 +45,14 @@ The parser only structures pre-classified token streams — it is intentionally 
 | `BAD_NAME_RUNTIME_ERROR`            | `lang/TiBasicCallSubprograms.kt`  | Message constant: `"Will cause run-time error 'BAD NAME'"` — used in `CallSubprogramSignature.syntaxViolationError`            |
 | `INCORRECT_STATEMENT_RUNTIME_ERROR` | `lang/TiBasicCallSubprograms.kt`  | Message constant: `"Will cause run-time error 'INCORRECT STATEMENT'"` — used in `CallSubprogramSignature.syntaxViolationError` |
 
-**Adding a built-in function**: add one entry to `TiBasicBuiltInFunctions.signatures` — no other change needed (works for both numeric-returning and string-returning functions).
-**Adding a CALL subprogram**: add one entry to `TiBasicCallSubprograms.signatures` — annotator picks it up automatically.
-**Adding a statement keyword**: add token type → `TiBasicTokenTypes`, node type → `TiBasicNodeTypes`, extend `VALID_LINE` regex and `tokenizeValidLine` in `TiBasicLexer`, add `parseXxxStatement` to `TiBasicParser`, add `TiBasicXxxStatement` PSI class, register in `TiBasicParserDefinition.createElement`, add to `TiBasicSyntaxHighlighter` KEYWORD list, add to `TiBasicKeywords`. See `DEF_KEYWORD` / `TiBasicDefStatement` as the reference implementation.
+**Adding a built-in function**: add one entry to `TiBasicBuiltInFunctions.signatures` — no other change needed (works
+for both numeric-returning and string-returning functions).
+**Adding a CALL subprogram**: add one entry to `TiBasicCallSubprograms.signatures` — annotator picks it up
+automatically.
+**Adding a statement keyword**: add token type → `TiBasicTokenTypes`, node type → `TiBasicNodeTypes`, extend
+`VALID_LINE` regex and `tokenizeValidLine` in `TiBasicLexer`, add `parseXxxStatement` to `TiBasicParser`, add
+`TiBasicXxxStatement` PSI class, register in `TiBasicParserDefinition.createElement`, add to `TiBasicSyntaxHighlighter`
+KEYWORD list, add to `TiBasicKeywords`. See `DEF_KEYWORD` / `TiBasicDefStatement` as the reference implementation.
 
 ## Framework extension wrappers — always use these
 
@@ -122,6 +127,7 @@ See `docs/extension-points.md` for every registered EP and the required XML snip
 ## Threading rules
 
 - Annotator / SyntaxHighlighter / CompletionContributor: read-only PSI — no explicit `ReadAction` needed.
-- `FormatAction` / `ResequenceAction`: all document mutations via `PsiFileUtils.replaceFileText` / `replaceRange` (wraps `WriteCommandAction`); called from EDT.
+- `FormatAction` / `ResequenceAction`: all document mutations via `PsiFileUtils.replaceFileText` / `replaceRange` (wraps
+  `WriteCommandAction`); called from EDT.
 - No background tasks exist yet; use `ProgressManager.runBackgroundableTask` for any future slow operation.
 

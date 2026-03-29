@@ -95,10 +95,10 @@ next logical line number.
 
 ### `codeInsight.lineMarkerProvider` — CALL CHAR gutter preview
 
-| Attribute             | Value                                                 |
-|-----------------------|-------------------------------------------------------|
-| `language`            | `TI-Basic`                                            |
-| `implementationClass` | `tibasic.editor.TiBasicCallCharLineMarkerProvider`    |
+| Attribute             | Value                                              |
+|-----------------------|----------------------------------------------------|
+| `language`            | `TI-Basic`                                         |
+| `implementationClass` | `tibasic.editor.TiBasicCallCharLineMarkerProvider` |
 
 ```xml
 <codeInsight.lineMarkerProvider
@@ -148,10 +148,10 @@ Both `TiBasic.*` actions extend `TiBasicFileAction`, which gates execution to TI
 
 ### `lang.findUsagesProvider`
 
-| Attribute             | Value                                            |
-|-----------------------|--------------------------------------------------|
-| `language`            | `TI-Basic`                                       |
-| `implementationClass` | `tibasic.findusages.TiBasicFindUsagesProvider`   |
+| Attribute             | Value                                          |
+|-----------------------|------------------------------------------------|
+| `language`            | `TI-Basic`                                     |
+| `implementationClass` | `tibasic.findusages.TiBasicFindUsagesProvider` |
 
 Enables **Alt+F7 Find Usages** for TI-Basic variables. Provides a `DefaultWordsScanner`
 backed by `TiBasicLexer` so IDEA can find candidate files. `getNodeText` returns the
@@ -167,9 +167,9 @@ variable finds all occurrences symmetrically.
 
 ### `readWriteAccessDetector`
 
-| Attribute        | Value                                                    |
-|------------------|----------------------------------------------------------|
-| `implementation` | `tibasic.findusages.TiBasicReadWriteAccessDetector`      |
+| Attribute        | Value                                               |
+|------------------|-----------------------------------------------------|
+| `implementation` | `tibasic.findusages.TiBasicReadWriteAccessDetector` |
 
 Classifies each usage in the Find Usages panel as read (blue) or write (orange/red).
 Delegates to `TiBasicVariableCollector.determineAccessType` for the classification logic
@@ -179,12 +179,12 @@ Delegates to `TiBasicVariableCollector.determineAccessType` for the classificati
 
 ### `toolWindow` — TI Basic Variables
 
-| Attribute       | Value                                                         |
-|-----------------|---------------------------------------------------------------|
-| `id`            | `TI Basic Variables`                                          |
-| `anchor`        | `bottom`                                                      |
-| `icon`          | `/icons/ti99_4a_icon_small.svg`                               |
-| `factoryClass`  | `tibasic.toolwindow.TiBasicVariableToolWindowFactory`         |
+| Attribute      | Value                                                 |
+|----------------|-------------------------------------------------------|
+| `id`           | `TI Basic Variables`                                  |
+| `anchor`       | `bottom`                                              |
+| `icon`         | `/icons/ti99_4a_icon_small.svg`                       |
+| `factoryClass` | `tibasic.toolwindow.TiBasicVariableToolWindowFactory` |
 
 Provides a dockable bottom panel that lists all variables in the currently active TI-Basic
 file in a sortable table (columns: Name, Type, Writes, Reads, Lines). Clicking any line

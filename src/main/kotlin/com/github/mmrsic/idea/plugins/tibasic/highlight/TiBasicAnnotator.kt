@@ -795,7 +795,9 @@ class TiBasicAnnotator : Annotator {
         if (lastSpecExprNode != null) {
             var passedSpec = false
             for (child in statement.node.allChildren) {
-                if (child === lastSpecExprNode) { passedSpec = true; continue }
+                if (child === lastSpecExprNode) {
+                    passedSpec = true; continue
+                }
                 if (!passedSpec) continue
                 if (child === colonNode) break
                 if (child.elementType != TokenType.WHITE_SPACE) {

@@ -20,12 +20,12 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 | `DEF`                        | Define a user function: `DEF name[(param)] = expression`; name is a variable name (string if body is string)                                                                                                                                            |
 | `DIM`                        | Declare array dimensions: `DIM name(size[,size…])`, comma-separated; must appear before first array use                                                                                                                                                 |
 | `OPTION BASE`                | Set the minimum array index to `0` (default) or `1`; only integer literals 0 or 1 are allowed                                                                                                                                                           |
-| `PRINT`                      | Output values or text to screen or file; screen form: `PRINT [args]`; file form: `PRINT #fileNumber[.REC recordNumber]:args`; multiple expressions separated by `;`, `,`, or `:`                                                                    |
+| `PRINT`                      | Output values or text to screen or file; screen form: `PRINT [args]`; file form: `PRINT #fileNumber[.REC recordNumber]:args`; multiple expressions separated by `;`, `,`, or `:`                                                                        |
 | `DISPLAY`                    | Output values or text to screen only; identical syntax to `PRINT`                                                                                                                                                                                       |
 | `INPUT`                      | Read keyboard input into one or more variables (optional string prompt); file I/O variant: `INPUT #fileNumber[.REC recordNumber]:variableList` (trailing comma allowed)                                                                                 |
 | `READ`                       | Read values from DATA statements into one or more variables                                                                                                                                                                                             |
 | `DATA`                       | Supply a comma-separated list of values for `READ` statements                                                                                                                                                                                           |
-| `RESTORE`                    | Reset the DATA pointer (optionally to a specific line number); or reposition within an open file (`RESTORE #fileNumber [,REC recordNumber]`) |
+| `RESTORE`                    | Reset the DATA pointer (optionally to a specific line number); or reposition within an open file (`RESTORE #fileNumber [,REC recordNumber]`)                                                                                                            |
 | `CALL`                       | Invoke a built-in TI-Basic subprogram (see table below)                                                                                                                                                                                                 |
 | `REM`                        | Remark / comment                                                                                                                                                                                                                                        |
 | `END`                        | Halt program execution (by convention the last line)                                                                                                                                                                                                    |
@@ -79,27 +79,27 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 Built-in functions appear directly inside expressions and return a value (unlike `CALL` subprograms, which are
 stand-alone statements).
 
-| Function             | Arguments            | Returns | Description                              |
-|----------------------|----------------------|---------|------------------------------------------|
-| `ABS(x)`             | 1 numeric            | numeric | Absolute value                           |
-| `ATN(x)`             | 1 numeric            | numeric | Arctangent in radians                    |
-| `COS(x)`             | 1 numeric            | numeric | Cosine in radians                        |
+| Function             | Arguments            | Returns | Description                                                                         |
+|----------------------|----------------------|---------|-------------------------------------------------------------------------------------|
+| `ABS(x)`             | 1 numeric            | numeric | Absolute value                                                                      |
+| `ATN(x)`             | 1 numeric            | numeric | Arctangent in radians                                                               |
+| `COS(x)`             | 1 numeric            | numeric | Cosine in radians                                                                   |
 | `EOF(n)`             | 1 numeric            | numeric | End-of-file status for file *n*: 0 = not at end, 1 = logical end, −1 = physical end |
-| `EXP(x)`             | 1 numeric            | numeric | *e* to the power *x*                     |
-| `INT(x)`             | 1 numeric            | numeric | Greatest integer ≤ *x*                   |
-| `LOG(x)`             | 1 numeric            | numeric | Natural logarithm                        |
-| `RND`                | none                 | numeric | Random number in [0, 1)                  |
-| `SGN(x)`             | 1 numeric            | numeric | Sign of *x*                              |
-| `SIN(x)`             | 1 numeric            | numeric | Sine in radians                          |
-| `SQR(x)`             | 1 numeric            | numeric | Square root                              |
-| `TAN(x)`             | 1 numeric            | numeric | Tangent in radians                       |
-| `ASC(s$)`            | 1 string             | numeric | ASCII code of first character            |
-| `LEN(s$)`            | 1 string             | numeric | Length of string                         |
-| `POS(s$,t$,n)`       | 2 strings, 1 numeric | numeric | Position of *t$* in *s$* starting at *n* |
-| `VAL(s$)`            | 1 string             | numeric | Numeric value of string                  |
-| `CHR$(n)`            | 1 numeric            | string  | Character with ASCII code *n*            |
-| `SEG$(s$,start,len)` | 1 string, 2 numerics | string  | Substring of *s$*                        |
-| `STR$(x)`            | 1 numeric            | string  | String representation of *x*             |
+| `EXP(x)`             | 1 numeric            | numeric | *e* to the power *x*                                                                |
+| `INT(x)`             | 1 numeric            | numeric | Greatest integer ≤ *x*                                                              |
+| `LOG(x)`             | 1 numeric            | numeric | Natural logarithm                                                                   |
+| `RND`                | none                 | numeric | Random number in [0, 1)                                                             |
+| `SGN(x)`             | 1 numeric            | numeric | Sign of *x*                                                                         |
+| `SIN(x)`             | 1 numeric            | numeric | Sine in radians                                                                     |
+| `SQR(x)`             | 1 numeric            | numeric | Square root                                                                         |
+| `TAN(x)`             | 1 numeric            | numeric | Tangent in radians                                                                  |
+| `ASC(s$)`            | 1 string             | numeric | ASCII code of first character                                                       |
+| `LEN(s$)`            | 1 string             | numeric | Length of string                                                                    |
+| `POS(s$,t$,n)`       | 2 strings, 1 numeric | numeric | Position of *t$* in *s$* starting at *n*                                            |
+| `VAL(s$)`            | 1 string             | numeric | Numeric value of string                                                             |
+| `CHR$(n)`            | 1 numeric            | string  | Character with ASCII code *n*                                                       |
+| `SEG$(s$,start,len)` | 1 string, 2 numerics | string  | Substring of *s$*                                                                   |
+| `STR$(x)`            | 1 numeric            | string  | String representation of *x*                                                        |
 
 ### Error and warning annotations
 
@@ -158,11 +158,11 @@ The annotator inspects every file and highlights:
 | Error    | `PRINT #….` with unrecognised modifier instead of `REC` (Incorrect statement)                                                         |
 | Error    | `RESTORE` with invalid argument — not a single numeric literal (Incorrect statement)                                                  |
 | Warning  | `RESTORE` references a line number that does not exist in the program                                                                 |
-| Error    | `RESTORE #0` — file number 0 is reserved for screen (File number 0 is reserved for screen)                                           |
-| Error    | `RESTORE #…` with literal file number outside 1–255 (File number must be between 1 and 255)                                          |
+| Error    | `RESTORE #0` — file number 0 is reserved for screen (File number 0 is reserved for screen)                                            |
+| Error    | `RESTORE #…` with literal file number outside 1–255 (File number must be between 1 and 255)                                           |
 | Error    | `RESTORE #…` with a string expression as file number (Numeric expression expected)                                                    |
-| Error    | `RESTORE #…,REC` with a string expression as record number (Numeric expression expected)                                             |
-| Error    | `RESTORE #…` with malformed file spec (Incorrect statement)                                                                          |
+| Error    | `RESTORE #…,REC` with a string expression as record number (Numeric expression expected)                                              |
+| Error    | `RESTORE #…` with malformed file spec (Incorrect statement)                                                                           |
 | Error    | `CALL` with unknown subprogram name                                                                                                   |
 | Error    | `CALL SCREEN`, `HCHAR`, `VCHAR`, `GCHAR`, `COLOR` with wrong argument count or type — will cause run-time error `INCORRECT STATEMENT` |
 | Error    | `CALL` with wrong number of arguments for other subprograms                                                                           |
@@ -223,7 +223,8 @@ The annotator inspects every file and highlights:
 - **Keyword and variable completion** — on-demand autocomplete (Ctrl+Space) for all TI-Basic keywords and all variables
   defined in the current file (case-insensitive); keywords and variables appear in separate groups
 - **CALL subprogram completion** — when the cursor is at the subprogram name position (directly after `CALL` or on an
-  existing subprogram name token), autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated group;
+  existing subprogram name token), autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated
+  group;
   inside CALL argument lists, the general completion (variables, functions, keywords) is offered instead
 - **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated group
 - **CALL CHAR gutter preview** — for lines containing `CALL CHAR(code,"<16-hex-chars>")` with a valid 16-character hex
