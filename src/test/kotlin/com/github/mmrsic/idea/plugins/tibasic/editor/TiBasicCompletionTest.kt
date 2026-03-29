@@ -120,6 +120,45 @@ class TiBasicCompletionTest : TiBasicTestBase() {
             appliedText.contains("BASE") || popupItems.contains("BASE"),
         )
     }
+
+    fun testCompletionSuggestsVariableInCallArgument() {
+        myFixture.configureByText("test.tibasic", "100 LET A=5\n200 CALL SCREEN(<caret>)")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Variable A must be suggested inside CALL argument list", popupItems.contains("A"))
+    }
+
+    fun testCompletionSuggestsVariableInCallArgumentWithExistingText() {
+        myFixture.configureByText("test.tibasic", "100 LET ROW=1\n200 CALL HCHAR(ROW,<caret>,42)")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Variable ROW must be suggested inside CALL argument list", popupItems.contains("ROW"))
+    }
+
+    fun testCompletionDoesNotSuggestSubprogramInCallArgument() {
+        myFixture.configureByText("test.tibasic", "100 CALL SCREEN(<caret>)")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertFalse("Subprogram SCREEN must not be suggested inside CALL argument list", popupItems.contains("SCREEN"))
+    }
+
+    fun testCompletionSuggestsSubprogramAtCallNamePosition() {
+        myFixture.configureByText("test.tibasic", "100 CALL <caret>")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Subprogram SCREEN must be suggested at CALL name position", popupItems.contains("SCREEN"))
+    }
+
+    fun testCompletionSuggestsSubprogramAtCallNamePositionWithPartialName() {
+        myFixture.configureByText("test.tibasic", "100 CALL SCR<caret>")
+        myFixture.completeBasic()
+        val appliedText = myFixture.editor.document.text
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue(
+            "Subprogram SCREEN must be applied or suggested when typing 'SCR' at CALL name position",
+            appliedText.contains("SCREEN") || popupItems.contains("SCREEN"),
+        )
+    }
 }
 
 

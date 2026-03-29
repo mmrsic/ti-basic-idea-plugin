@@ -62,8 +62,11 @@ PSI tree              (tibasic.psi)
     │       Provides on-demand keyword suggestions (from TiBasicKeywords),
     │       variable suggestions (all variables defined in the current file),
     │       CALL subprogram name suggestions (from TiBasicCallSubprograms) when
-    │       the cursor is after CALL, and built-in function name suggestions
-    │       (from TiBasicBuiltInFunctions) in expression context.
+    │       the cursor is at the subprogram name position (directly after the
+    │       CALL keyword or on a CALL_SUBPROGRAM_NAME token), and built-in
+    │       function name suggestions (from TiBasicBuiltInFunctions) in
+    │       expression context. Inside CALL argument lists the general
+    │       completion (variables + functions + keywords) is offered.
     │       Triggered by Ctrl+Space only; auto-popup is disabled.
     │
     └──▶ Actions                    (tibasic.action.*)

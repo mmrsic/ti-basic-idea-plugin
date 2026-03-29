@@ -5,7 +5,6 @@ import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
@@ -67,10 +66,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
 
     private fun isCallSubprogramContext(parameters: CompletionParameters): Boolean {
         val pos = parameters.position
-        val tokenType = pos.node.elementType
-        if (tokenType == TiBasicTokenTypes.CALL_SUBPROGRAM_NAME) return true
-        val parent = pos.parent ?: return false
-        if (parent is TiBasicCallStatement) return true
+        if (pos.node.elementType == TiBasicTokenTypes.CALL_SUBPROGRAM_NAME) return true
         val prevLeaf = parameters.originalFile.findElementAt(parameters.offset - 1)
         return prevLeaf?.node?.elementType == TiBasicTokenTypes.CALL_KEYWORD
     }
