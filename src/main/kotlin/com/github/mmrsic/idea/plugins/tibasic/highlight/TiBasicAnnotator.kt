@@ -1070,6 +1070,18 @@ class TiBasicAnnotator : Annotator {
                 holder.warning("Type mismatch at argument ${index + 1} of $name", argNode.textRange)
             }
         }
+        if (name == "CHAR") {
+            annotateCallCharPattern(statement, holder)
+        }
+    }
+
+    private fun annotateCallCharPattern(statement: TiBasicCallStatement, holder: AnnotationHolder) {
+        val patternArgNode = statement.arguments().getOrNull(1) ?: return
+        val literal = patternArgNode.node.firstChildOfType(TiBasicTokenTypes.STRING_LITERAL) ?: return
+        val pattern = literal.text.removePrefix("\"").removeSuffix("\"")
+        if (pattern.length > 16 || pattern.any { it !in '0'..'9' && it.uppercaseChar() !in 'A'..'F' }) {
+            holder.warning(BAD_VALUE_RUNTIME_ERROR, patternArgNode.textRange)
+        }
     }
 
     private fun annotateFunctionCall(call: TiBasicFunctionCall, holder: AnnotationHolder) {

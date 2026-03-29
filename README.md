@@ -225,6 +225,9 @@ The annotator inspects every file and highlights:
   existing subprogram name token), autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated group;
   inside CALL argument lists, the general completion (variables, functions, keywords) is offered instead
 - **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated group
+- **CALL CHAR gutter preview** — for lines containing `CALL CHAR(code,"<16-hex-chars>")` with a valid 16-character hex
+  pattern, a 16×16 px black-and-white pictogram appears in the gutter showing the defined 8×8 character
+  (1-bit → black, 0-bit → white, with a dark-gray border)
 - **Shift+Enter** — inserts a new line and automatically prepends the next logical line number
 
 ## Project structure

@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.lang
 
 const val BAD_NAME_RUNTIME_ERROR = "Will cause run-time error 'BAD NAME'"
+const val BAD_VALUE_RUNTIME_ERROR = "Will cause run-time error 'BAD VALUE'"
 const val INCORRECT_STATEMENT_RUNTIME_ERROR = "Will cause run-time error 'INCORRECT STATEMENT'"
 
 enum class CallArgType { NUMERIC, STRING }

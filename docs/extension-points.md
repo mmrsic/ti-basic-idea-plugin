@@ -93,6 +93,29 @@ next logical line number.
 
 ---
 
+### `codeInsight.lineMarkerProvider` — CALL CHAR gutter preview
+
+| Attribute             | Value                                                 |
+|-----------------------|-------------------------------------------------------|
+| `language`            | `TI-Basic`                                            |
+| `implementationClass` | `tibasic.editor.TiBasicCallCharLineMarkerProvider`    |
+
+```xml
+<codeInsight.lineMarkerProvider
+        language="TI-Basic"
+        implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallCharLineMarkerProvider"
+/>
+```
+
+Displays a 16×16 px black-and-white character preview in the gutter for every
+`CALL CHAR(code,"<pattern>")` line where `<pattern>` is exactly 16 valid hex characters.
+The pattern encodes 8 rows of 8 pixels each (1 byte per row, MSB = left pixel):
+`1`-bit → black, `0`-bit → white. No icon appears for invalid or missing patterns.
+The implementation class is `TiBasicCharPatternIcon`, which renders the bitmap
+on-the-fly using `Graphics2D` (HiDPI-safe, no static image files needed).
+
+---
+
 ### Actions
 
 Both actions are added to the editor popup menu (`EditorPopupMenu`) and the `Code` menu (`CodeMenu`).

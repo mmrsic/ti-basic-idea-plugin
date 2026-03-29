@@ -128,4 +128,29 @@ class TiBasicCallAnnotatorTest : TiBasicTestBase() {
         configureFile("370 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL SOUND(30,380,2))</error>")
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun `test CALL CHAR with non-hex pattern gives BAD VALUE warning`() {
+        configureFile("100 CALL CHAR(96,<warning descr=\"Will cause run-time error 'BAD VALUE'\">\"GGGGGGGGGGGGGGGG\"</warning>)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL CHAR with pattern longer than 16 chars gives BAD VALUE warning`() {
+        configureFile("100 CALL CHAR(96,<warning descr=\"Will cause run-time error 'BAD VALUE'\">\"FFFFFFFFFFFFFFFFFF\"</warning>)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL CHAR with mixed valid and invalid hex chars gives BAD VALUE warning`() {
+        configureFile("100 CALL CHAR(96,<warning descr=\"Will cause run-time error 'BAD VALUE'\">\"00XY000000000000\"</warning>)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL CHAR with valid short pattern gives no warning`() {
+        configureFile("100 CALL CHAR(96,\"1C3E\")")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL CHAR with variable pattern gives no warning`() {
+        configureFile("100 CALL CHAR(96,PAT\$)")
+        myFixture.checkHighlighting(true, false, true)
+    }
 }

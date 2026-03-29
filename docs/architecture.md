@@ -13,7 +13,7 @@ All source code lives under `com.github.mmrsic.idea.plugins.tibasic` (abbreviate
 | `tibasic.parser`            | Syntax analysis: `TiBasicParser`, `TiBasicParserDefinition`, `TiBasicNodeTypes` (composite node types)                                                                                                                                                                   |
 | `tibasic.psi`               | Program structure interface: `TiBasicFile` (root PSI element), all PSI node classes, `VALID_LINE_NUMBER_RANGE`                                                                                                                                                           |
 | `tibasic.highlight`         | Syntax colours (`TiBasicSyntaxHighlighter`, `TiBasicSyntaxHighlighterFactory`) and semantic annotations (`TiBasicAnnotator`)                                                                                                                                             |
-| `tibasic.editor`            | Editor assistance: keyword completion (`TiBasicCompletionContributor`) and Shift+Enter handling (`TiBasicShiftEnterHandler`)                                                                                                                                             |
+| `tibasic.editor`            | Editor assistance: keyword completion (`TiBasicCompletionContributor`), Shift+Enter handling (`TiBasicShiftEnterHandler`), and CALL CHAR gutter preview (`TiBasicCallCharLineMarkerProvider`, `TiBasicCharPatternIcon`)                                                  |
 | `tibasic.action.format`     | Format action and formatting logic (`FormatAction`, `FormatCode`)                                                                                                                                                                                                        |
 | `tibasic.action.resequence` | Resequence action, logic, options dialog, and quick-fix (`ResequenceAction`, `ResequenceLineNumbers`, `ResequenceOptionsDialog`, `ResequenceQuickFix`)                                                                                                                   |
 | `tibasic.action`            | Abstract base for all TI-Basic actions (`TiBasicFileAction`)                                                                                                                                                                                                             |
@@ -68,6 +68,14 @@ PSI tree              (tibasic.psi)
     │       expression context. Inside CALL argument lists the general
     │       completion (variables + functions + keywords) is offered.
     │       Triggered by Ctrl+Space only; auto-popup is disabled.
+    │
+    ├──▶ TiBasicCallCharLineMarkerProvider (tibasic.editor)
+    │       Provides a gutter icon for CALL CHAR statements. Triggered per
+    │       CALL_SUBPROGRAM_NAME leaf token; shows a 16×16 px black-and-white
+    │       pictogram (TiBasicCharPatternIcon) when the second argument is a
+    │       STRING_LITERAL with exactly 16 valid hex characters. The pattern
+    │       encodes 8 bytes (one per row), MSB = leftmost pixel, 1 = black,
+    │       0 = white. No icon is shown for invalid or missing patterns.
     │
     └──▶ Actions                    (tibasic.action.*)
             FormatAction  — reformats the document text via FormatCode.

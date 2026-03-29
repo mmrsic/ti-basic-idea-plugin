@@ -63,6 +63,10 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.highlight.TiBasicAnnotator"
         />
+        <codeInsight.lineMarkerProvider
+                language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallCharLineMarkerProvider"
+        />
         <editorActionHandler
                 action="EditorStartNewLine"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicShiftEnterHandler"
