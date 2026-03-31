@@ -82,9 +82,11 @@ private fun formattedLine(line: TiBasicLine): String {
             return formattedCloseLine(line.lineNumber(), statement as TiBasicCloseStatement)
     }
 
+    val statementUpper = statementText.uppercase()
+    val firstToken = statementUpper.takeWhile { it.isLetterOrDigit() }
     val keywordMatch = TiBasicKeywords.getKeywords()
         .map { it.uppercase() }
-        .firstOrNull { statementText.uppercase().startsWith(it) }
+        .firstOrNull { it == firstToken }
         ?: return "${line.lineNumber()} ${
             if (statement is TiBasicLetStatement) removeWhitespaceOutsideStrings(uppercaseOutsideStrings(statementText))
             else uppercaseOutsideStrings(statementText)

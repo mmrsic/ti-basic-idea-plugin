@@ -93,6 +93,17 @@ class FormatCodeTest : TiBasicTestBase() {
         assertEquals("100 PRINT \"say \"\"hi\"\"\"", formattedText(file))
     }
 
+    fun testImplicitLetVariableStartingWithToKeywordNotSplit() {
+        val file = configureFile("550 TOTAL=TOTAL+40")
+        assertEquals("550 TOTAL=TOTAL+40", formattedText(file))
+    }
+
+    fun testImplicitLetVariableStartingWithStepKeywordNotSplit() {
+        val file = configureFile("100 stepcount=0")
+        assertEquals("100 STEPCOUNT=0", formattedText(file))
+    }
+
+
     fun testImplicitLetVariableIsUppercasedAndSpacesRemoved() {
         val file = configureFile("100 a = 5")
         assertEquals("100 A=5", formattedText(file))
