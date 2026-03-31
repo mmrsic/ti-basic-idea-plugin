@@ -1097,6 +1097,42 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testImplicitLetVariableStartingWithForKeywordProducesLetStatement() {
+        val file = parseCode("100 FOREVER = 10")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testImplicitLetVariableStartingWithForKeywordDoesNotProduceForStatement() {
+        val file = parseCode("100 FOREVER = 10")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicForStatement>()
+        assertEquals(0, stmts.size)
+    }
+
+    fun testImplicitLetVariableStartingWithIfKeywordProducesLetStatement() {
+        val file = parseCode("100 IFLAG = 1")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+    fun testImplicitLetVariableStartingWithIfKeywordDoesNotProduceIfStatement() {
+        val file = parseCode("100 IFLAG = 1")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicIfStatement>()
+        assertEquals(0, stmts.size)
+    }
+
+    fun testImplicitLetVariableStartingWithOnKeywordProducesLetStatement() {
+        val file = parseCode("100 ONTIME = 5")
+        val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()
+        assertEquals(1, stmts.size)
+    }
+
+
     fun testLetDoesNotProducePrintStatement() {
         val file = parseCode("100 LET A = 5")
         val printStmts = file.children.filterIsInstance<TiBasicLine>()[0]

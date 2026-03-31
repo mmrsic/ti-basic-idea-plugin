@@ -23,7 +23,7 @@ class TiBasicLexer : LexerBase() {
     private companion object {
         val VALID_LINE =
             Regex(
-                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|GOSUB|GO[ \t]+SUB|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|RETURN|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE|DEF|DIM|OPTION[ \t]+BASE|OPEN|CLOSE)([ \t]*)(.*)$""",
+                """^([ \t]*)(\d+)([ \t]+)(GOTO|GO[ \t]+TO|GOSUB|GO[ \t]+SUB|ON|IF|FOR|NEXT|PRINT|DISPLAY|INPUT|READ|DATA|RESTORE|RETURN|BREAK|UNBREAK|TRACE|UNTRACE|DELETE|REM|LET|END|STOP|CALL|RANDOMIZE|DEF|DIM|OPTION[ \t]+BASE|OPEN|CLOSE)(?![A-Za-z0-9])([ \t]*)(.*)$""",
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")

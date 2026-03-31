@@ -98,9 +98,24 @@ class FormatCodeTest : TiBasicTestBase() {
         assertEquals("550 TOTAL=TOTAL+40", formattedText(file))
     }
 
+    fun testImplicitLetVariableStartingWithForKeywordNotSplit() {
+        val file = configureFile("100 forever=10")
+        assertEquals("100 FOREVER=10", formattedText(file))
+    }
+
     fun testImplicitLetVariableStartingWithStepKeywordNotSplit() {
         val file = configureFile("100 stepcount=0")
         assertEquals("100 STEPCOUNT=0", formattedText(file))
+    }
+
+    fun testImplicitLetVariableStartingWithIfKeywordNotSplit() {
+        val file = configureFile("100 iflag=1")
+        assertEquals("100 IFLAG=1", formattedText(file))
+    }
+
+    fun testImplicitLetVariableStartingWithOnKeywordNotSplit() {
+        val file = configureFile("100 ontime=5")
+        assertEquals("100 ONTIME=5", formattedText(file))
     }
 
 
