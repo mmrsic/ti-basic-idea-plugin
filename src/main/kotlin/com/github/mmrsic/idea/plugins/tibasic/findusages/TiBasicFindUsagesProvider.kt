@@ -2,6 +2,8 @@ package com.github.mmrsic.idea.plugins.tibasic.findusages
 
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicLexer
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDefStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFunctionCall
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.intellij.lang.cacheBuilder.WordOccurrence
 import com.intellij.lang.cacheBuilder.WordsScanner
@@ -14,20 +16,41 @@ class TiBasicFindUsagesProvider : FindUsagesProvider {
 
     override fun getWordsScanner(): WordsScanner = TiBasicWordsScanner()
 
-    override fun canFindUsagesFor(element: PsiElement): Boolean = element is TiBasicVariableAccess
+    override fun canFindUsagesFor(element: PsiElement): Boolean = when {
+        element is TiBasicVariableAccess -> true
+        element.node?.elementType in STATEMENT_KEYWORD_TYPES -> true
+        element.node?.elementType == TiBasicTokenTypes.CALL_SUBPROGRAM_NAME -> true
+        element.node?.elementType in FUNCTION_KEYWORD_TYPES && element.parent is TiBasicFunctionCall -> true
+        isFunctionNameInDef(element) -> true
+        element is TiBasicFunctionCall -> true
+        element is TiBasicDefStatement -> true
+        else -> false
+    }
 
     override fun getHelpId(element: PsiElement): String? = null
 
     override fun getType(element: PsiElement): String = when {
-        element !is TiBasicVariableAccess -> ""
-        element.node.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE && element.hasSubscriptParens() -> "string array"
-        element.node.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE -> "string variable"
-        element.hasSubscriptParens() -> "numeric array"
-        else -> "numeric variable"
+        element is TiBasicVariableAccess -> when {
+            element.node.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE && element.hasSubscriptParens() -> "string array"
+            element.node.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE -> "string variable"
+            element.hasSubscriptParens() -> "numeric array"
+            else -> "numeric variable"
+        }
+        element.node?.elementType in STATEMENT_KEYWORD_TYPES -> "statement"
+        element.node?.elementType == TiBasicTokenTypes.CALL_SUBPROGRAM_NAME -> "subprogram"
+        isFunctionNameInDef(element) -> "user-defined function"
+        element is TiBasicDefStatement -> "user-defined function"
+        element.node?.elementType in FUNCTION_KEYWORD_TYPES -> "function"
+        element is TiBasicFunctionCall -> "function"
+        else -> ""
     }
 
-    override fun getDescriptiveName(element: PsiElement): String =
-        (element as? TiBasicVariableAccess)?.name ?: element.text
+    override fun getDescriptiveName(element: PsiElement): String = when {
+        element is TiBasicVariableAccess -> element.name ?: element.text
+        element is TiBasicFunctionCall -> element.functionName() ?: element.text
+        element is TiBasicDefStatement -> element.functionName() ?: element.text
+        else -> element.text
+    }
 
     override fun getNodeText(element: PsiElement, useFullName: Boolean): String =
         element.parent?.text?.trim() ?: element.text

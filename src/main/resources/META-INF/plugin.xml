@@ -79,6 +79,13 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesProvider"
         />
+        <findUsagesHandlerFactory
+                implementation="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesHandlerFactory"
+        />
+        <targetElementEvaluator
+                language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicTargetElementEvaluator"
+        />
         <readWriteAccessDetector
                 implementation="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicReadWriteAccessDetector"
         />
