@@ -2,14 +2,17 @@ package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.intellij.codeInsight.highlighting.HighlightManager
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.markup.RangeHighlighter
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.fileEditor.FileEditorManagerListener.FILE_EDITOR_MANAGER
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.ui.components.JBScrollPane
@@ -20,7 +23,7 @@ import java.awt.event.MouseEvent
 import javax.swing.*
 import javax.swing.table.TableRowSorter
 
-class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(BorderLayout()) {
+class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(BorderLayout()), com.intellij.openapi.Disposable {
 
     private val tableModel = TiBasicVariableTableModel()
     private val lineNumberRenderer = TiBasicVariableLineNumberRenderer()
@@ -114,19 +117,25 @@ class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(Bo
         return PsiDocumentManager.getInstance(project).getPsiFile(document) as? TiBasicFile
     }
 
+    override fun dispose() = Unit
+
     private fun installDocumentListener() {
         com.intellij.openapi.editor.EditorFactory.getInstance().eventMulticaster
             .addDocumentListener(object : DocumentListener {
                 override fun documentChanged(event: DocumentEvent) {
-                    val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(event.document) as? TiBasicFile
-                        ?: return
-                    if (psiFile === currentFile || currentFile == null) refresh()
+                    val vFile = FileDocumentManager.getInstance().getFile(event.document) ?: return
+                    ApplicationManager.getApplication().invokeLater({
+                        if (!ProjectRootManager.getInstance(project).fileIndex.isInProject(vFile)) return@invokeLater
+                        val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(event.document) as? TiBasicFile
+                            ?: return@invokeLater
+                        if (psiFile === currentFile || currentFile == null) refresh()
+                    }, project.disposed)
                 }
-            }, project)
+            }, this)
     }
 
     private fun installFileEditorListener() {
-        project.messageBus.connect().subscribe(
+        project.messageBus.connect(this).subscribe(
             FILE_EDITOR_MANAGER,
             object : FileEditorManagerListener {
                 override fun fileOpened(source: FileEditorManager, file: VirtualFile) = refresh()
