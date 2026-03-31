@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
+import com.github.mmrsic.idea.plugins.tibasic.lang.fileTypeExtensions
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.intellij.codeInsight.highlighting.HighlightManager
 import com.intellij.openapi.application.ApplicationManager
@@ -12,7 +13,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.fileEditor.FileEditorManagerListener.FILE_EDITOR_MANAGER
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.ui.components.JBScrollPane
@@ -125,10 +125,12 @@ class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(Bo
                 override fun documentChanged(event: DocumentEvent) {
                     val vFile = FileDocumentManager.getInstance().getFile(event.document) ?: return
                     ApplicationManager.getApplication().invokeLater({
-                        if (!ProjectRootManager.getInstance(project).fileIndex.isInProject(vFile)) return@invokeLater
-                        val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(event.document) as? TiBasicFile
-                            ?: return@invokeLater
-                        if (psiFile === currentFile || currentFile == null) refresh()
+                        if (vFile.extension !in fileTypeExtensions) return@invokeLater
+                        PsiDocumentManager.getInstance(project).performWhenAllCommitted {
+                            val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(event.document) as? TiBasicFile
+                                ?: return@performWhenAllCommitted
+                            if (psiFile === currentFile || currentFile == null) refresh()
+                        }
                     }, project.disposed)
                 }
             }, this)
