@@ -6,4 +6,5 @@ data class TiBasicVariableOccurrence(
     val lineNumber: Int,
     val offset: Int,
     val accessType: AccessType,
+    val writtenConstant: String? = null,
 )

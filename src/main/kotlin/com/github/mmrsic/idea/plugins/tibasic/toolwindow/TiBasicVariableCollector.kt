@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
@@ -62,7 +63,9 @@ object TiBasicVariableCollector {
             }
 
             val line = varAccess.containingTiBasicLine() ?: continue
-            val occurrence = TiBasicVariableOccurrence(line.lineNumber(), nameNode.startOffset, determineAccessType(varAccess))
+            val accessType = determineAccessType(varAccess)
+            val writtenConstant = if (accessType == AccessType.WRITE) extractLetConstant(varAccess) else null
+            val occurrence = TiBasicVariableOccurrence(line.lineNumber(), nameNode.startOffset, accessType, writtenConstant)
             grouped.getOrPut(Pair(name, type)) { mutableListOf() }.add(occurrence)
         }
 
@@ -103,6 +106,19 @@ object TiBasicVariableCollector {
 
             else -> AccessType.READ
         }
+
+    private fun extractLetConstant(varAccess: TiBasicVariableAccess): String? {
+        val letStmt = varAccess.parent as? TiBasicLetStatement ?: return null
+        val rhs = letStmt.node
+            .childrenAfter(TiBasicTokenTypes.EQ_OP)
+            .firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION } ?: return null
+        val kids = rhs.nonWhitespaceChildren
+        if (kids.size != 1) return null
+        return when (kids[0].elementType) {
+            TiBasicTokenTypes.NUMERIC_LITERAL, TiBasicTokenTypes.STRING_LITERAL -> kids[0].text
+            else -> null
+        }
+    }
 
     private fun PsiElement.containingTiBasicLine(): TiBasicLine? {
         var element: PsiElement? = parent

@@ -83,6 +83,43 @@ PSI tree              (tibasic.psi)
             Both actions modify the PSI document inside a WriteAction.
 ```
 
+## Variables tool window (tibasic.toolwindow)
+
+The Variables tool window lists all scalar and array variables plus user-defined functions
+in the active TI-Basic file. It refreshes automatically after every committed document change.
+
+### Data model
+
+| Class                       | Responsibility                                                                                                                                                                  |
+|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TiBasicVariableOccurrence` | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), `writtenConstant` (literal value if the write is a bare literal in a LET statement, else `null`) |
+| `TiBasicVariableEntry`      | Aggregated entry: `name`, `type`, `occurrences`; derived properties: `reads`, `writes`, `lineNumbers`, `constValue`                                                             |
+| `TiBasicVariableType`       | Enum: NUMERIC, STRING, NUMERIC_ARRAY, STRING_ARRAY, DIM_DECLARATION, USER_FUNCTION                                                                                              |
+
+### Const-value detection
+
+`TiBasicVariableEntry.constValue` is computed from the occurrences at data-access time:
+
+- Only `NUMERIC` and `STRING` scalar types can have a `constValue` (arrays, DIM, DEF → `null`).
+- **Never written** (`writes == 0`): `constValue = "0"` (NUMERIC) or `"\"\""` (STRING).
+- **All writes use the same literal**: `constValue = <that literal text>`.
+- **Any write is non-literal** (INPUT/READ/FOR/CALL, or a compound expression): `constValue = null`.
+- **Writes use different literals**: `constValue = null`.
+
+Literal detection in `TiBasicVariableCollector.extractLetConstant`: checks that the RHS
+`EXPRESSION` node of the `TiBasicLetStatement` has exactly one non-whitespace child whose
+element type is `NUMERIC_LITERAL` or `STRING_LITERAL`.
+
+### Table columns
+
+| Index             | Name   | Content                                                                      |
+|-------------------|--------|------------------------------------------------------------------------------|
+| 0                 | Name   | Variable name                                                                |
+| 1                 | Type   | `TiBasicVariableType.displayName`                                            |
+| 2 (WRITES_COLUMN) | Writes | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
+| 3 (READS_COLUMN)  | Reads  | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
+| 4 (CONST_COLUMN)  | Const  | `String?` — constant value or empty                                          |
+
 ## Annotator checks
 
 `TiBasicAnnotator` dispatches on the PSI element type and applies the following checks:

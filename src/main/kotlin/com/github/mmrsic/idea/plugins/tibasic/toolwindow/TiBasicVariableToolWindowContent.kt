@@ -54,6 +54,7 @@ class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(Bo
         sorter.setComparator(READS_COLUMN, lineNumberComparator)
         table.rowSorter = sorter
         sorter.sortKeys = listOf(RowSorter.SortKey(0, SortOrder.ASCENDING))
+        table.columnModel.getColumn(CONST_COLUMN).preferredWidth = 70
         table.addMouseListener(LineNumberClickHandler())
         table.selectionModel.addListSelectionListener { event ->
             if (!event.valueIsAdjusting) updateHighlightsForSelection()

@@ -161,4 +161,88 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         assertEquals(0, entry.writes)
         assertEquals(1, entry.reads)
     }
+
+    fun `test numeric variable never written has constValue 0`() {
+        val file = configureFile("100 PRINT A")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals("0", entry.constValue)
+    }
+
+    fun `test string variable never written has constValue empty string literal`() {
+        val file = configureFile("100 PRINT A$")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A\$" && it.type == TiBasicVariableType.STRING }
+        assertEquals("\"\"", entry.constValue)
+    }
+
+    fun `test numeric variable written with single literal has that constValue`() {
+        val file = configureFile("100 LET A=42")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals("42", entry.constValue)
+    }
+
+    fun `test string variable written with single literal has that constValue`() {
+        val file = configureFile("100 LET A$=\"HELLO\"")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A\$" && it.type == TiBasicVariableType.STRING }
+        assertEquals("\"HELLO\"", entry.constValue)
+    }
+
+    fun `test numeric variable written with same literal twice has that constValue`() {
+        val file = configureFile("100 LET A=5\n200 LET A=5")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals("5", entry.constValue)
+    }
+
+    fun `test numeric variable written with different literals has null constValue`() {
+        val file = configureFile("100 LET A=5\n200 LET A=10")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertNull(entry.constValue)
+    }
+
+    fun `test numeric variable written via expression has null constValue`() {
+        val file = configureFile("100 LET A=5*2")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertNull(entry.constValue)
+    }
+
+    fun `test numeric variable written via INPUT has null constValue`() {
+        val file = configureFile("100 INPUT A")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertNull(entry.constValue)
+    }
+
+    fun `test FOR loop variable has null constValue`() {
+        val file = configureFile("100 FOR I=1 TO 10\n200 NEXT I")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
+        assertNull(entry.constValue)
+    }
+
+    fun `test numeric array variable has null constValue`() {
+        val file = configureFile("100 LET A(1)=5")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC_ARRAY }
+        assertNull(entry.constValue)
+    }
+
+    fun `test DIM declaration has null constValue`() {
+        val file = configureFile("100 DIM A(10)")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.DIM_DECLARATION }
+        assertNull(entry.constValue)
+    }
+
+    fun `test DEF user function has null constValue`() {
+        val file = configureFile("100 DEF F(X)=X*2")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "F" && it.type == TiBasicVariableType.USER_FUNCTION }
+        assertNull(entry.constValue)
+    }
 }

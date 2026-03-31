@@ -236,8 +236,10 @@ The annotator inspects every file and highlights:
 - **Reformat Code** (Ctrl+Alt+L) — the standard IDEA "Reformat Code" action is mapped to **Format TI-BASIC** for
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file
-  in a sortable table with columns Name, Type, Writes, Reads, and Lines; clicking any line number navigates to
-  that position in the editor; the table refreshes automatically on every document change
+  in a sortable table with columns Name, Type, Writes, Reads, Const, and Lines; clicking any line number navigates to
+  that position in the editor; the table refreshes automatically on every document change; the **Const** column shows
+  the effective constant value for scalar numeric and string variables — `0` or `""` for variables that are never
+  written, or the shared literal value if all writes use the same numeric or string literal (e.g. `42` or `"HELLO"`)
 - **Find Usages** (Alt+F7) — finds all occurrences of a TI-Basic variable across the file; the Usages panel
   distinguishes read accesses (blue) from write accesses (orange/red); usable from any occurrence of the variable
 - **Shift+Enter** — inserts a new line and automatically prepends the next logical line number
