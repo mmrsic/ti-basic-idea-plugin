@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.mmrsic.idea.plugins"
-version = "1.1.0"
+version = providers.gradleProperty("pluginVersion").get()
 
 repositories {
     mavenCentral()
@@ -42,6 +42,9 @@ intellijPlatform {
                 <li>Fix: missing or superfluous right parenthesis is now highlighted as an error</li>
             </ul>
         """.trimIndent()
+    }
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
     }
     pluginVerification {
         ides { recommended() }
