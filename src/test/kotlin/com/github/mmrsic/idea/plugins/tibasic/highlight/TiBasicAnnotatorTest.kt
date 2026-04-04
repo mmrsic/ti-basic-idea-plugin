@@ -1291,6 +1291,18 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testErrorForIfWithInvalidOperatorSequence() {
+        configureFile(
+            "100 <error descr=\"Incorrect statement\">IF C><120 THEN 2320</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForIfWithNotEqualOperator() {
+        configureFile("100 IF C<>120 THEN 200\n200 PRINT \"OK\"")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testErrorForIfThenWithoutLineNumber() {
         configureFile(
             "100 <error descr=\"Incorrect statement\">IF X>0 THEN</error>",

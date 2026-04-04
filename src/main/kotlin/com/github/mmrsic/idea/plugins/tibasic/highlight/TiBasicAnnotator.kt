@@ -639,6 +639,13 @@ class TiBasicAnnotator : Annotator {
             return
         }
 
+        val exprIdx = children.indexOfFirst { it === expression.node }
+        val thenIdx = children.indexOfFirst { it.elementType == TiBasicTokenTypes.THEN_KEYWORD }
+        if (thenIdx - exprIdx > 1) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
+
         if (isStringExpression(expression)) {
             holder.error("String-number mismatch", expression)
         }
