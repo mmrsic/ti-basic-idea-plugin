@@ -727,10 +727,12 @@ class TiBasicAnnotator : Annotator {
         val expression = statement.firstChildOfType<TiBasicExpression>()
         if (expression == null) {
             val hasEqOp = statement.node.firstChildOfType(TiBasicTokenTypes.EQ_OP) != null
-            if (hasEqOp && statement.node.childrenAfter(TiBasicTokenTypes.EQ_OP)
-                    .any { it.elementType == TiBasicTokenTypes.PRINT_ARGUMENT }
-            ) {
-                holder.error("Incorrect statement", statement)
+            if (hasEqOp) {
+                val nonWsAfterEq = statement.node.childrenAfter(TiBasicTokenTypes.EQ_OP)
+                    .filter { it.elementType != TokenType.WHITE_SPACE }
+                if (nonWsAfterEq.isEmpty() || nonWsAfterEq.any { it.elementType == TiBasicTokenTypes.PRINT_ARGUMENT }) {
+                    holder.error("Incorrect statement", statement)
+                }
             }
             return
         }

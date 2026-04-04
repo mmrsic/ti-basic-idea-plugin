@@ -1047,6 +1047,20 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testErrorForImplicitLetWithMissingRhsExpression() {
+        configureFile(
+            "790 <error descr=\"Incorrect statement\">T1=</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForExplicitLetWithMissingRhsExpression() {
+        configureFile(
+            "790 <error descr=\"Incorrect statement\">LET T1=</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testNoErrorForUnaryPlusWithOperand() {
         configureFile("160 XDIR=+5")
         myFixture.checkHighlighting(true, false, false)
