@@ -116,6 +116,7 @@
         <action
                 id="ReformatCode"
                 class="com.github.mmrsic.idea.plugins.tibasic.action.format.TiBasicReformatCodeAction"
+                text="Reformat Code"
                 overrides="true"/>
     </actions>
 </idea-plugin>
