@@ -110,7 +110,21 @@ Literal detection in `TiBasicVariableCollector.extractLetConstant`: checks that 
 `EXPRESSION` node of the `TiBasicLetStatement` has exactly one non-whitespace child whose
 element type is `NUMERIC_LITERAL` or `STRING_LITERAL`.
 
-### Table columns
+### Access type classification
+
+`TiBasicVariableCollector.determineAccessType` maps each `TiBasicVariableAccess` to an `AccessType`:
+
+| Parent PSI element                                | Access type                                                                                         |
+|---------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| `TiBasicInputStatement`                           | WRITE                                                                                               |
+| `TiBasicReadStatement`                            | WRITE                                                                                               |
+| `TiBasicLetStatement`                             | WRITE if first `VARIABLE_ACCESS` child (LHS), READ otherwise                                        |
+| `TiBasicForStatement`                             | WRITE if first `VARIABLE_ACCESS` child (loop control variable), READ for start/end/step expressions |
+| `TiBasicNextStatement`                            | READ (NEXT reads the loop counter to determine whether the loop continues)                          |
+| `TiBasicExpression` inside `TiBasicCallStatement` | WRITE for `GCHAR` arg 2, `KEY` args 1–2, `JOYST` args 1–2; READ otherwise                           |
+| any other parent                                  | READ                                                                                                |
+
+
 
 | Index             | Name   | Content                                                                      |
 |-------------------|--------|------------------------------------------------------------------------------|

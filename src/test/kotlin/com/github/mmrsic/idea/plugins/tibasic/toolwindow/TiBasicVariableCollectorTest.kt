@@ -35,11 +35,20 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         assertEquals(1, entry.writes)
     }
 
-    fun `test NEXT variable is ignored for access counting`() {
+    fun `test NEXT variable without FOR is read`() {
+        val file = configureFile("100 NEXT I")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals(0, entry.writes)
+        assertEquals(1, entry.reads)
+    }
+
+    fun `test NEXT variable is read`() {
         val file = configureFile("100 FOR I=1 TO 10\n200 NEXT I")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
-        assertEquals(1, entry.writes + entry.reads)
+        assertEquals(1, entry.writes)
+        assertEquals(1, entry.reads)
     }
 
     fun `test INPUT variable is write`() {

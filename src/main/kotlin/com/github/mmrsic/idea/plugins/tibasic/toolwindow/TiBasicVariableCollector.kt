@@ -49,7 +49,6 @@ object TiBasicVariableCollector {
 
         for (varAccess in file.variableAccesses()) {
             if (varAccess in dimAccesses) continue
-            if (varAccess.parent is TiBasicNextStatement) continue
             val nameNode = varAccess.node.firstChildNode ?: continue
             if (nameNode.elementType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) continue
 
@@ -103,6 +102,8 @@ object TiBasicVariableCollector {
                     AccessType.READ
                 }
             }
+
+            is TiBasicNextStatement -> AccessType.READ
 
             else -> AccessType.READ
         }
