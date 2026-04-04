@@ -538,6 +538,21 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 restore #1,rec 5")
         assertEquals("100 RESTORE #1,REC 5", formattedText(file))
     }
+
+    fun testIfWithTypoInThenKeywordPreservesSpaces() {
+        val file = configureFile("1060 IF K>=A-1 RHEN 1080")
+        assertEquals("1060 IF K>=A-1 RHEN 1080", formattedText(file))
+    }
+
+    fun testIfWithTypoInThenKeywordLowercaseUppercased() {
+        val file = configureFile("1060 if k>=a-1 rhen 1080")
+        assertEquals("1060 IF K>=A-1 RHEN 1080", formattedText(file))
+    }
+
+    fun testIfWithoutThenKeywordPreservesSpaces() {
+        val file = configureFile("100 IF X>5 PRINT \"YES\"")
+        assertEquals("100 IF X>5 PRINT \"YES\"", formattedText(file))
+    }
 }
 
 

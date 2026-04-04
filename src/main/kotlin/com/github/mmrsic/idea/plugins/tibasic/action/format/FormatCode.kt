@@ -116,7 +116,7 @@ private fun formattedIfLine(lineNumber: Int, statement: TiBasicIfStatement): Str
     if (thenNode == null) {
         val argText = stmtText.drop(ifNode.textLength).trim()
         return if (argText.isEmpty()) "$lineNumber IF"
-        else "$lineNumber IF ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
+        else "$lineNumber IF ${uppercaseOutsideStrings(argText)}"
     }
 
     val thenRelStart = thenNode.startOffset - stmtStart
