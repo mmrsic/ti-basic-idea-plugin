@@ -150,7 +150,17 @@ class TiBasicCallAnnotatorTest : TiBasicTestBase() {
     }
 
     fun `test CALL CHAR with variable pattern gives no warning`() {
-        configureFile("100 CALL CHAR(96,PAT\$)")
+        configureFile("100 CALL CHAR(96,PAT$)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL HCHAR with number followed by empty parens gives INCORRECT STATEMENT error`() {
+        configureFile("1540 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL HCHAR(8,16,35())</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL HCHAR with number followed by empty parens and missing outer close paren gives INCORRECT STATEMENT error`() {
+        configureFile("1540 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL HCHAR(8,16,35()</error>")
         myFixture.checkHighlighting(true, false, true)
     }
 }

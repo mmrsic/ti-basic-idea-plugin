@@ -1029,6 +1029,12 @@ class TiBasicAnnotator : Annotator {
             holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
             return
         }
+        val lparenCount = statement.node.childrenOfType(TiBasicTokenTypes.LPAREN).size
+        val rparenCount = statement.node.childrenOfType(TiBasicTokenTypes.RPAREN).size
+        if (lparenCount > rparenCount) {
+            holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
+        }
         if (hasCloseParen) {
             val trailingAfterCloseParen = statement.node
                 .childrenAfter(TiBasicTokenTypes.RPAREN)
