@@ -8,6 +8,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFunctionCall
 import com.intellij.find.findUsages.FindUsagesHandler
 import com.intellij.find.findUsages.FindUsagesOptions
+import com.intellij.openapi.application.ReadAction
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.usageView.UsageInfo
@@ -57,9 +58,9 @@ class TiBasicFindUsagesHandler(element: PsiElement) : FindUsagesHandler(element)
         element: PsiElement,
         processor: Processor<in UsageInfo>,
         options: FindUsagesOptions,
-    ): Boolean {
-        val file = element.containingFile as? TiBasicFile ?: return true
-        return findMatchingElements(element, file).all { processor.process(UsageInfo(it)) }
+    ): Boolean = ReadAction.compute<Boolean, RuntimeException> {
+        val file = element.containingFile as? TiBasicFile ?: return@compute true
+        findMatchingElements(element, file).all { processor.process(UsageInfo(it)) }
     }
 
     private fun findMatchingElements(element: PsiElement, file: TiBasicFile): List<PsiElement> {
