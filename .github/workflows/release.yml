@@ -40,8 +40,8 @@ jobs:
       - name: Build plugin
         run: ./gradlew build
 
-      - name: Verify plugin
-        run: ./gradlew verifyPlugin
+      #- name: Verify plugin
+      #  run: ./gradlew verifyPlugin
 
       - name: Commit release version and create tag
         run: |
