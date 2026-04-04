@@ -75,6 +75,23 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallScreenLineMarkerProvider"
         />
+        <codeInsight.declarativeInlayProvider
+                language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnHintProvider"
+                isEnabledByDefault="true"
+                group="OTHER_GROUP"
+                providerId="tibasic.display.column.hints"
+                bundle="messages.TiBasicBundle"
+                nameKey="inlay.hints.display.columns.name"
+        />
+        <codeInsight.declarativeInlayProviderCustomSettingsProvider
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnHintSettingsProvider"
+                providerId="tibasic.display.column.hints"
+                language="TI-Basic"
+        />
+        <applicationService
+                serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicColumnHintSettings"
+        />
         <editorActionHandler
                 action="EditorStartNewLine"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicShiftEnterHandler"

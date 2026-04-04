@@ -1,6 +1,31 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.*
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDataStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDeleteStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDisplayStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicEndStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicForStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicIfStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInputStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicNextStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicReadStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRemStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRestoreStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicReturnStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicStopStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicTabFunction
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.intellij.testFramework.ParsingTestCase
 
 class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition()) {

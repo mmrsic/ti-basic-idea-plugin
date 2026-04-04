@@ -1,8 +1,21 @@
 package com.github.mmrsic.idea.plugins.tibasic.highlight
 
 import com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceQuickFix
-import com.github.mmrsic.idea.plugins.tibasic.ext.*
-import com.github.mmrsic.idea.plugins.tibasic.lang.*
+import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
+import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.error
+import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildType
+import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
+import com.github.mmrsic.idea.plugins.tibasic.ext.warning
+import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_NAME_RUNTIME_ERROR
+import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_VALUE_RUNTIME_ERROR
+import com.github.mmrsic.idea.plugins.tibasic.lang.CallArgType
+import com.github.mmrsic.idea.plugins.tibasic.lang.INCORRECT_STATEMENT_RUNTIME_ERROR
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBuiltInFunctions
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.*

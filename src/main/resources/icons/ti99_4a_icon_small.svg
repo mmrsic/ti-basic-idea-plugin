@@ -7,7 +7,8 @@
             <rect x="6" y="0" width="4" height="4"/>
             <rect x="12" y="0" width="4" height="4"/>
         </g>
-        <text x="36" y="42" font-family="monospace, monospace" font-size="20" fill="#0a3b5b" text-anchor="middle">TI</text>
+        <text x="36" y="42" font-family="monospace, monospace" font-size="20" fill="#0a3b5b" text-anchor="middle">TI
+        </text>
     </g>
 </svg>
 

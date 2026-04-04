@@ -45,6 +45,7 @@ class TiBasicCallCharLineMarkerProvider : LineMarkerProvider {
                     .find { it.name == varName && it.type == TiBasicVariableType.STRING }
                     ?.constValue ?: return null
             }
+
             else -> return null
         }
         val pattern = rawText.removePrefix("\"").removeSuffix("\"")

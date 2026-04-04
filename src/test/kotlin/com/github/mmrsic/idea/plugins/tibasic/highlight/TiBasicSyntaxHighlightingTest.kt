@@ -283,6 +283,36 @@ class TiBasicSyntaxHighlightingTest : BasePlatformTestCase() {
         }
     }
 
+    // ── blank / whitespace-only lines ─────────────────────────────────────
+    // Regression: blank lines must not cause getTokenType() to return null,
+    // which would crash IntelliJ's LexerEditorHighlighter (NPE on @NotNull param).
+
+    fun testBlankLineEmitsWhiteSpaceToken() {
+        val lexer = TiBasicLexer()
+        lexer.start("   ")
+        assertEquals(TokenType.WHITE_SPACE, lexer.tokenType)
+        assertEquals("   ", lexer.tokenSequence.toString())
+        lexer.advance()
+        assertNull(lexer.tokenType)
+    }
+
+    fun testRestartAtBlankTrailingLineYieldsNonNullTokenType() {
+        val buffer = "100 PRINT \"X\"\n   "
+        val blankLineOffset = 14
+        val lexer = TiBasicLexer()
+        lexer.start(buffer, blankLineOffset, buffer.length, 0)
+        assertNotNull("getTokenType() must not return null for a blank line", lexer.tokenType)
+        assertEquals(TokenType.WHITE_SPACE, lexer.tokenType)
+    }
+
+    fun testRestartAtEndOfBufferAfterBlankLineYieldsNonNullTokenType() {
+        // Simulates the ImmediatePainter asking for the token at offset == buffer length.
+        val buffer = "100 PRINT \"X\"\n "
+        val lexer = TiBasicLexer()
+        lexer.start(buffer, buffer.length, buffer.length, 0)
+        assertNotNull("getTokenType() must not return null when restarted at end of buffer with trailing blank line", lexer.tokenType)
+    }
+
     private fun assertNotEquals(unexpected: IElementType, actual: IElementType?) {
         assertFalse("Expected token type to differ from $unexpected", actual == unexpected)
     }

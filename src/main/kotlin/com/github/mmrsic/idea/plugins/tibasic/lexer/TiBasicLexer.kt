@@ -81,11 +81,11 @@ class TiBasicLexer : LexerBase() {
                 LineKind.LINE_NUMBER_ONLY -> result.addAll(tokenizeLineNumberOnlyLine(pos, LINE_NUMBER_ONLY.find(lineText)!!))
                 LineKind.LET_IMPLICIT_STATEMENT -> result.addAll(tokenizeImplicitLetLine(pos, UNKNOWN_STATEMENT_LINE.find(lineText)!!))
                 LineKind.UNKNOWN_STATEMENT -> result.addAll(tokenizeUnknownStatementLine(pos, UNKNOWN_STATEMENT_LINE.find(lineText)!!))
-                LineKind.NO_LINE_NUMBER -> if (lineEnd > pos && lineText.isNotBlank()) result.add(
+                LineKind.NO_LINE_NUMBER -> if (lineEnd > pos) result.add(
                     LineToken(
                         pos,
                         lineEnd,
-                        TiBasicTokenTypes.NO_LINE_NUMBER_TEXT
+                        if (lineText.isNotBlank()) TiBasicTokenTypes.NO_LINE_NUMBER_TEXT else TokenType.WHITE_SPACE,
                     )
                 )
             }

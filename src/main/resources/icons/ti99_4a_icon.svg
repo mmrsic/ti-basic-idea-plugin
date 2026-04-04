@@ -12,7 +12,8 @@
             <rect x="6" y="6" width="4" height="4"/>
             <rect x="12" y="6" width="4" height="4"/>
         </g>
-        <text x="36" y="42" font-family="monospace, monospace" font-size="8" fill="#0a3b5b" text-anchor="middle">TI-BASIC
+        <text x="36" y="42" font-family="monospace, monospace" font-size="8" fill="#0a3b5b" text-anchor="middle">
+            TI-BASIC
         </text>
     </g>
 </svg>

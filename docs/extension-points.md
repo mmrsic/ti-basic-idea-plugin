@@ -93,6 +93,43 @@ next logical line number.
 
 ---
 
+### `codeInsight.declarativeInlayProvider` — TI-99/4A display column breaks
+
+| Attribute             | Value                                                        |
+|-----------------------|--------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                   |
+| `implementationClass` | `tibasic.editor.TiBasicDisplayColumnHintProvider`            |
+| `isEnabledByDefault`  | `true`                                                       |
+| `group`               | `OTHER_GROUP`                                                |
+| `providerId`          | `tibasic.display.column.hints`                               |
+| `bundle`              | `messages.TiBasicBundle`                                     |
+| `nameKey`             | `inlay.hints.display.columns.name`                           |
+
+```xml
+<codeInsight.declarativeInlayProvider
+        language="TI-Basic"
+        implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnHintProvider"
+        isEnabledByDefault="true"
+        group="OTHER_GROUP"
+        providerId="tibasic.display.column.hints"
+        bundle="messages.TiBasicBundle"
+        nameKey="inlay.hints.display.columns.name"
+/>
+```
+
+Inserts a `┊` inlay marker at every 28th character of each source line.
+The TI-99/4A text mode shows 28 visible columns per screen row; these markers let programmers see
+exactly where the real hardware would wrap to the next row without leaving the editor.
+The hints can be toggled via *Settings → Editor → Inlay Hints → Other → TI-99/4A Display Column Breaks*.
+
+Implementation uses the **declarative InlayHints API** (`InlayHintsProvider` /
+`OwnBypassCollector.collectHintsForFile`). The offset calculation logic is extracted into the
+package-level function `displayColumnBreakOffsets(lineStart, lineLength, columnWidth)` in
+`TiBasicDisplayColumnHintProvider.kt` — also used directly in tests. The constant
+`TI99_4A_DISPLAY_COLUMNS = 28` defines the column width.
+
+---
+
 ### `codeInsight.lineMarkerProvider` — CALL CHAR gutter preview
 
 | Attribute             | Value                                              |

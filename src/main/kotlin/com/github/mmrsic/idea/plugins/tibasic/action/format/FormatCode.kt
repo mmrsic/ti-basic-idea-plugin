@@ -7,7 +7,25 @@ import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.*
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCallStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCloseStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDataStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicForStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicIfStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInputStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicNextStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOpenOption
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOpenStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOptionBaseStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicReadStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRestoreStatement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
 

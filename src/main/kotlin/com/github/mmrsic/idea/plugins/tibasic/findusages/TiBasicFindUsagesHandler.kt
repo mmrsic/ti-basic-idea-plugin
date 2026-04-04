@@ -75,14 +75,17 @@ class TiBasicFindUsagesHandler(element: PsiElement) : FindUsagesHandler(element)
         return when {
             element is TiBasicFunctionCall ->
                 builtInFunctionUsages(element.functionName() ?: return emptyList(), file)
+
             element is TiBasicDefStatement ->
                 userDefinedFunctionUsages(element, file)
+
             element.node?.elementType == TiBasicTokenTypes.CALL_SUBPROGRAM_NAME -> {
                 val name = element.text.uppercase()
                 PsiTreeUtil.findChildrenOfType(file, TiBasicCallStatement::class.java)
                     .filter { it.subprogramName() == name }
                     .mapNotNull { it.node.firstChildOfType(TiBasicTokenTypes.CALL_SUBPROGRAM_NAME)?.psi }
             }
+
             element.node?.elementType in STATEMENT_KEYWORD_TYPES -> {
                 val statementNodeType = element.parent?.node?.elementType ?: return emptyList()
                 val keywordType = element.node!!.elementType
@@ -92,6 +95,7 @@ class TiBasicFindUsagesHandler(element: PsiElement) : FindUsagesHandler(element)
                         .mapNotNull { it.node.firstChildOfType(keywordType)?.psi }
                 }
             }
+
             else -> emptyList()
         }
     }

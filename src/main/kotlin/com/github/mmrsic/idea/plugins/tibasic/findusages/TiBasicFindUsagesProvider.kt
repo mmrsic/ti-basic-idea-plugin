@@ -36,6 +36,7 @@ class TiBasicFindUsagesProvider : FindUsagesProvider {
             element.hasSubscriptParens() -> "numeric array"
             else -> "numeric variable"
         }
+
         element.node?.elementType in STATEMENT_KEYWORD_TYPES -> "statement"
         element.node?.elementType == TiBasicTokenTypes.CALL_SUBPROGRAM_NAME -> "subprogram"
         isFunctionNameInDef(element) -> "user-defined function"

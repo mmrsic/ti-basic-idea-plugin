@@ -6,8 +6,8 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDefStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFunctionCall
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.intellij.find.findUsages.FindUsagesOptions
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.usageView.UsageInfo

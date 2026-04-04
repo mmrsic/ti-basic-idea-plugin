@@ -5,7 +5,16 @@ import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.*
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCallStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicExpression
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicForStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInputStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLetStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicNextStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicReadStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager

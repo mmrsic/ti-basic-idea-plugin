@@ -20,7 +20,11 @@ import com.intellij.ui.table.JBTable
 import java.awt.BorderLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import javax.swing.*
+import javax.swing.JLabel
+import javax.swing.JPanel
+import javax.swing.JToolBar
+import javax.swing.RowSorter
+import javax.swing.SortOrder
 import javax.swing.table.TableRowSorter
 
 class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(BorderLayout()), com.intellij.openapi.Disposable {

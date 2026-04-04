@@ -3,7 +3,15 @@ package com.github.mmrsic.idea.plugins.tibasic.action.resequence
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.*
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicIfStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRestoreStatement
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 

@@ -238,6 +238,9 @@ The annotator inspects every file and highlights:
 - **CALL SCREEN gutter preview** — for every `CALL SCREEN(colorCode)` line a solid 16×16 color square appears in the
   gutter showing the chosen background color (`colorCode` may be a literal or a constant numeric variable; a
   transparent checkerboard is shown when the color cannot be resolved)
+- **TI-99/4A display column-break indicators** — inlay markers (`┊`) are inserted at every 28th character of each
+  editor line, showing exactly where the TI-99/4A's 28-column text display would wrap to the next screen row; the
+  hints can be toggled in *Settings → Editor → Inlay Hints → Other → TI-99/4A Display Column Breaks*
 - **Reformat Code** (Ctrl+Alt+L) — the standard IDEA "Reformat Code" action is mapped to **Format TI-BASIC** for
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file
@@ -258,7 +261,7 @@ src/
 ├── main/
 │   ├── kotlin/com/github/mmrsic/idea/plugins/tibasic/
 │   │   ├── action/          File actions, formatter, and resequencing
-│   │   ├── editor/          Completion, Shift+Enter, and CALL CHAR/COLOR/SCREEN gutter previews
+│   │   ├── editor/          Completion, Shift+Enter, CALL CHAR/COLOR/SCREEN gutter previews, and display column hints
 │   │   ├── ext/             Kotlin wrappers around IntelliJ framework APIs
 │   │   ├── findusages/      Find Usages provider, handler, target evaluator, and read/write detection
 │   │   ├── highlight/       Annotator and syntax highlighting
@@ -273,7 +276,7 @@ src/
     └── kotlin/com/github/mmrsic/idea/plugins/tibasic/
         ├── TiBasicTestBase.kt                  Shared test base class
         ├── action/                             Formatter and resequencing tests
-        ├── editor/                             Completion, Shift+Enter, and gutter preview tests
+        ├── editor/                             Completion, Shift+Enter, gutter preview, and display column hint tests
         ├── findusages/                         Variable, statement, subprogram, and function usage tests
         ├── highlight/                          General and statement-specific annotator tests
         ├── lang/                               Icon and language-related tests

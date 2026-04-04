@@ -25,6 +25,7 @@ internal fun colorFromArg(expr: TiBasicExpression?, file: TiBasicFile?): TiColor
                 ?.constValue
                 ?.toIntOrNull() ?: return TiColor.Transparent
         }
+
         else -> return TiColor.Transparent
     }
     return try {
