@@ -65,10 +65,28 @@ class TiBasicCallCharLineMarkerTest : TiBasicTestBase() {
         assertTrue("No gutter icon must appear for a non-hex pattern", gutters.isEmpty())
     }
 
-    fun `test gutter icon does not appear for CALL CHAR with variable instead of literal`() {
+    fun `test gutter icon appears for CALL CHAR with constant string variable`() {
+        configureFile("100 LET P\$=\"FFFFFFFFFFFFFFFF\"\n200 CALL CHAR(96,P\$)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals("Gutter icon must appear when pattern variable has a single constant string value", 1, gutters.size)
+    }
+
+    fun `test gutter icon does not appear for CALL CHAR with non-constant string variable`() {
+        configureFile("100 LET P\$=\"FF\"\n200 LET P\$=\"0F\"\n300 CALL CHAR(96,P\$)")
+        val gutters = myFixture.findAllGutters()
+        assertTrue("No gutter icon must appear when pattern variable has multiple different values", gutters.isEmpty())
+    }
+
+    fun `test gutter icon appears for CALL CHAR with uninitialized string variable`() {
         configureFile("100 CALL CHAR(96,PAT\$)")
         val gutters = myFixture.findAllGutters()
-        assertTrue("No gutter icon must appear when pattern is a variable", gutters.isEmpty())
+        assertEquals("Gutter icon must appear for uninitialized string variable (defaults to empty pattern)", 1, gutters.size)
+    }
+
+    fun `test gutter icon does not appear for CALL CHAR with numeric variable instead of string`() {
+        configureFile("100 LET N=255\n200 CALL CHAR(96,N)")
+        val gutters = myFixture.findAllGutters()
+        assertTrue("No gutter icon must appear when pattern argument is a numeric variable", gutters.isEmpty())
     }
 
     fun `test gutter icon does not appear for CALL SCREEN`() {

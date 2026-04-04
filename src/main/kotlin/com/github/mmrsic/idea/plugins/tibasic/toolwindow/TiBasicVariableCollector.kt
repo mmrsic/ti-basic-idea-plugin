@@ -7,6 +7,8 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.*
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 
 object TiBasicVariableCollector {
 
@@ -17,6 +19,11 @@ object TiBasicVariableCollector {
         result += collectRegularVariables(file)
         return result.sortedWith(compareBy({ it.name }, { it.type.ordinal }))
     }
+
+    fun collectCached(file: TiBasicFile): List<TiBasicVariableEntry> =
+        CachedValuesManager.getCachedValue(file) {
+            CachedValueProvider.Result.create(collect(file), file)
+        }
 
     private fun collectDimDeclarations(file: TiBasicFile): List<TiBasicVariableEntry> =
         file.dimStatements().flatMap { dimStmt ->

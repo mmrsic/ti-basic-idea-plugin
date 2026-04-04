@@ -108,10 +108,12 @@ next logical line number.
 ```
 
 Displays a 16×16 px black-and-white character preview in the gutter for every
-`CALL CHAR(code,"<pattern>")` line where `<pattern>` is exactly 16 valid hex characters.
-The pattern encodes 8 rows of 8 pixels each (1 byte per row, MSB = left pixel):
-`1`-bit → black, `0`-bit → white. No icon appears for invalid or missing patterns.
-The implementation class is `TiBasicCharPatternIcon`, which renders the bitmap
+`CALL CHAR(code,pattern)` line where `pattern` resolves to a valid hex string of 0–16 characters.
+`pattern` may be a string literal or a **constant string variable** (a variable that is assigned
+exactly one distinct string literal throughout the file). The pattern encodes 8 rows of 8 pixels
+each (1 byte per row, MSB = left pixel): `1`-bit → black, `0`-bit → white. Patterns shorter than
+16 characters are zero-padded; longer patterns, non-hex content, or non-constant variables produce
+no icon. The implementation class is `TiBasicCharPatternIcon`, which renders the bitmap
 on-the-fly using `Graphics2D` (HiDPI-safe, no static image files needed).
 
 ---
@@ -123,10 +125,12 @@ on-the-fly using `Graphics2D` (HiDPI-safe, no static image files needed).
 | `language`            | `TI-Basic`                                          |
 | `implementationClass` | `tibasic.editor.TiBasicCallColorLineMarkerProvider` |
 
-Displays a split 16×16 color square in the gutter for every `CALL COLOR(spriteNum,fg,bg)` line
-where `fg` and `bg` are integer literals. The left half shows the foreground TI color,
-the right half the background TI color. If an argument is not a constant, the corresponding
-half is rendered as a checkerboard (transparent). Colors map via `TiColor.at(index)` (1-based,
+Displays a split 16×16 color square in the gutter for every `CALL COLOR(spriteNum,fg,bg)` line.
+`fg` and `bg` may be integer literals or **constant numeric variables** (variables assigned exactly
+one distinct numeric literal throughout the file). The left half shows the foreground TI color,
+the right half the background TI color. If an argument cannot be resolved to a constant integer
+(non-constant variable, expression, or out-of-range value), the corresponding half is rendered as
+a checkerboard (transparent). Colors map via `TiColor.at(index)` (1-based,
 index 1 = Transparent through 16 = White). The rendering uses `JBColor` to stay compatible
 with IntelliJ's theme system while keeping the fixed TI color palette.
 

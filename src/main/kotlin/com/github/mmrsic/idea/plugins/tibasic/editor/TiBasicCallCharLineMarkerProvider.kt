@@ -1,8 +1,12 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCallStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
+import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.openapi.editor.markup.GutterIconRenderer
@@ -28,9 +32,21 @@ class TiBasicCallCharLineMarkerProvider : LineMarkerProvider {
     }
 
     private fun extractValidHexPattern(callStatement: TiBasicCallStatement): String? {
-        val rawText = callStatement.arguments().getOrNull(1)
-            ?.node?.firstChildOfType(TiBasicTokenTypes.STRING_LITERAL)?.text
-            ?: return null
+        val arg = callStatement.arguments().getOrNull(1) ?: return null
+        val children = arg.node.nonWhitespaceChildren
+        if (children.size != 1) return null
+        val child = children.first()
+        val rawText = when (child.elementType) {
+            TiBasicTokenTypes.STRING_LITERAL -> child.text
+            TiBasicNodeTypes.VARIABLE_ACCESS -> {
+                val varName = child.firstChildNode?.text?.uppercase() ?: return null
+                val file = callStatement.containingTiBasicFile ?: return null
+                TiBasicVariableCollector.collectCached(file)
+                    .find { it.name == varName && it.type == TiBasicVariableType.STRING }
+                    ?.constValue ?: return null
+            }
+            else -> return null
+        }
         val pattern = rawText.removePrefix("\"").removeSuffix("\"")
         return if (isValidHexPattern(pattern)) pattern.uppercase().padEnd(16, '0') else null
     }

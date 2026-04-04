@@ -40,6 +40,46 @@ class TiBasicCallColorLineMarkerTest : TiBasicTestBase() {
         assertTrue("Tooltip must contain bg color name White (code 16)", tooltip.contains("White"))
     }
 
+    fun `test gutter icon tooltip contains color name for constant fg variable`() {
+        configureFile("100 LET FG=2\n200 CALL COLOR(1,FG,16)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals(1, gutters.size)
+        val tooltip = gutters[0].tooltipText ?: ""
+        assertTrue("Tooltip must contain fg color name Black (code 2) from constant variable", tooltip.contains("Black"))
+    }
+
+    fun `test gutter icon tooltip contains color name for constant bg variable`() {
+        configureFile("100 LET BG=16\n200 CALL COLOR(1,2,BG)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals(1, gutters.size)
+        val tooltip = gutters[0].tooltipText ?: ""
+        assertTrue("Tooltip must contain bg color name White (code 16) from constant variable", tooltip.contains("White"))
+    }
+
+    fun `test gutter icon shows Transparent for non-constant numeric variable`() {
+        configureFile("100 LET FG=2\n200 LET FG=7\n300 CALL COLOR(1,FG,16)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals(1, gutters.size)
+        val tooltip = gutters[0].tooltipText ?: ""
+        assertTrue("Tooltip must contain Transparent for non-constant fg variable", tooltip.contains("Transparent"))
+    }
+
+    fun `test gutter icon shows Transparent for uninitialized numeric variable`() {
+        configureFile("100 CALL COLOR(1,FG,16)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals(1, gutters.size)
+        val tooltip = gutters[0].tooltipText ?: ""
+        assertTrue("Uninitialized numeric variable defaults to 0, which is out of range; must show Transparent", tooltip.contains("Transparent"))
+    }
+
+    fun `test gutter icon shows Transparent for string variable used as color argument`() {
+        configureFile("100 LET C\$=\"7\"\n200 CALL COLOR(1,C\$,16)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals(1, gutters.size)
+        val tooltip = gutters[0].tooltipText ?: ""
+        assertTrue("String variable is not a valid numeric color argument; must show Transparent", tooltip.contains("Transparent"))
+    }
+
     fun `test gutter icon does not appear for CALL SCREEN`() {
         configureFile("100 CALL SCREEN(2)")
         val gutters = myFixture.findAllGutters()

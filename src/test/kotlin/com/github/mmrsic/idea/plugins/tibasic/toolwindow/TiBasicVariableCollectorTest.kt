@@ -150,7 +150,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
     fun `test string array variable has STRING_ARRAY type`() {
         val file = configureFile("100 LET A$(1)=\"HI\"")
         val entries = TiBasicVariableCollector.collect(file)
-        val entry = entries.single { it.name == "A\$" && it.type == TiBasicVariableType.STRING_ARRAY }
+        val entry = entries.single { it.name == "A$" && it.type == TiBasicVariableType.STRING_ARRAY }
         assertEquals(1, entry.writes)
     }
 
@@ -181,7 +181,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
     fun `test string variable never written has constValue empty string literal`() {
         val file = configureFile("100 PRINT A$")
         val entries = TiBasicVariableCollector.collect(file)
-        val entry = entries.single { it.name == "A\$" && it.type == TiBasicVariableType.STRING }
+        val entry = entries.single { it.name == "A$" && it.type == TiBasicVariableType.STRING }
         assertEquals("\"\"", entry.constValue)
     }
 
@@ -195,7 +195,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
     fun `test string variable written with single literal has that constValue`() {
         val file = configureFile("100 LET A$=\"HELLO\"")
         val entries = TiBasicVariableCollector.collect(file)
-        val entry = entries.single { it.name == "A\$" && it.type == TiBasicVariableType.STRING }
+        val entry = entries.single { it.name == "A$" && it.type == TiBasicVariableType.STRING }
         assertEquals("\"HELLO\"", entry.constValue)
     }
 
