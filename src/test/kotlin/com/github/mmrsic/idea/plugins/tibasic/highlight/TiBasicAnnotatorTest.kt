@@ -1488,6 +1488,16 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
+    fun testInputWithInvalidCharAfterVariableGivesIncorrectStatement() {
+        configureFile("241 <error descr=\"Incorrect statement\">INPUT A §</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun testInputWithInvalidCharDirectlyAfterVariableNameGivesIncorrectStatement() {
+        configureFile("241 <error descr=\"Incorrect statement\">INPUT A§</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
     fun testFileInputMinimalNoError() {
         configureFile("100 INPUT #1:A")
         myFixture.checkHighlighting(true, false, true)

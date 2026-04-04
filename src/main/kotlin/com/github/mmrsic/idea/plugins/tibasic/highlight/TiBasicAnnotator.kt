@@ -321,6 +321,10 @@ class TiBasicAnnotator : Annotator {
 
     private fun annotateScreenInputStatement(statement: TiBasicInputStatement, holder: AnnotationHolder) {
         val children = statement.node.nonWhitespaceChildren
+        if (children.any { it.elementType == TiBasicTokenTypes.PRINT_ARGUMENT }) {
+            holder.error("Incorrect statement", statement)
+            return
+        }
         val colonNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.COLON }
         val expressionNode = children.firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
         if (colonNode != null && expressionNode != null) {
