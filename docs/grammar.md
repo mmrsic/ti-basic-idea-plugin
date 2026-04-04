@@ -453,13 +453,12 @@ PRINT "no number"               ✗ error — line number expected
 ## Scope and dialect notes
 
 - The plugin currently supports statements that are meaningful within a single source file.
-- `GOSUB`/`RETURN` and TI Extended Basic statements are **not yet** implemented; lines starting with these keywords are
-  treated as unknown statements.
 - `CALL` is implemented for the 10 built-in TI-Basic subprograms: `CLEAR`, `SCREEN`, `COLOR`, `HCHAR`, `VCHAR`, `GCHAR`,
   `CHAR`, `KEY`, `JOYST`, `SOUND`. Extended Basic subprograms are out of scope.
-- **Built-in expression functions** are supported for `ABS`, `ATN`, `COS`, `EXP`, `INT`, `LOG`, `RND`, `SGN`, `SIN`,
-  `SQR`, and `TAN`. All remaining standard TI-Basic functions
-  (`ASC`, `LEN`, `POS`, `VAL`, `CHR$`, `SEG$`, `STR$`) are planned; adding each requires only a single registry entry.
+- **Built-in expression functions** are supported for all standard TI-Basic functions:
+  numeric-returning: `ABS`, `ASC`, `ATN`, `COS`, `EOF`, `EXP`, `INT`, `LEN`, `LOG`, `POS`, `RND`, `SGN`, `SIN`, `SQR`,
+  `TAN`, `VAL`; string-returning: `CHR$`, `SEG$`, `STR$`. Adding a new function requires only a single registry entry
+  in `TiBasicBuiltInFunctions`.
 - `FOR`/`NEXT` are implemented. The annotator checks FOR-NEXT balance by count (total in file);
   it does **not** check that the control variable in `NEXT` matches the preceding `FOR` variable.
 - `TAB(n)` is a column-positioning function valid **only** inside `PRINT` statements.

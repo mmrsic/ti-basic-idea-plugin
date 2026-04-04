@@ -48,24 +48,38 @@ src/test/kotlin/com/github/mmrsic/idea/plugins/tibasic/
 ├── action/
 │   ├── format/
 │   │   ├── FormatActionTest.kt
+│   │   ├── FormatCallCodeTest.kt
 │   │   └── FormatCodeTest.kt
 │   └── resequence/
 │       ├── ResequenceLineNumbersTest.kt
 │       └── ResequenceQuickFixTest.kt
 ├── editor/
+│   ├── TiBasicCallCharLineMarkerTest.kt
+│   ├── TiBasicCallColorLineMarkerTest.kt
 │   ├── TiBasicCompletionTest.kt
 │   └── TiBasicShiftEnterHandlerTest.kt
+├── findusages/
+│   ├── TiBasicFindUsagesHandlerTest.kt
+│   └── TiBasicFindUsagesTest.kt
 ├── highlight/
 │   ├── TiBasicAnnotatorTest.kt
 │   ├── TiBasicCallAnnotatorTest.kt
+│   ├── TiBasicDefAnnotatorTest.kt
+│   ├── TiBasicDimAnnotatorTest.kt
 │   ├── TiBasicFunctionCallAnnotatorTest.kt
+│   ├── TiBasicOpenCloseAnnotatorTest.kt
 │   └── TiBasicSyntaxHighlightingTest.kt
 ├── lang/
 │   └── IconLoadTest.kt
-└── parser/
-    ├── TiBasicCallParserTest.kt
-    ├── TiBasicFunctionCallParserTest.kt
-    └── TiBasicParserTest.kt
+├── parser/
+│   ├── TiBasicCallParserTest.kt
+│   ├── TiBasicDefParserTest.kt
+│   ├── TiBasicDimParserTest.kt
+│   ├── TiBasicFunctionCallParserTest.kt
+│   ├── TiBasicOpenCloseParserTest.kt
+│   └── TiBasicParserTest.kt
+└── toolwindow/
+    └── TiBasicVariableCollectorTest.kt
 ```
 
 Each test file is in the same package as the class(es) it tests. `TiBasicTestBase` stays

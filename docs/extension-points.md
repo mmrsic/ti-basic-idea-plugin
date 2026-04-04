@@ -165,6 +165,31 @@ variable finds all occurrences symmetrically.
 
 ---
 
+### `findUsagesHandlerFactory`
+
+| Attribute        | Value                                                       |
+|------------------|-------------------------------------------------------------|
+| `implementation` | `tibasic.findusages.TiBasicFindUsagesHandlerFactory`        |
+
+Creates a `TiBasicFindUsagesHandler` for any `TiBasicVariableAccess` element, enabling IDEA
+to resolve usages through the plugin's semantic reference model rather than the default
+text-search fallback.
+
+---
+
+### `targetElementEvaluator`
+
+| Attribute             | Value                                                  |
+|-----------------------|--------------------------------------------------------|
+| `language`            | `TI-Basic`                                             |
+| `implementationClass` | `tibasic.findusages.TiBasicTargetElementEvaluator`     |
+
+Refines which PSI element IDEA treats as the "target" when the user invokes Find Usages
+(Alt+F7) or Navigate → Declaration. Ensures that the caret position resolves to the correct
+`TiBasicVariableAccess` node even when the caret is on a surrounding token.
+
+---
+
 ### `readWriteAccessDetector`
 
 | Attribute        | Value                                               |
@@ -227,7 +252,8 @@ properties and functions. These are collected in `tibasic.ext`:
 |---------------------------------|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ASTNodeExtensions.kt`          | `ASTNode`          | `allChildren` — all child nodes; `nonWhitespaceChildren` — children excluding whitespace; `firstChildType` — element type of first child; `childrenOfType(type)` — children matching a type; `firstChildOfType(type)` — first child matching a type; `childrenAfter(type)` — children after the first node of a given type |
 | `AnnotationHolderExtensions.kt` | `AnnotationHolder` | `error(message, element)`, `error(message, range)` — create error annotations; `warning(message, element)`, `warning(message, range)` — create warning annotations                                                                                                                                                         |
-| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type                                                                                                                                                                                                                                                         |
+| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type (**`tibasic.ext`**)                                                                                                                                                                                                                                     |
+| `PsiElementExtensions.kt`       | `PsiElement`       | `containingTiBasicFile` — casts `containingFile` to `TiBasicFile?` (**`tibasic.psi`** — lives alongside the PSI types it returns)                                                                                                                                                                                          |
 
 When you find yourself calling a raw framework method that is verbose or obscures intent,
 add an extension to the appropriate file in `tibasic.ext` and use it everywhere.
