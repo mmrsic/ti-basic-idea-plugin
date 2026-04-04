@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-04-04
+
+### Added
+
+- **Find Usages for statements and functions**: `Find Usages` now also works for statement keywords, `CALL` subprogram names, built-in functions, and user-defined functions
+- **CALL SCREEN gutter preview**: shows the selected screen color as a gutter swatch for `CALL SCREEN(colorCode)`
+
+### Changed
+
+- **TI Basic Variables tool window**: now shows effective constant values for scalar numeric and string variables in the `Const` column
+- **CALL CHAR and CALL COLOR gutter previews**: constant numeric variables are now resolved like literals when preview icons are rendered
+- **Variables tool window updates**: line-number links stay in sync after resequencing, and `NEXT` statements are counted as variable reads
+
+### Fixed
+
+- Keywords at the start of variable names are no longer misclassified by the lexer or formatter
+- Invalid comparisons such as `IF C><120 THEN 30` are now highlighted as errors
+- The Variables tool window no longer throws exceptions for external files or project-disposal edge cases and avoids a slow-operation issue
+- A plugin exception in `Find Usages` was fixed
+- The overridden IDEA **Reformat Code** action now shows its text correctly
+
 ## [1.1.0] - 2026-03-29
 
 ### Added

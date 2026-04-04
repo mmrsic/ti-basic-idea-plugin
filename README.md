@@ -204,7 +204,7 @@ The annotator inspects every file and highlights:
 
 ### Code actions
 
-**Format File** (`Tools › TI-Basic › Format` or Ctrl+Alt+L)
+**Format TI-Basic Code** (Ctrl+Alt+L, editor context menu, or `Code` menu)
 
 - Converts all keywords outside string literals to uppercase
 - Removes extraneous whitespace outside string literals
@@ -212,7 +212,7 @@ The annotator inspects every file and highlights:
 - Can be applied to the whole file or to the current selection
 - Ctrl+Alt+L (standard IDEA Reformat Code) is mapped to this action for TI-Basic files via `TiBasicReformatCodeAction`
 
-**Resequence Line Numbers** (`Tools › TI-Basic › Resequence`)
+**Resequence Line Numbers** (editor context menu or `Code` menu)
 
 - Renumbers all lines with a configurable start number and step
 - A dialog lets you choose both values before applying
@@ -227,24 +227,28 @@ The annotator inspects every file and highlights:
   group;
   inside CALL argument lists, the general completion (variables, functions, keywords) is offered instead
 - **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated group
-- **CALL CHAR gutter preview** — for lines containing `CALL CHAR(code,"<16-hex-chars>")` with a valid 16-character hex
-  pattern, a 16×16 px black-and-white pictogram appears in the gutter showing the defined 8×8 character
-  (1-bit → black, 0-bit → white, with a dark-gray border)
-- **CALL COLOR gutter preview** — for lines containing `CALL COLOR(spriteNum,fg,bg)` with numeric constant
+- **CALL CHAR gutter preview** — for lines containing `CALL CHAR(code,pattern$)` with a valid hex pattern of up to
+  16 characters, a 16×16 px black-and-white pictogram appears in the gutter showing the defined 8×8 character
+  (1-bit → black, 0-bit → white, with a dark-gray border); the pattern may be a string literal or a constant string
+  variable, and shorter patterns are padded with trailing zeroes
+- **CALL COLOR gutter preview** — for lines containing `CALL COLOR(spriteNum,fg,bg)` with resolvable numeric color
   arguments, a split color square appears in the gutter (left half = foreground, right half = background TI color;
-  transparent checkerboard shown for non-constant arguments)
+  literal values and constant numeric variables are resolved, transparent checkerboard shown for non-constant
+  arguments)
 - **CALL SCREEN gutter preview** — for every `CALL SCREEN(colorCode)` line a solid 16×16 color square appears in the
   gutter showing the chosen background color (`colorCode` may be a literal or a constant numeric variable; a
   transparent checkerboard is shown when the color cannot be resolved)
 - **Reformat Code** (Ctrl+Alt+L) — the standard IDEA "Reformat Code" action is mapped to **Format TI-BASIC** for
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file
-  in a sortable table with columns Name, Type, Writes, Reads, Const, and Lines; clicking any line number navigates to
-  that position in the editor; the table refreshes automatically on every document change; the **Const** column shows
-  the effective constant value for scalar numeric and string variables — `0` or `""` for variables that are never
-  written, or the shared literal value if all writes use the same numeric or string literal (e.g. `42` or `"HELLO"`)
-- **Find Usages** (Alt+F7) — finds all occurrences of a TI-Basic variable across the file; the Usages panel
-  distinguishes read accesses (blue) from write accesses (orange/red); usable from any occurrence of the variable
+  in a sortable table with columns Name, Type, Writes, Reads, and Const; the Writes and Reads columns show clickable
+  line numbers that navigate to the selected occurrence in the editor; the table refreshes automatically on every
+  document change; the **Const** column shows the effective constant value for scalar numeric and string variables —
+  `0` or `""` for variables that are never written, or the shared literal value if all writes use the same numeric or
+  string literal (e.g. `42` or `"HELLO"`)
+- **Find Usages** (Alt+F7) — finds usages of TI-Basic variables, statement keywords, `CALL` subprogram names,
+  built-in functions, and user-defined functions; for variables, the Usages panel distinguishes read accesses (blue)
+  from write accesses (orange/red)
 - **Shift+Enter** — inserts a new line and automatically prepends the next logical line number
 
 ## Project structure
@@ -253,86 +257,28 @@ The annotator inspects every file and highlights:
 src/
 ├── main/
 │   ├── kotlin/com/github/mmrsic/idea/plugins/tibasic/
-│   │   ├── action/
-│   │   │   ├── TiBasicFileAction.kt            Abstract base for TI-Basic menu actions
-│   │   │   ├── format/
-│   │   │   │   ├── FormatAction.kt             "Format" menu action
-│   │   │   │   └── FormatCode.kt               Formatting logic
-│   │   │   └── resequence/
-│   │   │       ├── ResequenceAction.kt         "Resequence" menu action
-│   │   │       ├── ResequenceLineNumbers.kt    Renumbering logic
-│   │   │       ├── ResequenceOptionsDialog.kt  Start/step dialog
-│   │   │       └── ResequenceQuickFix.kt       Quick-fix integration
-│   │   ├── editor/
-│   │   │   ├── TiBasicCompletionContributor.kt Keyword completion
-│   │   │   └── TiBasicShiftEnterHandler.kt     Shift+Enter new-line handler
-│   │   ├── ext/
-│   │   │   ├── ASTNodeExtensions.kt            Kotlin extensions on ASTNode
-│   │   │   ├── AnnotationHolderExtensions.kt   Kotlin extensions on AnnotationHolder
-│   │   │   └── PsiElementExtensions.kt         Kotlin extensions on PsiElement
-│   │   ├── findusages/
-│   │   │   ├── TiBasicFindUsagesProvider.kt    Find Usages provider (words scanner, display names)
-│   │   │   ├── TiBasicReadWriteAccessDetector.kt Read/write distinction in Usages panel
-│   │   │   └── TiBasicVariableReference.kt     PsiReference with semantic isReferenceTo
-│   │   ├── highlight/
-│   │   │   ├── TiBasicAnnotator.kt             Semantic error/warning annotations
-│   │   │   ├── TiBasicSyntaxHighlighter.kt     Token-based syntax colours
-│   │   │   └── TiBasicSyntaxHighlighterFactory.kt
-│   │   ├── lang/
-│   │   │   ├── TiBasicBuiltInFunctions.kt      Built-in expression function signatures and registry
-│   │   │   ├── TiBasicCallSubprograms.kt        CALL subprogram signatures and registry
-│   │   │   ├── TiBasicFileIconProvider.kt       Custom file icon
-│   │   │   ├── TiBasicFileType.kt               LanguageFileType object
-│   │   │   ├── TiBasicKeywords.kt               Keyword and command lists
-│   │   │   └── TiBasicLanguage.kt               Language singleton
-│   │   ├── lexer/
-│   │   │   ├── TiBasicLexer.kt                 Line-based lexer
-│   │   │   └── TiBasicTokenTypes.kt            Token element types
-│   │   ├── parser/
-│   │   │   ├── TiBasicNodeTypes.kt             AST node element types
-│   │   │   ├── TiBasicParser.kt                PsiParser implementation
-│   │   │   └── TiBasicParserDefinition.kt      ParserDefinition
-│   │   ├── psi/
-│   │   │   ├── TiBasicFile.kt                  PSI file root element
-│   │   │   └── TiBasicPsiElements.kt           PSI node elements (Line, statements, expressions)
-│   │   ├── toolwindow/
-│   │   │   ├── TiBasicVariableCollector.kt     PSI analysis: builds variable entry list
-│   │   │   ├── TiBasicVariableEntry.kt         Data class: name, type, read/write occurrences
-│   │   │   ├── TiBasicVariableLineNumberRenderer.kt Clickable line-number cell renderer
-│   │   │   ├── TiBasicVariableOccurrence.kt    Data class: line number, offset, access type
-│   │   │   ├── TiBasicVariableTableModel.kt    AbstractTableModel for the variable table
-│   │   │   ├── TiBasicVariableToolWindowContent.kt Tool window panel + navigation logic
-│   │   │   ├── TiBasicVariableToolWindowFactory.kt ToolWindowFactory
-│   │   │   └── TiBasicVariableType.kt          Enum: NUMERIC/STRING/NUMERIC_ARRAY/STRING_ARRAY/DIM/DEF
-│   │   └── util/
-│   │       └── PsiFileUtils.kt                 Document write-action helpers
+│   │   ├── action/          File actions, formatter, and resequencing
+│   │   ├── editor/          Completion, Shift+Enter, and CALL CHAR/COLOR/SCREEN gutter previews
+│   │   ├── ext/             Kotlin wrappers around IntelliJ framework APIs
+│   │   ├── findusages/      Find Usages provider, handler, target evaluator, and read/write detection
+│   │   ├── highlight/       Annotator and syntax highlighting
+│   │   ├── lang/            Language object, file type, keywords, built-in functions, CALL registries, colors
+│   │   ├── lexer/           Line-based lexer and token types
+│   │   ├── parser/          PSI parser, node types, and parser definition
+│   │   ├── psi/             PSI elements and PSI-related extensions
+│   │   ├── toolwindow/      Variables tool window, variable collection, table model, and navigation
+│   │   └── util/            Shared PSI/document helpers
 │   └── resources/META-INF/plugin.xml           Plugin descriptor
 └── test/
     └── kotlin/com/github/mmrsic/idea/plugins/tibasic/
         ├── TiBasicTestBase.kt                  Shared test base class
-        ├── action/
-        │   ├── format/
-        │   │   ├── FormatActionTest.kt
-        │   │   └── FormatCodeTest.kt
-        │   └── resequence/
-        │       ├── ResequenceLineNumbersTest.kt
-        │       └── ResequenceQuickFixTest.kt
-        ├── editor/
-        │   ├── TiBasicCompletionTest.kt
-        │   └── TiBasicShiftEnterHandlerTest.kt
-        ├── findusages/
-        │   └── TiBasicFindUsagesTest.kt
-        ├── highlight/
-        │   ├── TiBasicAnnotatorTest.kt
-        │   ├── TiBasicOpenCloseAnnotatorTest.kt
-        │   └── TiBasicSyntaxHighlightingTest.kt
-        ├── lang/
-        │   └── IconLoadTest.kt
-        ├── parser/
-        │   ├── TiBasicOpenCloseParserTest.kt
-        │   └── TiBasicParserTest.kt
-        └── toolwindow/
-            └── TiBasicVariableCollectorTest.kt
+        ├── action/                             Formatter and resequencing tests
+        ├── editor/                             Completion, Shift+Enter, and gutter preview tests
+        ├── findusages/                         Variable, statement, subprogram, and function usage tests
+        ├── highlight/                          General and statement-specific annotator tests
+        ├── lang/                               Icon and language-related tests
+        ├── parser/                             General and statement-specific parser tests
+        └── toolwindow/                         Variables tool window and collector tests
 ```
 
 ## Prerequisites
