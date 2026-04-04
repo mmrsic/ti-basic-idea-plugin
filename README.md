@@ -233,6 +233,9 @@ The annotator inspects every file and highlights:
 - **CALL COLOR gutter preview** — for lines containing `CALL COLOR(spriteNum,fg,bg)` with numeric constant
   arguments, a split color square appears in the gutter (left half = foreground, right half = background TI color;
   transparent checkerboard shown for non-constant arguments)
+- **CALL SCREEN gutter preview** — for every `CALL SCREEN(colorCode)` line a solid 16×16 color square appears in the
+  gutter showing the chosen background color (`colorCode` may be a literal or a constant numeric variable; a
+  transparent checkerboard is shown when the color cannot be resolved)
 - **Reformat Code** (Ctrl+Alt+L) — the standard IDEA "Reformat Code" action is mapped to **Format TI-BASIC** for
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file

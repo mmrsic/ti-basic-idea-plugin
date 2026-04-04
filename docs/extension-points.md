@@ -136,6 +136,27 @@ with IntelliJ's theme system while keeping the fixed TI color palette.
 
 ---
 
+### `codeInsight.lineMarkerProvider` — CALL SCREEN
+
+| Attribute             | Value                                                |
+|-----------------------|------------------------------------------------------|
+| `language`            | `TI-Basic`                                           |
+| `implementationClass` | `tibasic.editor.TiBasicCallScreenLineMarkerProvider` |
+
+Displays a solid 16×16 color square in the gutter for every `CALL SCREEN(colorCode)` line.
+`colorCode` may be an integer literal or a **constant numeric variable**. The square is filled with
+the single TI color the screen background is set to. If the argument cannot be resolved to a valid
+color index, the square is rendered as a checkerboard (Transparent). Colors map via `TiColor.at(index)`
+(1-based, same as CALL COLOR). Rendering uses `TiBasicScreenColorIcon`.
+
+Shared infrastructure:
+- Color argument resolution is performed by the package-level `internal fun colorFromArg` in
+  `tibasic.editor.TiBasicColorArgResolver`, shared with `TiBasicCallColorLineMarkerProvider`.
+- `TiBasicScreenColorIcon` lives in `TiBasicColorPreviewIcon.kt` alongside `TiBasicColorPreviewIcon`;
+  both use the shared private `paintColorRect` helper.
+
+---
+
 ### Actions
 
 Both actions are added to the editor popup menu (`EditorPopupMenu`) and the `Code` menu (`CodeMenu`).

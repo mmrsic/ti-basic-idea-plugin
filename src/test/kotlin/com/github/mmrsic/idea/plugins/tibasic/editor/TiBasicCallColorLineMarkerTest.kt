@@ -83,7 +83,7 @@ class TiBasicCallColorLineMarkerTest : TiBasicTestBase() {
     fun `test gutter icon does not appear for CALL SCREEN`() {
         configureFile("100 CALL SCREEN(2)")
         val gutters = myFixture.findAllGutters()
-        assertTrue("No gutter icon must appear for CALL SCREEN", gutters.isEmpty())
+        assertEquals("Exactly one gutter icon must appear for CALL SCREEN (from SCREEN provider, not COLOR)", 1, gutters.size)
     }
 
     fun `test gutter icon does not appear for CALL CLEAR`() {

@@ -111,7 +111,7 @@ Parser tests follow the same split:
 
 Format tests: `FormatCodeTest`, `FormatCallCodeTest`, `FormatActionTest`.
 
-Line marker tests: `TiBasicCallCharLineMarkerTest`, `TiBasicCallColorLineMarkerTest`.
+Line marker tests: `TiBasicCallCharLineMarkerTest`, `TiBasicCallColorLineMarkerTest`, `TiBasicCallScreenLineMarkerTest`.
 
 Find Usages tests: `TiBasicFindUsagesTest`, `TiBasicFindUsagesHandlerTest`.
 

@@ -56,6 +56,7 @@ src/test/kotlin/com/github/mmrsic/idea/plugins/tibasic/
 ├── editor/
 │   ├── TiBasicCallCharLineMarkerTest.kt
 │   ├── TiBasicCallColorLineMarkerTest.kt
+│   ├── TiBasicCallScreenLineMarkerTest.kt
 │   ├── TiBasicCompletionTest.kt
 │   └── TiBasicShiftEnterHandlerTest.kt
 ├── findusages/
