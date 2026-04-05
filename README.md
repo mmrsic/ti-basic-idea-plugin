@@ -252,7 +252,15 @@ The annotator inspects every file and highlights:
 - **Find Usages** (Alt+F7) — finds usages of TI-Basic variables, statement keywords, `CALL` subprogram names,
   built-in functions, and user-defined functions; for variables, the Usages panel distinguishes read accesses (blue)
   from write accesses (orange/red)
-- **Shift+Enter** — inserts a new line and automatically prepends the next logical line number
+- **Shift+Enter** — inserts a new line and automatically prepends the next logical line
+  number; when **auto-close on Shift+Enter** is enabled (default: on), also appends `)` characters
+  for each unclosed `(` on the current line before creating the new line
+- **Enter** — when **auto-close on Enter** is enabled (default: off) and the cursor is at
+  the end of a line, appends `)` characters for each unclosed `(` before creating the new line
+- **Bracket matching** — when the cursor is adjacent to a `(` or `)`, the matching bracket
+  is highlighted automatically
+- **Parenthesis Auto-Close settings** — configurable via *Settings › Editor › TI-Basic
+  Parenthesis Auto-Close*; independently enable/disable auto-close for Shift+Enter and Enter
 
 ## Project structure
 

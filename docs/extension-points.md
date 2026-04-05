@@ -89,7 +89,61 @@ See [`architecture.md`](architecture.md) for the full list of checks.
 | `implementationClass` | `tibasic.editor.TiBasicShiftEnterHandler` |
 
 Intercepts the Shift+Enter keystroke to insert a new line and automatically prepend the
-next logical line number.
+next logical line number. When `TiBasicParenAutoCloseSettings.autoCloseOnShiftEnter` is
+enabled (default: on), it also appends `)` characters for each unclosed `(` on the
+current line before inserting the new line.
+
+---
+
+### `editorActionHandler` — Enter
+
+| Attribute             | Value                                  |
+|-----------------------|----------------------------------------|
+| `action`              | `EditorEnter`                          |
+| `implementationClass` | `tibasic.editor.TiBasicEnterHandler`   |
+
+When `TiBasicParenAutoCloseSettings.autoCloseOnEnter` is enabled (default: off) and the
+cursor is at (or near) the end of a TI-Basic line, appends `)` characters for each
+unclosed `(` on the current line before delegating to the original Enter handler. Has no
+effect on mid-line cursor positions or non-TI-Basic files.
+
+---
+
+### `lang.braceMatcher`
+
+| Attribute             | Value                                    |
+|-----------------------|------------------------------------------|
+| `language`            | `TI-Basic`                               |
+| `implementationClass` | `tibasic.editor.TiBasicBraceMatcher`     |
+
+Provides bracket-pair definitions so IntelliJ automatically highlights the matching `(`
+or `)` when the cursor is adjacent to one. Returns a single non-structural
+`BracePair(LPAREN, RPAREN)`.
+
+---
+
+### `applicationService` — `TiBasicParenAutoCloseSettings`
+
+| Attribute              | Value                                                 |
+|------------------------|-------------------------------------------------------|
+| `serviceImplementation`| `tibasic.editor.TiBasicParenAutoCloseSettings`        |
+
+Persists two boolean settings (`autoCloseOnShiftEnter`, `autoCloseOnEnter`) to
+`editor.xml`. Follows the same `PersistentStateComponent` pattern as
+`TiBasicColumnHintSettings`.
+
+---
+
+### `applicationConfigurable` — Parenthesis Auto-Close
+
+| Attribute    | Value                                                 |
+|--------------|-------------------------------------------------------|
+| `parentId`   | `editor`                                              |
+| `id`         | `tibasic.paren.auto.close`                            |
+| `instance`   | `tibasic.editor.TiBasicParenAutoCloseConfigurable`    |
+
+Settings UI under **Settings › Editor › TI-Basic Parenthesis Auto-Close** with two
+checkboxes to independently enable auto-close on Shift+Enter and on Enter.
 
 ---
 

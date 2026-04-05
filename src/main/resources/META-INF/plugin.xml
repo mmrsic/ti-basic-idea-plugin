@@ -96,6 +96,22 @@
                 action="EditorStartNewLine"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicShiftEnterHandler"
         />
+        <editorActionHandler
+                action="EditorEnter"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicEnterHandler"
+        />
+        <lang.braceMatcher
+                language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicBraceMatcher"
+        />
+        <applicationService
+                serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicParenAutoCloseSettings"
+        />
+        <applicationConfigurable
+                parentId="editor"
+                instance="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicParenAutoCloseConfigurable"
+                id="tibasic.paren.auto.close"
+        />
         <lang.findUsagesProvider
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesProvider"
