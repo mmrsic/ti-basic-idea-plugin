@@ -95,9 +95,16 @@ class TiBasicOnGosubStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicIfStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
-class TiBasicForStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+private fun ASTNode.forNextControlVariableName(): String? =
+    firstChildOfType(TiBasicNodeTypes.VARIABLE_ACCESS)?.firstChildNode?.text?.uppercase()
 
-class TiBasicNextStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+class TiBasicForStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun controlVariableName(): String? = node.forNextControlVariableName()
+}
+
+class TiBasicNextStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun controlVariableName(): String? = node.forNextControlVariableName()
+}
 
 class TiBasicInputStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun isFileInput(): Boolean =

@@ -544,16 +544,19 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateForNextBalance(file: TiBasicFile, holder: AnnotationHolder) {
-        val forStatements = file.forStatements()
-        val nextStatements = file.nextStatements()
-        val nFor = forStatements.size
-        val nNext = nextStatements.size
-        if (nFor == nNext) return
-        val message = "FOR-NEXT-ERROR: $nFor FOR statements and $nNext NEXT statements"
-        if (nFor > nNext) {
-            forStatements.takeLast(nFor - nNext).forEach { holder.warning(message, it) }
-        } else {
-            nextStatements.takeLast(nNext - nFor).forEach { holder.warning(message, it) }
+        val forsByVar = file.forStatements()
+            .filter { it.controlVariableName() != null }
+            .groupBy { it.controlVariableName()!! }
+        val nextsByVar = file.nextStatements()
+            .filter { it.controlVariableName() != null }
+            .groupBy { it.controlVariableName()!! }
+        for (varName in (forsByVar.keys + nextsByVar.keys).toSet()) {
+            val fors = forsByVar[varName].orEmpty()
+            val nexts = nextsByVar[varName].orEmpty()
+            if (fors.size == nexts.size) continue
+            val message = "FOR-NEXT mismatch for $varName: ${fors.size} FOR, ${nexts.size} NEXT"
+            fors.forEach { holder.warning(message, it) }
+            nexts.forEach { holder.warning(message, it) }
         }
     }
 

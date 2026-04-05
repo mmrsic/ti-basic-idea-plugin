@@ -1422,20 +1422,22 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     fun testWarningForMoreForsThanNexts() {
         configureFile("100 FOR I = 1 TO 10\n200 FOR J = 1 TO 5\n300 NEXT I")
         val annotations = myFixture.doHighlighting()
-        assertTrue(annotations.any { it.description == "FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements" })
+        assertTrue(annotations.any { it.description == "FOR-NEXT mismatch for J: 1 FOR, 0 NEXT" })
+        assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT mismatch for I") })
     }
 
     fun testWarningForMoreNextsThanFors() {
         configureFile("100 FOR I = 1 TO 10\n200 NEXT I\n300 NEXT I")
         val annotations = myFixture.doHighlighting()
-        assertTrue(annotations.any { it.description == "FOR-NEXT-ERROR: 1 FOR statements and 2 NEXT statements" })
+        val forNextWarnings = annotations.filter { it.description == "FOR-NEXT mismatch for I: 1 FOR, 2 NEXT" }
+        assertEquals(3, forNextWarnings.size)
     }
 
     fun testBalanceWarningOnSurplusForNotFirst() {
         configureFile("100 FOR I = 1 TO 5\n200 FOR J = 1 TO 5\n300 NEXT I")
         val annotations = myFixture.doHighlighting()
         val balanceWarnings = annotations.filter {
-            it.description == "FOR-NEXT-ERROR: 2 FOR statements and 1 NEXT statements"
+            it.description == "FOR-NEXT mismatch for J: 1 FOR, 0 NEXT"
         }
         assertEquals(1, balanceWarnings.size)
         assertTrue(balanceWarnings[0].startOffset > 0)
@@ -1445,6 +1447,40 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         configureFile("100 FOR I = 1 TO 10\n200 FOR J = 1 TO 5\n300 NEXT J\n400 NEXT I")
         val annotations = myFixture.doHighlighting()
         assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT") })
+    }
+
+    fun testPerVariableOnlyUnbalancedVariableIsWarned() {
+        configureFile("100 FOR A = 1 TO 5\n200 NEXT A\n300 FOR B = 1 TO 3\n400 NEXT B\n500 FOR C = 1 TO 2")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT mismatch for A") })
+        assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT mismatch for B") })
+        assertTrue(annotations.any { it.description == "FOR-NEXT mismatch for C: 1 FOR, 0 NEXT" })
+    }
+
+    fun testCompensatingVariablesBothWarned() {
+        configureFile("100 FOR I = 1 TO 10\n200 FOR I = 1 TO 5\n300 NEXT J\n400 NEXT J")
+        val annotations = myFixture.doHighlighting()
+        val iWarnings = annotations.filter { it.description == "FOR-NEXT mismatch for I: 2 FOR, 0 NEXT" }
+        val jWarnings = annotations.filter { it.description == "FOR-NEXT mismatch for J: 0 FOR, 2 NEXT" }
+        assertEquals(2, iWarnings.size)
+        assertEquals(2, jWarnings.size)
+    }
+
+    fun testNextOnlyVariableIsWarned() {
+        configureFile("100 FOR I = 1 TO 10\n200 NEXT I\n300 NEXT K")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "FOR-NEXT mismatch for K: 0 FOR, 1 NEXT" })
+        assertTrue(annotations.none { it.description != null && it.description.startsWith("FOR-NEXT mismatch for I") })
+    }
+
+    fun testForNextMismatchAllStatementsMarked() {
+        configureFile("100 FOR I = 1 TO 10\n200 NEXT I\n300 NEXT I")
+        val annotations = myFixture.doHighlighting()
+        val forNextWarnings = annotations.filter { it.description == "FOR-NEXT mismatch for I: 1 FOR, 2 NEXT" }
+        assertEquals(3, forNextWarnings.size)
+        val offsets = forNextWarnings.map { it.startOffset }.sorted()
+        assertTrue(offsets[0] < offsets[1])
+        assertTrue(offsets[1] < offsets[2])
     }
 
     fun testForWithLeadingDotValuesNoError() {
