@@ -1,8 +1,21 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.format
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
+import com.intellij.openapi.actionSystem.ActionManager
 
 class FormatActionTest : TiBasicTestBase() {
+
+    fun testReformatCodeActionIdResolvesToTiBasicReformatCodeAction() {
+        val action = ActionManager.getInstance().getAction(TiBasicReformatCodeActionMetadata.actionId)
+        assertNotNull(action)
+        assertTrue(action is TiBasicReformatCodeAction)
+    }
+
+    fun testReformatCodeActionUsesLocalizedTemplateText() {
+        val action = ActionManager.getInstance().getAction(TiBasicReformatCodeActionMetadata.actionId)
+        assertNotNull(action)
+        assertEquals("Reformat Code", action.templatePresentation.text)
+    }
 
     fun testWholeFileFormattedWithoutSelection() {
         myFixture.configureByText("test.tibasic", "100 print \"a\"\n200 print \"b\"")

@@ -107,10 +107,14 @@
         <applicationService
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicParenAutoCloseSettings"
         />
+        <postStartupActivity
+                implementation="com.github.mmrsic.idea.plugins.tibasic.action.format.TiBasicReformatCodeActionOverrideInitializer"
+        />
         <applicationConfigurable
                 parentId="editor"
                 instance="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicParenAutoCloseConfigurable"
                 id="tibasic.paren.auto.close"
+                key="paren.auto.close.settings.title"
         />
         <lang.findUsagesProvider
                 language="TI-Basic"
@@ -126,10 +130,11 @@
         <readWriteAccessDetector
                 implementation="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicReadWriteAccessDetector"
         />
+        <!--suppress PluginXmlValidity -->
         <toolWindow
                 id="TI Basic Variables"
                 anchor="bottom"
-                icon="/icons/ti99_4a_icon_small.svg"
+                icon="icons/ti99_4a_icon_small.svg"
                 factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableToolWindowFactory"
         />
     </extensions>
@@ -146,10 +151,5 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
-        <action
-                id="ReformatCode"
-                class="com.github.mmrsic.idea.plugins.tibasic.action.format.TiBasicReformatCodeAction"
-                text="Reformat Code"
-                overrides="true"/>
     </actions>
 </idea-plugin>

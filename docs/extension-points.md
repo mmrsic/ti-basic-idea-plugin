@@ -97,10 +97,10 @@ current line before inserting the new line.
 
 ### `editorActionHandler` — Enter
 
-| Attribute             | Value                                  |
-|-----------------------|----------------------------------------|
-| `action`              | `EditorEnter`                          |
-| `implementationClass` | `tibasic.editor.TiBasicEnterHandler`   |
+| Attribute             | Value                                |
+|-----------------------|--------------------------------------|
+| `action`              | `EditorEnter`                        |
+| `implementationClass` | `tibasic.editor.TiBasicEnterHandler` |
 
 When `TiBasicParenAutoCloseSettings.autoCloseOnEnter` is enabled (default: off) and the
 cursor is at (or near) the end of a TI-Basic line, appends `)` characters for each
@@ -111,10 +111,10 @@ effect on mid-line cursor positions or non-TI-Basic files.
 
 ### `lang.braceMatcher`
 
-| Attribute             | Value                                    |
-|-----------------------|------------------------------------------|
-| `language`            | `TI-Basic`                               |
-| `implementationClass` | `tibasic.editor.TiBasicBraceMatcher`     |
+| Attribute             | Value                                |
+|-----------------------|--------------------------------------|
+| `language`            | `TI-Basic`                           |
+| `implementationClass` | `tibasic.editor.TiBasicBraceMatcher` |
 
 Provides bracket-pair definitions so IntelliJ automatically highlights the matching `(`
 or `)` when the cursor is adjacent to one. Returns a single non-structural
@@ -124,9 +124,9 @@ or `)` when the cursor is adjacent to one. Returns a single non-structural
 
 ### `applicationService` — `TiBasicParenAutoCloseSettings`
 
-| Attribute              | Value                                                 |
-|------------------------|-------------------------------------------------------|
-| `serviceImplementation`| `tibasic.editor.TiBasicParenAutoCloseSettings`        |
+| Attribute               | Value                                          |
+|-------------------------|------------------------------------------------|
+| `serviceImplementation` | `tibasic.editor.TiBasicParenAutoCloseSettings` |
 
 Persists two boolean settings (`autoCloseOnShiftEnter`, `autoCloseOnEnter`) to
 `editor.xml`. Follows the same `PersistentStateComponent` pattern as
@@ -136,30 +136,45 @@ Persists two boolean settings (`autoCloseOnShiftEnter`, `autoCloseOnEnter`) to
 
 ### `applicationConfigurable` — Parenthesis Auto-Close
 
-| Attribute    | Value                                                 |
-|--------------|-------------------------------------------------------|
-| `parentId`   | `editor`                                              |
-| `id`         | `tibasic.paren.auto.close`                            |
-| `instance`   | `tibasic.editor.TiBasicParenAutoCloseConfigurable`    |
+| Attribute  | Value                                              |
+|------------|----------------------------------------------------|
+| `parentId` | `editor`                                           |
+| `id`       | `tibasic.paren.auto.close`                         |
+| `instance` | `tibasic.editor.TiBasicParenAutoCloseConfigurable` |
+| `key`      | `paren.auto.close.settings.title`                  |
 
 Settings UI under **Settings › Editor › TI-Basic Parenthesis Auto-Close** with two
 checkboxes to independently enable auto-close on Shift+Enter and on Enter.
 
 ---
 
+### `postStartupActivity` — ReformatCode override
+
+| Attribute        | Value                                                                |
+|------------------|----------------------------------------------------------------------|
+| `implementation` | `tibasic.action.format.TiBasicReformatCodeActionOverrideInitializer` |
+
+Replaces the platform `ReformatCode` action after project startup with
+`TiBasicReformatCodeAction` via the public `ActionManager.replaceAction()` API. The
+replacement keeps the global action ID and shortcut, routes TI-Basic files to
+`FormatAction`, and delegates all other files to the standard IntelliJ reformat action.
+
+---
+
 ### `codeInsight.declarativeInlayProvider` — TI-99/4A display column breaks
 
-| Attribute             | Value                                                        |
-|-----------------------|--------------------------------------------------------------|
-| `language`            | `TI-Basic`                                                   |
-| `implementationClass` | `tibasic.editor.TiBasicDisplayColumnHintProvider`            |
-| `isEnabledByDefault`  | `true`                                                       |
-| `group`               | `OTHER_GROUP`                                                |
-| `providerId`          | `tibasic.display.column.hints`                               |
-| `bundle`              | `messages.TiBasicBundle`                                     |
-| `nameKey`             | `inlay.hints.display.columns.name`                           |
+| Attribute             | Value                                             |
+|-----------------------|---------------------------------------------------|
+| `language`            | `TI-Basic`                                        |
+| `implementationClass` | `tibasic.editor.TiBasicDisplayColumnHintProvider` |
+| `isEnabledByDefault`  | `true`                                            |
+| `group`               | `OTHER_GROUP`                                     |
+| `providerId`          | `tibasic.display.column.hints`                    |
+| `bundle`              | `messages.TiBasicBundle`                          |
+| `nameKey`             | `inlay.hints.display.columns.name`                |
 
 ```xml
+
 <codeInsight.declarativeInlayProvider
         language="TI-Basic"
         implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnHintProvider"
@@ -192,6 +207,7 @@ package-level function `displayColumnBreakOffsets(lineStart, lineLength, columnW
 | `implementationClass` | `tibasic.editor.TiBasicCallCharLineMarkerProvider` |
 
 ```xml
+
 <codeInsight.lineMarkerProvider
         language="TI-Basic"
         implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallCharLineMarkerProvider"
@@ -241,6 +257,7 @@ color index, the square is rendered as a checkerboard (Transparent). Colors map 
 (1-based, same as CALL COLOR). Rendering uses `TiBasicScreenColorIcon`.
 
 Shared infrastructure:
+
 - Color argument resolution is performed by the package-level `internal fun colorFromArg` in
   `tibasic.editor.TiBasicColorArgResolver`, shared with `TiBasicCallColorLineMarkerProvider`.
 - `TiBasicScreenColorIcon` lives in `TiBasicColorPreviewIcon.kt` alongside `TiBasicColorPreviewIcon`;
@@ -252,11 +269,11 @@ Shared infrastructure:
 
 Both actions are added to the editor popup menu (`EditorPopupMenu`) and the `Code` menu (`CodeMenu`).
 
-| Action ID                       | Class                                             | Description                                                                                                                                                                                                                            |
-|---------------------------------|---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TiBasic.ResequenceLineNumbers` | `tibasic.action.resequence.ResequenceAction`      | Renumbers all lines with user-selected start and step                                                                                                                                                                                  |
-| `TiBasic.FormatCode`            | `tibasic.action.format.FormatAction`              | Uppercases keywords and removes extraneous whitespace                                                                                                                                                                                  |
-| `ReformatCode` (override)       | `tibasic.action.format.TiBasicReformatCodeAction` | Maps Ctrl+Alt+L to FormatAction for TI-Basic files; delegates to the standard IntelliJ action for all other file types. Registered with `overrides="true"` (IDEA schema warning suppressed with `<!--suppress PluginXmlValidity -->`). |
+| Action ID                         | Class                                             | Description                                                                                                                                                                                                                                                                                                                              |
+|-----------------------------------|---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TiBasic.ResequenceLineNumbers`   | `tibasic.action.resequence.ResequenceAction`      | Renumbers all lines with user-selected start and step                                                                                                                                                                                                                                                                                    |
+| `TiBasic.FormatCode`              | `tibasic.action.format.FormatAction`              | Uppercases keywords and removes extraneous whitespace                                                                                                                                                                                                                                                                                    |
+| `ReformatCode` (runtime override) | `tibasic.action.format.TiBasicReformatCodeAction` | Reuses the platform action ID so Ctrl+Alt+L routes to `FormatAction` for TI-Basic files while delegating to the standard IntelliJ action for all other file types. The runtime replacement is performed by `TiBasicReformatCodeActionOverrideInitializer`; localized text and description come from `action.ReformatCode.*` bundle keys. |
 
 Both `TiBasic.*` actions extend `TiBasicFileAction`, which gates execution to TI-Basic files only.
 
@@ -283,9 +300,9 @@ variable finds all occurrences symmetrically.
 
 ### `findUsagesHandlerFactory`
 
-| Attribute        | Value                                                       |
-|------------------|-------------------------------------------------------------|
-| `implementation` | `tibasic.findusages.TiBasicFindUsagesHandlerFactory`        |
+| Attribute        | Value                                                |
+|------------------|------------------------------------------------------|
+| `implementation` | `tibasic.findusages.TiBasicFindUsagesHandlerFactory` |
 
 Creates a `TiBasicFindUsagesHandler` for any `TiBasicVariableAccess` element, enabling IDEA
 to resolve usages through the plugin's semantic reference model rather than the default
@@ -295,10 +312,10 @@ text-search fallback.
 
 ### `targetElementEvaluator`
 
-| Attribute             | Value                                                  |
-|-----------------------|--------------------------------------------------------|
-| `language`            | `TI-Basic`                                             |
-| `implementationClass` | `tibasic.findusages.TiBasicTargetElementEvaluator`     |
+| Attribute             | Value                                              |
+|-----------------------|----------------------------------------------------|
+| `language`            | `TI-Basic`                                         |
+| `implementationClass` | `tibasic.findusages.TiBasicTargetElementEvaluator` |
 
 Refines which PSI element IDEA treats as the "target" when the user invokes Find Usages
 (Alt+F7) or Navigate → Declaration. Ensures that the caret position resolves to the correct
