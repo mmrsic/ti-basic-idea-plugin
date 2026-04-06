@@ -553,6 +553,36 @@ class FormatCodeTest : TiBasicTestBase() {
         val file = configureFile("100 IF X>5 PRINT \"YES\"")
         assertEquals("100 IF X>5 PRINT \"YES\"", formattedText(file))
     }
+
+    fun testIfWithClosingParenBeforeThenHasNoSpace() {
+        val file = configureFile("100 IF (X>5) THEN 200")
+        assertEquals("100 IF (X>5)THEN 200", formattedText(file))
+    }
+
+    fun testIfWithMultipleSpacesBetweenParenAndThenAllRemoved() {
+        val file = configureFile("100 IF (X>5)   THEN 200")
+        assertEquals("100 IF (X>5)THEN 200", formattedText(file))
+    }
+
+    fun testIfWithoutClosingParenBeforeThenKeepsOneSpace() {
+        val file = configureFile("100 IF X>5 THEN 200")
+        assertEquals("100 IF X>5 THEN 200", formattedText(file))
+    }
+
+    fun testIfWithNestedParensBeforeThenHasNoSpace() {
+        val file = configureFile("100 IF (X>(Y+1)) THEN 300")
+        assertEquals("100 IF (X>(Y+1))THEN 300", formattedText(file))
+    }
+
+    fun testIfWithClosingParenBeforeThenWithElse() {
+        val file = configureFile("100 IF (X>5) THEN 200 ELSE 300")
+        assertEquals("100 IF (X>5)THEN 200 ELSE 300", formattedText(file))
+    }
+
+    fun testIfLowercaseWithClosingParenBeforeThenFormatted() {
+        val file = configureFile("100 if (x>5) then 200")
+        assertEquals("100 IF (X>5)THEN 200", formattedText(file))
+    }
 }
 
 

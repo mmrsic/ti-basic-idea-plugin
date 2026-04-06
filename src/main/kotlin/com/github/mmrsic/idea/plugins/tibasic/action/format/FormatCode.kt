@@ -141,10 +141,13 @@ private fun formattedIfLine(lineNumber: Int, statement: TiBasicIfStatement): Str
     val thenRelEnd = thenNode.startOffset + thenNode.textLength - stmtStart
     val exprPart = stmtText.substring(ifNode.textLength, thenRelStart).trim()
 
+    val formattedExpr = if (exprPart.isNotEmpty())
+        removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))
+    else ""
     return buildString {
         append("$lineNumber IF")
-        if (exprPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))}")
-        append(" THEN")
+        if (formattedExpr.isNotEmpty()) append(" $formattedExpr")
+        append(if (formattedExpr.endsWith(")")) "THEN" else " THEN")
         if (elseNode != null) {
             val elseRelStart = elseNode.startOffset - stmtStart
             val elseRelEnd = elseNode.startOffset + elseNode.textLength - stmtStart
