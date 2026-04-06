@@ -410,6 +410,11 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testNoNameConflictBetweenArrayAndEmptySubscriptSameName() {
+        configureFile("10 PRINT A(1),<error descr=\"Bad subscript definition\">A()</error>")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testErrorForNumericVariableMissingClosingSubscriptParen() {
         configureFile(
             "100 PRINT <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">A(1</error>",

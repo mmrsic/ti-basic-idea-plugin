@@ -1193,8 +1193,8 @@ class TiBasicAnnotator : Annotator {
         val allAccesses = collectVariableAccesses(file)
         val stringAccesses = allAccesses.filter { it.firstChildType == TiBasicTokenTypes.STRING_VARIABLE }
         val numericAccesses = allAccesses.filter { it.firstChildType == TiBasicTokenTypes.NUMERIC_VARIABLE }
-        annotateNameConflicts(stringAccesses, holder, ::variableAccessName, ::variableAccessDimCount)
-        annotateNameConflicts(numericAccesses, holder, ::variableAccessName, ::variableAccessDimCount)
+        annotateNameConflicts(stringAccesses.filterNot(::isEmptySubscriptAccess), holder, ::variableAccessName, ::variableAccessDimCount)
+        annotateNameConflicts(numericAccesses.filterNot(::isEmptySubscriptAccess), holder, ::variableAccessName, ::variableAccessDimCount)
         val commands = COMMANDS_UPPERCASE
         val keywords = KEYWORDS_UPPERCASE
         allAccesses.forEach { node ->
@@ -1259,6 +1259,10 @@ class TiBasicAnnotator : Annotator {
 
     private fun variableAccessDimCount(node: ASTNode): Int =
         node.childrenOfType(TiBasicNodeTypes.EXPRESSION).size
+
+    private fun isEmptySubscriptAccess(node: ASTNode): Boolean =
+        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).isEmpty() &&
+            node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
 
     private fun duplicateLineNumbers(lines: List<TiBasicLine>): Set<TiBasicLine> {
         val seen = mutableSetOf<Int>()
