@@ -255,6 +255,11 @@ The annotator inspects every file and highlights:
 - **Shift+Enter** — inserts a new line and automatically prepends the next logical line
   number; when **auto-close on Shift+Enter** is enabled (default: on), also appends `)` characters
   for each unclosed `(` on the current line before creating the new line
+- **Ctrl+D / Paste** — duplicating the current line or pasting content at the end of the
+  file automatically renumbers the inserted TI-Basic lines with the next multiple of 10
+  after the highest line number in the file; line number references within statements
+  (GOTO, IF-THEN, ON GOTO, RESTORE, …) are shifted by the same delta as their containing
+  line; in the middle of the file the standard IntelliJ duplicate/paste behavior is preserved
 - **Enter** — when **auto-close on Enter** is enabled (default: off) and the cursor is at
   the end of a line, appends `)` characters for each unclosed `(` before creating the new line
 - **Bracket matching** — when the cursor is adjacent to a `(` or `)`, the matching bracket

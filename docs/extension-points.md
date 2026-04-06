@@ -81,6 +81,40 @@ See [`architecture.md`](architecture.md) for the full list of checks.
 
 ---
 
+### `copyPastePreProcessor`
+
+| Attribute        | Value                                             |
+|------------------|---------------------------------------------------|
+| `implementation` | `tibasic.editor.TiBasicPastePreProcessor`         |
+
+Intercepts paste operations in TI-Basic files. When the caret (or selection end) is at the
+end of the file, replaces the line numbers of any pasted TI-Basic lines with auto-incremented
+values starting at the next multiple of 10 after the highest valid line number in the file.
+Line number references within statements (GOTO, GOSUB, ON GOTO, ON GOSUB, IF-THEN/ELSE,
+RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) are shifted by the same delta as their containing line.
+Lines in the pasted text without a valid TI-Basic line number are left unchanged.
+Has no effect when pasting into the middle of the file or into non-TI-Basic files.
+
+---
+
+### `editorActionHandler` — Ctrl+D (Duplicate Line)
+
+| Attribute             | Value                                           |
+|-----------------------|-------------------------------------------------|
+| `action`              | `EditorDuplicate`                               |
+| `implementationClass` | `tibasic.editor.TiBasicDuplicateLineHandler`    |
+
+When the caret (or selection end) is at or after the last TI-Basic line, duplicates
+the line(s) and replaces the line numbers of the newly inserted copies with
+auto-incremented values starting at the next multiple of 10 after the highest valid
+line number in the file. Line number references within statements (GOTO, GOSUB, ON GOTO,
+ON GOSUB, IF-THEN/ELSE, RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) are shifted by the same
+delta as their containing line. When the caret is not at the end of the file, delegates to
+the standard IntelliJ duplicate handler unchanged. Multiple selected lines at the end
+are each renumbered consecutively (`maxLine+10`, `maxLine+20`, …).
+
+---
+
 ### `editorActionHandler` — Shift+Enter
 
 | Attribute             | Value                                     |
@@ -385,7 +419,7 @@ properties and functions. These are collected in `tibasic.ext`:
 |---------------------------------|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ASTNodeExtensions.kt`          | `ASTNode`          | `allChildren` — all child nodes; `nonWhitespaceChildren` — children excluding whitespace; `firstChildType` — element type of first child; `childrenOfType(type)` — children matching a type; `firstChildOfType(type)` — first child matching a type; `childrenAfter(type)` — children after the first node of a given type |
 | `AnnotationHolderExtensions.kt` | `AnnotationHolder` | `error(message, element)`, `error(message, range)` — create error annotations; `warning(message, element)`, `warning(message, range)` — create warning annotations                                                                                                                                                         |
-| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type (**`tibasic.ext`**)                                                                                                                                                                                                                                     |
+| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type; `lineNumberReferenceNodes()` — all NUMERIC_LITERAL AST nodes that are branch-target line number references (covers GOTO, GOSUB, ON GOTO, ON GOSUB, IF-THEN/ELSE, RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) (**`tibasic.ext`**) |
 | `PsiElementExtensions.kt`       | `PsiElement`       | `containingTiBasicFile` — casts `containingFile` to `TiBasicFile?` (**`tibasic.psi`** — lives alongside the PSI types it returns)                                                                                                                                                                                          |
 
 When you find yourself calling a raw framework method that is verbose or obscures intent,

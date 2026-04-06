@@ -1,17 +1,8 @@
 package com.github.mmrsic.idea.plugins.tibasic.action.resequence
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
-import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.ext.lineNumberReferenceNodes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGosubStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicIfStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGosubStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRestoreStatement
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 
@@ -45,31 +36,7 @@ private fun collectLineNumberTargetReplacements(
     element: PsiElement,
     oldToNew: Map<Int, Int>,
     replacements: MutableList<Replacement>,
-) {
-    when (element) {
-        is TiBasicOnGotoStatement ->
-            element.node.childrenAfter(TiBasicTokenTypes.GOTO_KEYWORD)
-                .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
-                .forEach { replaceIfMapped(it, oldToNew, replacements) }
-
-        is TiBasicOnGosubStatement ->
-            element.node.childrenAfter(TiBasicTokenTypes.GOSUB_KEYWORD)
-                .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
-                .forEach { replaceIfMapped(it, oldToNew, replacements) }
-
-        is TiBasicIfStatement ->
-            element.node.childrenAfter(TiBasicTokenTypes.THEN_KEYWORD)
-                .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
-                .forEach { replaceIfMapped(it, oldToNew, replacements) }
-
-        is TiBasicLineNumberListStatement,
-        is TiBasicGotoStatement,
-        is TiBasicGosubStatement,
-        is TiBasicRestoreStatement ->
-            element.node.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
-                .forEach { replaceIfMapped(it, oldToNew, replacements) }
-    }
-}
+) = element.lineNumberReferenceNodes().forEach { replaceIfMapped(it, oldToNew, replacements) }
 
 private fun replaceIfMapped(node: ASTNode, oldToNew: Map<Int, Int>, replacements: MutableList<Replacement>) {
     val target = node.text.toIntOrNull() ?: return

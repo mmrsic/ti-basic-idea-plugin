@@ -93,6 +93,13 @@
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicColumnHintSettings"
         />
         <editorActionHandler
+                action="EditorDuplicate"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDuplicateLineHandler"
+        />
+        <copyPastePreProcessor
+                implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicPastePreProcessor"
+        />
+        <editorActionHandler
                 action="EditorStartNewLine"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicShiftEnterHandler"
         />
