@@ -129,22 +129,27 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
         val blackPixel = java.awt.Color.BLACK.rgb
-        // Skip the outermost border pixel row/column (drawn as dark gray by drawRect)
-        for (y in 1 until icon.iconHeight - 1) {
-            for (x in 1 until icon.iconWidth - 1) {
-                assertEquals("Interior pixels must be black for pattern FFFFFFFFFFFFFFFF at ($x,$y)", blackPixel, image.getRGB(x, y))
+        for (y in 0 until icon.iconHeight) {
+            for (x in 0 until icon.iconWidth) {
+                assertEquals("All pixels must be black for pattern FFFFFFFFFFFFFFFF at ($x,$y)", blackPixel, image.getRGB(x, y))
             }
         }
     }
 
-    fun `test icon paints all-white for all-zeros pattern`() {
+    fun `test icon paints checkerboard for all-zeros pattern`() {
         val icon = TiBasicCharPatternIcon("0000000000000000")
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
+        val lightGrayPixel = java.awt.Color.LIGHT_GRAY.rgb
         val whitePixel = java.awt.Color.WHITE.rgb
-        for (y in 1 until icon.iconHeight - 1) {
-            for (x in 1 until icon.iconWidth - 1) {
-                assertEquals("Interior pixels must be white for pattern 0000000000000000 at ($x,$y)", whitePixel, image.getRGB(x, y))
+        // CELL_SIZE = 2: each character cell occupies a 2×2 pixel block.
+        // Cell (row, col) → pixel coords (col*2, row*2).
+        // Color alternates by (row + col) % 2: 0 → LIGHT_GRAY, 1 → WHITE.
+        for (row in 0 until 8) {
+            for (col in 0 until 8) {
+                val expectedPixel = if ((row + col) % 2 == 0) lightGrayPixel else whitePixel
+                // Verify top-left pixel of the 2×2 block
+                assertEquals("0-bit cell ($row,$col) must have checkerboard color", expectedPixel, image.getRGB(col * 2, row * 2))
             }
         }
     }
@@ -155,15 +160,46 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         icon.paintIcon(null, image.graphics, 0, 0)
     }
 
-    fun `test icon paints padded rows as white for 2-char pattern`() {
+    fun `test icon paints 1-bit cells as black in mixed pattern`() {
+        // "FF00000000000000" → first character row is all 1-bits (black), rest are 0-bits (checkerboard)
         val icon = TiBasicCharPatternIcon("FF00000000000000")
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
+        val blackPixel = java.awt.Color.BLACK.rgb
+        for (col in 0 until 8) {
+            assertEquals("First row must be black for FF pattern at col $col", blackPixel, image.getRGB(col * 2, 0))
+        }
+    }
+
+    fun `test icon bottom-row pattern differs from empty pattern`() {
+        // Regression: "00000000000000FF" must look different from "" (all-zero)
+        val iconBottomRow = TiBasicCharPatternIcon("00000000000000FF")
+        val iconEmpty = TiBasicCharPatternIcon("0000000000000000")
+        val imageBottomRow = BufferedImage(iconBottomRow.iconWidth, iconBottomRow.iconHeight, BufferedImage.TYPE_INT_RGB)
+        val imageEmpty = BufferedImage(iconEmpty.iconWidth, iconEmpty.iconHeight, BufferedImage.TYPE_INT_RGB)
+        iconBottomRow.paintIcon(null, imageBottomRow.graphics, 0, 0)
+        iconEmpty.paintIcon(null, imageEmpty.graphics, 0, 0)
+        val blackPixel = java.awt.Color.BLACK.rgb
+        // Last character row (row 7) of "00000000000000FF" must be black
+        for (col in 0 until 8) {
+            assertEquals("Bottom row must be black for 00000000000000FF at col $col", blackPixel, imageBottomRow.getRGB(col * 2, 7 * 2))
+        }
+        // Same row of all-zero pattern must NOT be black (it's checkerboard)
+        val lastRowAllBlack = (0 until 8).all { col -> imageEmpty.getRGB(col * 2, 7 * 2) == blackPixel }
+        assertFalse("All-zero pattern must not have an all-black bottom row", lastRowAllBlack)
+    }
+
+    fun `test icon paints padded rows as checkerboard for 2-char pattern`() {
+        val icon = TiBasicCharPatternIcon("FF00000000000000")
+        val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
+        icon.paintIcon(null, image.graphics, 0, 0)
+        val lightGrayPixel = java.awt.Color.LIGHT_GRAY.rgb
         val whitePixel = java.awt.Color.WHITE.rgb
-        // Rows 1-7 (y pixels 2-15) must be white since the pattern is "FF" zero-padded
-        for (y in 2 until icon.iconHeight - 1) {
-            for (x in 1 until icon.iconWidth - 1) {
-                assertEquals("Padded rows must be white at ($x,$y)", whitePixel, image.getRGB(x, y))
+        // Rows 1-7 (character rows) must be checkerboard since the pattern is "FF" zero-padded
+        for (row in 1 until 8) {
+            for (col in 0 until 8) {
+                val expectedPixel = if ((row + col) % 2 == 0) lightGrayPixel else whitePixel
+                assertEquals("Padded row $row, col $col must be checkerboard", expectedPixel, image.getRGB(col * 2, row * 2))
             }
         }
     }

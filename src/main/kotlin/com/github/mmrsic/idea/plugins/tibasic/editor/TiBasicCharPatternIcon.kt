@@ -20,12 +20,10 @@ class TiBasicCharPatternIcon(private val hexPattern: String) : Icon {
             val byte = bytes.getOrElse(row) { 0 }
             for (col in 0 until GRID_SIZE) {
                 val bitSet = (byte shr (GRID_SIZE - 1 - col)) and 1 == 1
-                g.color = if (bitSet) JBColor.BLACK else JBColor.WHITE
+                g.color = if (bitSet) JBColor.BLACK else if ((row + col) % 2 == 0) JBColor.LIGHT_GRAY else JBColor.WHITE
                 g.fillRect(x + col * CELL_SIZE, y + row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
             }
         }
-        g.color = JBColor.DARK_GRAY
-        g.drawRect(x, y, ICON_SIZE - 1, ICON_SIZE - 1)
     }
 
     private fun parseBytes(pattern: String): List<Int> =
