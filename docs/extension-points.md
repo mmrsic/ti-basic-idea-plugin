@@ -316,6 +316,37 @@ Shared infrastructure:
 
 ---
 
+### `codeInsight.lineMarkerProvider` — inbound line references
+
+| Attribute             | Value                                                   |
+|-----------------------|---------------------------------------------------------|
+| `language`            | `TI-Basic`                                              |
+| `implementationClass` | `tibasic.editor.TiBasicLineReferenceLineMarkerProvider` |
+
+```xml
+<codeInsight.lineMarkerProvider
+        language="TI-Basic"
+        implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicLineReferenceLineMarkerProvider"
+/>
+```
+
+Displays a gutter icon on a line's `LINE_NUMBER` token when at least one **other** line in the same
+file refers to that target line number. The provider is file-local and uses
+`TiBasicInboundLineReferenceCollector.collectCached(file)` to build a cached target→referrers index.
+
+The collector deliberately reuses `PsiElement.lineNumberReferenceNodes()` so statement coverage stays
+aligned with resequencing and paste/duplicate renumbering. This includes references from `GOTO`,
+`GOSUB`, `ON ... GOTO`, `ON ... GOSUB`, `IF ... THEN ... [ELSE ...]`, `RESTORE`, and line-number-list
+statements (`BREAK`, `UNBREAK`, `TRACE`, `UNTRACE`).
+
+UX behavior:
+
+- Tooltip: compact summary such as `Referenced by lines 100, 200`
+- Click: opens the standard IntelliJ navigation popup with the referring lines
+- Self-reference alone does not produce the marker
+
+---
+
 ### Actions
 
 Both actions are added to the editor popup menu (`EditorPopupMenu`) and the `Code` menu (`CodeMenu`).

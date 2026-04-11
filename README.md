@@ -242,6 +242,10 @@ The annotator inspects every file and highlights:
 - **CALL SCREEN gutter preview** — for every `CALL SCREEN(colorCode)` line a solid 16×16 color square appears in the
   gutter showing the chosen background color (`colorCode` may be a literal or a constant numeric variable; a
   transparent checkerboard is shown when the color cannot be resolved)
+- **Line-reference gutter indicator** — if other program lines refer to a line number (`GOTO`, `GOSUB`,
+  `ON ... GOTO/GOSUB`, `IF ... THEN/ELSE`, `RESTORE`, `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE`), a gutter icon appears
+  next to that target line; the tooltip summarizes the referring line numbers, and clicking the icon opens a
+  navigation list of the referring lines
 - **TI-99/4A display column guides** — thin overlay guide lines are drawn across the whole visible file at every 28th
   character position needed by the longest line in the file, showing exactly where the TI-99/4A's 28-column text
   display would wrap to the next screen row without shifting the surrounding code layout; the guides can be enabled or
@@ -279,7 +283,7 @@ src/
 ├── main/
 │   ├── kotlin/com/github/mmrsic/idea/plugins/tibasic/
 │   │   ├── action/          File actions, formatter, and resequencing
-│   │   ├── editor/          Completion, Shift+Enter, CALL CHAR/COLOR/SCREEN gutter previews, and display column hints
+│   │   ├── editor/          Completion, Shift+Enter, gutter previews/reference markers, and display column hints
 │   │   ├── ext/             Kotlin wrappers around IntelliJ framework APIs
 │   │   ├── findusages/      Find Usages provider, handler, target evaluator, and read/write detection
 │   │   ├── highlight/       Annotator and syntax highlighting
@@ -294,7 +298,7 @@ src/
     └── kotlin/com/github/mmrsic/idea/plugins/tibasic/
         ├── TiBasicTestBase.kt                  Shared test base class
         ├── action/                             Formatter and resequencing tests
-        ├── editor/                             Completion, Shift+Enter, gutter preview, and display column hint tests
+        ├── editor/                             Completion, Shift+Enter, gutter preview/reference, and display column hint tests
         ├── findusages/                         Variable, statement, subprogram, and function usage tests
         ├── highlight/                          General and statement-specific annotator tests
         ├── lang/                               Icon and language-related tests

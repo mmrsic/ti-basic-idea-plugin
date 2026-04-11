@@ -76,6 +76,10 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallScreenLineMarkerProvider"
         />
+        <codeInsight.lineMarkerProvider
+                language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicLineReferenceLineMarkerProvider"
+        />
         <applicationService
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicColumnHintSettings"
         />

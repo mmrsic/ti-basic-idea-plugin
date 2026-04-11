@@ -153,6 +153,15 @@ class FormatCodeTest : TiBasicTestBase() {
 For `ResequenceLineNumbers`, call the function under test directly and assert on
 the returned text.
 
+### Line marker tests (`editor/*LineMarkerTest`)
+
+Use `configureFile(...)` followed by `myFixture.findAllGutters()` to assert gutter icon presence,
+absence, and tooltip content. For line-reference markers, keep test programs free of unrelated gutter
+features so the expected gutter count stays unambiguous.
+
+If click navigation is cumbersome to assert end-to-end in the fixture, add helper-level tests for the
+underlying collected targets and tooltip summarization logic in addition to the gutter tests.
+
 ### Completion tests (`editor/TiBasicCompletionTest`)
 
 ```kotlin
