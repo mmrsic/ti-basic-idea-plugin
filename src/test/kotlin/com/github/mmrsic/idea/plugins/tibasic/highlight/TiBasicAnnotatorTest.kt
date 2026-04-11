@@ -76,6 +76,11 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testNoErrorForImplicitLetNumericArrayWithWhitespaceBeforeSubscript() {
+        configureFile("38 A (8) = 7")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testNoErrorForConcatenationOfTwoStringLiterals() {
         configureFile("100 PRINT \"hello\" & \"world\"")
         myFixture.checkHighlighting(true, false, false)

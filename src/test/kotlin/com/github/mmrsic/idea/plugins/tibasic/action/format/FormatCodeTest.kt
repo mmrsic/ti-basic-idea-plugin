@@ -134,6 +134,11 @@ class FormatCodeTest : TiBasicTestBase() {
         assertEquals("100 A$=\"hello world\"", formattedText(file))
     }
 
+    fun testImplicitLetNumericArrayWithWhitespaceBeforeSubscriptIsFormatted() {
+        val file = configureFile("38 a (8) = 7")
+        assertEquals("38 A(8)=7", formattedText(file))
+    }
+
     fun testImplicitLetStringArrayStartingWithListCommandIsNotSplit() {
         val file = configureFile("3820 LIST$(J+1)=LIST$(J)")
         assertEquals("3820 LIST$(J+1)=LIST$(J)", formattedText(file))
@@ -594,4 +599,3 @@ class FormatCodeTest : TiBasicTestBase() {
         assertEquals("100 IF (X>5)THEN 200", formattedText(file))
     }
 }
-
