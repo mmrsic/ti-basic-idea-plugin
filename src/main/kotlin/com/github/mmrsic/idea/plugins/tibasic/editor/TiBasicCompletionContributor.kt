@@ -13,7 +13,6 @@ import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
-import com.intellij.codeInsight.lookup.AutoCompletionPolicy
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 
@@ -47,7 +46,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
             TiBasicCallSubprograms.names().sorted().forEach { name ->
                 completionResult.addElement(
                     PrioritizedLookupElement.withGrouping(
-                        LookupElementBuilder.create(name).withTypeText("subprogram").manualCompletion(),
+                        LookupElementBuilder.create(name).withTypeText("subprogram").autoCompleteSingleMatch(),
                         CALL_SUBPROGRAM_GROUPING,
                     )
                 )
@@ -57,7 +56,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
         if (isOptionBaseContext(parameters)) {
             val wordAtCursor = wordBeforeCaret(parameters)
             result.withPrefixMatcher(wordAtCursor).caseInsensitive()
-                .addElement(LookupElementBuilder.create("BASE").withTypeText("keyword").manualCompletion())
+                .addElement(LookupElementBuilder.create("BASE").withTypeText("keyword").autoCompleteSingleMatch())
             return
         }
         val functionNames = TiBasicBuiltInFunctions.allNames()
@@ -65,7 +64,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
             .forEach { name ->
                 completionResult.addElement(
                     PrioritizedLookupElement.withGrouping(
-                        LookupElementBuilder.create(name).withTypeText("function").manualCompletion(),
+                        LookupElementBuilder.create(name).withTypeText("function").autoCompleteSingleMatch(),
                         FUNCTION_GROUPING,
                     )
                 )
@@ -73,7 +72,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
         TiBasicKeywords.getKeywords()
             .filter { it !in functionNames }
             .forEach { keyword ->
-                completionResult.addElement(LookupElementBuilder.create(keyword).withTypeText("keyword").manualCompletion())
+                completionResult.addElement(LookupElementBuilder.create(keyword).withTypeText("keyword").autoCompleteSingleMatch())
             }
         variableCompletions(file)
             .forEach { completion ->
@@ -151,13 +150,14 @@ class TiBasicCompletionContributor : CompletionContributor() {
             LookupElementBuilder.create(lookupText)
                 .withTypeText(typeText)
                 .let { builder -> insertHandler?.let(builder::withInsertHandler) ?: builder }
-                .manualCompletion()
+                .autoCompleteSingleMatch()
     }
 
 }
 
-private fun LookupElementBuilder.manualCompletion(): LookupElement =
-    withAutoCompletionPolicy(AutoCompletionPolicy.NEVER_AUTOCOMPLETE)
+private fun LookupElementBuilder.autoCompleteSingleMatch(): LookupElement = withAutoCompletionPolicy(
+    com.intellij.codeInsight.lookup.AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE,
+)
 
 private fun isCompletionIdentifierChar(char: Char): Boolean = char.isLetterOrDigit() || char == '$'
 

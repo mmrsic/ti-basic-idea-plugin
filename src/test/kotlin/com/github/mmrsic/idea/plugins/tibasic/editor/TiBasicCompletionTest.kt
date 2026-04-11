@@ -98,9 +98,7 @@ class TiBasicCompletionTest : TiBasicTestBase() {
     fun testCompletionInsertsArrayParenthesesAndPlacesCaretInside() {
         myFixture.configureByText("test.tibasic", "100 DIM ARRAY(10)\n200 ARR<caret>")
         myFixture.completeBasic()
-        if (myFixture.lookup != null) {
-            myFixture.finishLookup('\n')
-        }
+        assertNull("Single array completion should not show a lookup popup", myFixture.lookup)
         assertEquals("100 DIM ARRAY(10)\n200 ARRAY()", myFixture.editor.document.text)
         assertEquals("100 DIM ARRAY(10)\n200 ARRAY(".length, myFixture.editor.caretModel.offset)
     }
@@ -146,12 +144,8 @@ class TiBasicCompletionTest : TiBasicTestBase() {
     fun testCompletionSuggestsOptionBaseKeyword() {
         myFixture.configureByText("test.tibasic", "100 OPT<caret>")
         myFixture.completeBasic()
-        val appliedText = myFixture.editor.document.text
-        val popupItems = myFixture.lookupElementStrings ?: emptyList()
-        assertTrue(
-            "OPTION BASE must be applied or suggested when typing 'OPT'",
-            appliedText.contains("OPTION BASE") || popupItems.contains("OPTION BASE"),
-        )
+        assertEquals("100 OPTION BASE", myFixture.editor.document.text)
+        assertNull("Single OPTION BASE completion should not show a lookup popup", myFixture.lookup)
     }
 
     fun testCompletionSuggestsBaseAfterOptionWithSpace() {
@@ -221,11 +215,16 @@ class TiBasicCompletionTest : TiBasicTestBase() {
     fun testCompletionSuggestsSubprogramAtCallNamePositionWithPartialName() {
         myFixture.configureByText("test.tibasic", "100 CALL SCR<caret>")
         myFixture.completeBasic()
-        val appliedText = myFixture.editor.document.text
+        assertEquals("100 CALL SCREEN", myFixture.editor.document.text)
+        assertNull("Single CALL subprogram completion should not show a lookup popup", myFixture.lookup)
+    }
+
+    fun testCompletionShowsLookupWhenMultipleMatchesRemain() {
+        myFixture.configureByText("test.tibasic", "100 S<caret>")
+        myFixture.completeBasic()
         val popupItems = myFixture.lookupElementStrings ?: emptyList()
-        assertTrue(
-            "Subprogram SCREEN must be applied or suggested when typing 'SCR' at CALL name position",
-            appliedText.contains("SCREEN") || popupItems.contains("SCREEN"),
-        )
+        assertNotNull("Multiple matches must still show the lookup popup", myFixture.lookup)
+        assertTrue("SIN must still be offered when multiple matches remain", popupItems.contains("SIN"))
+        assertTrue("SGN must still be offered when multiple matches remain", popupItems.contains("SGN"))
     }
 }
