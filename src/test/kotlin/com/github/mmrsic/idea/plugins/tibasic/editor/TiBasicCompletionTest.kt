@@ -2,6 +2,7 @@ package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
+import com.intellij.codeInsight.lookup.LookupElementPresentation
 
 class TiBasicCompletionTest : TiBasicTestBase() {
 
@@ -196,6 +197,59 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         myFixture.completeBasic()
         val popupItems = myFixture.lookupElementStrings ?: emptyList()
         assertTrue("Function SIN must be suggested inside array subscript", popupItems.contains("SIN"))
+    }
+
+    fun testFunctionCompletionShowsParenthesesInLookupPopup() {
+        myFixture.configureByText("test.tibasic", "100 LET X=A<caret>")
+        myFixture.completeBasic()
+        val item = myFixture.lookup?.items?.firstOrNull { it.lookupString == "ABS" }
+        assertNotNull("ABS must be offered in the lookup popup", item)
+        val presentation = LookupElementPresentation()
+        item!!.renderElement(presentation)
+        assertEquals("()", presentation.tailText)
+    }
+
+    fun testRndCompletionDoesNotShowParenthesesInLookupPopup() {
+        myFixture.configureByText("test.tibasic", "100 LET X=R<caret>")
+        myFixture.completeBasic()
+        val item = myFixture.lookup?.items?.firstOrNull { it.lookupString == "RND" }
+        assertNotNull("RND must be offered in the lookup popup", item)
+        val presentation = LookupElementPresentation()
+        item!!.renderElement(presentation)
+        assertNull(presentation.tailText)
+    }
+
+    fun testCompletionInsertsParenthesesForSelectedFunction() {
+        myFixture.configureByText("test.tibasic", "100 LET X=<caret>")
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "ABS" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("100 LET X=ABS()", myFixture.editor.document.text)
+        assertEquals("100 LET X=ABS(".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testCompletionKeepsOuterClosingParenWhenSelectingFunctionCall() {
+        myFixture.configureByText("test.tibasic", "100 LET X=ARR(<caret>)")
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "ABS" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("100 LET X=ARR(ABS())", myFixture.editor.document.text)
+        assertEquals("100 LET X=ARR(ABS(".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testCompletionDoesNotInsertParenthesesForSelectedRnd() {
+        myFixture.configureByText("test.tibasic", "100 LET X=<caret>")
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "RND" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("100 LET X=RND", myFixture.editor.document.text)
+        assertEquals("100 LET X=RND".length, myFixture.editor.caretModel.offset)
     }
 
     fun testCompletionDoesNotSuggestSubprogramInCallArgument() {

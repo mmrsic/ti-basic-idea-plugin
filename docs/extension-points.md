@@ -50,7 +50,8 @@ Returns a `TiBasicSyntaxHighlighter` instance. The highlighter maps token types 
 
 Provides on-demand completion suggestions (Ctrl+Space only; auto-popup is disabled).
 If exactly one match remains after filtering, that match is inserted immediately
-without showing the lookup popup.
+without showing the lookup popup. Built-in functions with arguments insert `()`
+and place the caret between them.
 Suggests all TI-Basic keywords from `TiBasicKeywords.getKeywords()`, all variables
 defined in the current file, CALL subprogram names (from `TiBasicCallSubprograms`) when
 the cursor is immediately after `CALL`, and built-in function names (from

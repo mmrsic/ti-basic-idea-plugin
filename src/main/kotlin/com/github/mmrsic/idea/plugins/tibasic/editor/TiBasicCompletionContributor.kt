@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
+import com.github.mmrsic.idea.plugins.tibasic.lang.BuiltInFunctionSignature
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBuiltInFunctions
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
@@ -9,8 +10,8 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
 import com.intellij.codeInsight.completion.CompletionContributor
-import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionParameters
+import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
 import com.intellij.codeInsight.lookup.LookupElement
@@ -24,7 +25,9 @@ private const val SELECT_WITH_OPEN_PAREN = '('
 private const val RPAREN = ')'
 private const val VARIABLE_TYPE_TEXT = "variable"
 private const val ARRAY_TYPE_TEXT = "array"
-private const val ARRAY_CARET_OFFSET_FROM_TAIL = 1
+private const val FUNCTION_TYPE_TEXT = "function"
+private const val PAREN_CARET_OFFSET_FROM_TAIL = 1
+private const val FUNCTION_PARENS = "()"
 
 class TiBasicCompletionContributor : CompletionContributor() {
 
@@ -36,7 +39,8 @@ class TiBasicCompletionContributor : CompletionContributor() {
             return
         }
         val file = parameters.position.containingFile as? TiBasicFile ?: return
-        val identifierPrefix = identifierBeforeCaret(parameters)
+        val identifierRange = identifierRangeBeforeCaret(parameters)
+        val identifierPrefix = identifierRange?.let { parameters.editor.document.text.substring(it.first, it.last + 1) }.orEmpty()
         val completionResult = if (identifierPrefix.isNotEmpty() || isEmptyArraySubscriptContext(parameters)) {
             result.withPrefixMatcher(identifierPrefix).caseInsensitive()
         } else {
@@ -64,7 +68,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
             .forEach { name ->
                 completionResult.addElement(
                     PrioritizedLookupElement.withGrouping(
-                        LookupElementBuilder.create(name).withTypeText("function").autoCompleteSingleMatch(),
+                        functionCompletion(name),
                         FUNCTION_GROUPING,
                     )
                 )
@@ -74,7 +78,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
             .forEach { keyword ->
                 completionResult.addElement(LookupElementBuilder.create(keyword).withTypeText("keyword").autoCompleteSingleMatch())
             }
-        variableCompletions(file)
+        variableCompletions(file, identifierPrefix, identifierRange?.first)
             .forEach { completion ->
                 completionResult.addElement(
                     PrioritizedLookupElement.withGrouping(
@@ -108,19 +112,36 @@ class TiBasicCompletionContributor : CompletionContributor() {
         return docText.substring(start, offset)
     }
 
-    private fun identifierBeforeCaret(parameters: CompletionParameters): String = wordBeforeCaret(parameters)
+    private fun identifierRangeBeforeCaret(parameters: CompletionParameters): IntRange? {
+        val docText = parameters.editor.document.text
+        val offset = parameters.offset
+        var start = offset
+        while (start > 0 && isCompletionIdentifierChar(docText[start - 1])) start--
+        return if (start == offset) null else start until offset
+    }
 
     private fun isEmptyArraySubscriptContext(parameters: CompletionParameters): Boolean {
         val text = parameters.editor.document.charsSequence
         val offset = parameters.offset
         return offset > 0 &&
-            offset < text.length &&
-            text[offset - 1] == '(' &&
-            text[offset] == ')'
+                offset < text.length &&
+                text[offset - 1] == '(' &&
+                text[offset] == ')'
     }
 
-    private fun variableCompletions(file: TiBasicFile): List<VariableCompletion> =
+    private fun variableCompletions(
+        file: TiBasicFile,
+        identifierPrefix: String,
+        identifierStartOffset: Int?,
+    ): List<VariableCompletion> =
         TiBasicVariableCollector.collectCached(file)
+            .filterNot { entry ->
+                identifierStartOffset != null &&
+                        identifierPrefix.isNotEmpty() &&
+                        entry.name == identifierPrefix.uppercase() &&
+                        entry.occurrences.size == 1 &&
+                        entry.occurrences.single().offset == identifierStartOffset
+            }
             .mapNotNull { variable ->
                 when (variable.type) {
                     TiBasicVariableType.NUMERIC, TiBasicVariableType.STRING ->
@@ -140,6 +161,27 @@ class TiBasicCompletionContributor : CompletionContributor() {
             }
             .distinctBy { it.lookupText }
             .sortedBy { it.lookupText }
+
+    private fun functionCompletion(name: String): LookupElement {
+        val signature = TiBasicBuiltInFunctions.byName(name)
+        return LookupElementBuilder.create(name)
+            .let { builder ->
+                if (signature?.requiresParentheses() == true) {
+                    builder.withTailText(FUNCTION_PARENS, true)
+                } else {
+                    builder
+                }
+            }
+            .withTypeText(FUNCTION_TYPE_TEXT)
+            .let { builder ->
+                if (signature?.requiresParentheses() == true) {
+                    builder.withInsertHandler(parenCompletionInsertHandler)
+                } else {
+                    builder
+                }
+            }
+            .autoCompleteSingleMatch()
+    }
 
     private data class VariableCompletion(
         val lookupText: String,
@@ -161,6 +203,28 @@ private fun LookupElementBuilder.autoCompleteSingleMatch(): LookupElement = with
 
 private fun isCompletionIdentifierChar(char: Char): Boolean = char.isLetterOrDigit() || char == '$'
 
+private fun BuiltInFunctionSignature.requiresParentheses(): Boolean = argCount > 0
+
+private val parenCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
+    context.setAddCompletionChar(false)
+    val document = context.document
+    val tailOffset = context.tailOffset
+    if (tailOffset < document.textLength && document.charsSequence[tailOffset] == SELECT_WITH_OPEN_PAREN) {
+        val caretOffset = if (
+            tailOffset + 1 < document.textLength &&
+            document.charsSequence[tailOffset + 1] == RPAREN
+        ) {
+            tailOffset + 1
+        } else {
+            tailOffset
+        }
+        context.editor.caretModel.moveToOffset(caretOffset)
+        return@InsertHandler
+    }
+    document.insertString(tailOffset, FUNCTION_PARENS)
+    context.editor.caretModel.moveToOffset(tailOffset + PAREN_CARET_OFFSET_FROM_TAIL)
+}
+
 val arrayCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
     context.setAddCompletionChar(false)
     val document = context.document
@@ -171,5 +235,5 @@ val arrayCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
     ) {
         document.deleteString(context.tailOffset, context.tailOffset + 1)
     }
-    context.editor.caretModel.moveToOffset(context.tailOffset - ARRAY_CARET_OFFSET_FROM_TAIL)
+    context.editor.caretModel.moveToOffset(context.tailOffset - PAREN_CARET_OFFSET_FROM_TAIL)
 }

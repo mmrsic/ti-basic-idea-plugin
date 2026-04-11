@@ -229,7 +229,8 @@ The annotator inspects every file and highlights:
   group;
   inside CALL argument lists, the general completion (variables, functions, keywords) is offered instead
 - **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated
-  group; if exactly one matching suggestion remains, it is inserted immediately without opening the popup
+  group; if exactly one matching suggestion remains, it is inserted immediately without opening the popup; functions
+  that require parentheses insert `()` and place the cursor between them, while `RND` remains without parentheses
 - **CALL CHAR gutter preview** — for lines containing `CALL CHAR(code,pattern$)` with a valid hex pattern of up to
   16 characters, a 16×16 px black-and-white pictogram appears in the gutter showing the defined 8×8 character
   (1-bit → black, 0-bit → white, with a dark-gray border); the pattern may be a string literal or a constant string

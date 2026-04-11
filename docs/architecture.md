@@ -69,7 +69,8 @@ PSI tree              (tibasic.psi)
     │       completion (variables + functions + keywords) is offered.
     │       Triggered by Ctrl+Space only; auto-popup is disabled. If exactly
     │       one match remains after filtering, it is inserted immediately
-    │       without showing the lookup popup.
+    │       without showing the lookup popup. Built-in functions with
+    │       arguments insert `()` and place the caret between them.
     │
     ├──▶ TiBasicPairedCharacterTypedHandler (tibasic.editor)
     │       Intercepts typed `(`, `)` and `"` characters in TI-Basic files.
