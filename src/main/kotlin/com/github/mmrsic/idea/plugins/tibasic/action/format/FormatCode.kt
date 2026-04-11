@@ -158,7 +158,7 @@ private fun formattedIfLine(lineNumber: Int, statement: TiBasicIfStatement): Str
     return buildString {
         append("$lineNumber IF")
         if (formattedExpr.isNotEmpty()) append(" $formattedExpr")
-        append(if (formattedExpr.endsWith(")")) "THEN" else " THEN")
+        append(keywordWithRequiredLeadingSpace(formattedExpr, "THEN"))
         if (elseNode != null) {
             val elseRelStart = elseNode.startOffset - stmtStart
             val elseRelEnd = elseNode.startOffset + elseNode.textLength - stmtStart
@@ -446,10 +446,13 @@ private fun format(
     return buildString {
         append("$lineNumber ON")
         if (exprPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))}")
-        append(" $keyword")
+        append(keywordWithRequiredLeadingSpace(exprPart, keyword))
         if (lineNumsPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(lineNumsPart)}")
     }
 }
+
+private fun keywordWithRequiredLeadingSpace(precedingText: String, keyword: String): String =
+    if (precedingText.endsWith(")")) keyword else " $keyword"
 
 fun uppercaseOutsideStrings(text: String): String =
     transformOutsideStrings(text) { ch -> ch.uppercaseChar() }

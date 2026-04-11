@@ -224,6 +224,16 @@ class FormatCodeTest : TiBasicTestBase() {
         assertEquals("100 ON X+Y GOTO 200\n200 PRINT \"OK\"", formattedText(file))
     }
 
+    fun testOnGotoWithClosingParenBeforeKeywordHasNoSpace() {
+        val file = configureFile("100 ON X(1) GOTO 200\n200 PRINT \"OK\"")
+        assertEquals("100 ON X(1)GOTO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
+
+    fun testOnGoToWithClosingParenBeforeKeywordHasNoSpace() {
+        val file = configureFile("100 ON X(1) GO TO 200\n200 PRINT \"OK\"")
+        assertEquals("100 ON X(1)GO TO 200\n200 PRINT \"OK\"", formattedText(file))
+    }
+
     fun testForToFormattedCorrectly() {
         val file = configureFile("100 for i = 1 to 10\n200 next i")
         assertEquals("100 FOR I=1 TO 10\n200 NEXT I", formattedText(file))
@@ -457,6 +467,11 @@ class FormatCodeTest : TiBasicTestBase() {
     fun testOnGoSubTwoWordsExtraSpaceNormalized() {
         val file = configureFile("100 ON X GO  SUB 200\n200 PRINT \"OK\"\n300 RETURN")
         assertEquals("100 ON X GO SUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
+    }
+
+    fun testOnGosubWithClosingParenBeforeKeywordHasNoSpace() {
+        val file = configureFile("100 ON X(1) GOSUB 200\n200 PRINT \"OK\"\n300 RETURN")
+        assertEquals("100 ON X(1)GOSUB 200\n200 PRINT \"OK\"\n300 RETURN", formattedText(file))
     }
 
     fun testOpenFormatted() {
