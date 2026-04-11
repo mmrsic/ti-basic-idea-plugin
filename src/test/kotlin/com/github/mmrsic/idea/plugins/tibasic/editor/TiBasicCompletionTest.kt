@@ -75,10 +75,45 @@ class TiBasicCompletionTest : TiBasicTestBase() {
     }
 
     fun testCompletionSuggestsStringVariable() {
-        myFixture.configureByText("test.tibasic", "100 LET A\$=\"HELLO\"\n200 <caret>")
+        myFixture.configureByText("test.tibasic", "100 LET A$=\"HELLO\"\n200 <caret>")
         myFixture.completeBasic()
         val popupItems = myFixture.lookupElementStrings ?: emptyList()
-        assertTrue("String variable A\$ must be suggested", popupItems.contains("A\$"))
+        assertTrue("String variable A$ must be suggested", popupItems.contains("A$"))
+    }
+
+    fun testCompletionSuggestsNumericArrayWithParentheses() {
+        myFixture.configureByText("test.tibasic", "100 DIM ARR(10)\n200 <caret>")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Numeric array ARR must be suggested with parentheses", popupItems.contains("ARR()"))
+    }
+
+    fun testCompletionSuggestsStringArrayWithParentheses() {
+        myFixture.configureByText("test.tibasic", "100 DIM ARR$(10)\n200 <caret>")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("String array ARR$ must be suggested with parentheses", popupItems.contains("ARR$()"))
+    }
+
+    fun testCompletionInsertsArrayParenthesesAndPlacesCaretInside() {
+        myFixture.configureByText("test.tibasic", "100 DIM ARRAY(10)\n200 ARR<caret>")
+        myFixture.completeBasic()
+        if (myFixture.lookup != null) {
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("100 DIM ARRAY(10)\n200 ARRAY()", myFixture.editor.document.text)
+        assertEquals("100 DIM ARRAY(10)\n200 ARRAY(".length, myFixture.editor.caretModel.offset)
+    }
+
+
+    fun testCompletionAcceptedWithOpeningParenDoesNotAddAnotherClosingParen() {
+        myFixture.configureByText("test.tibasic", "100 DIM FELD$(10)\n200 FELD$(<caret>)")
+        myFixture.completeBasic()
+        if (myFixture.lookup != null) {
+            myFixture.finishLookup('(')
+        }
+        assertEquals("100 DIM FELD$(10)\n200 FELD$()", myFixture.editor.document.text)
+        assertEquals("100 DIM FELD$(10)\n200 FELD$(".length, myFixture.editor.caretModel.offset)
     }
 
     fun testCompletionSuggestsOnlyDistinctVariables() {
@@ -160,5 +195,3 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         )
     }
 }
-
-

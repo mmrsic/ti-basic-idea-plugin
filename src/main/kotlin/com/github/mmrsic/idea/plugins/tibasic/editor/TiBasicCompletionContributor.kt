@@ -6,15 +6,24 @@ import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
+import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
+import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 
 private const val VARIABLE_GROUPING = 1
 private const val CALL_SUBPROGRAM_GROUPING = 2
 private const val FUNCTION_GROUPING = 3
+private const val ARRAY_PARENS = "()"
+private const val RPAREN = ')'
+private const val VARIABLE_TYPE_TEXT = "variable"
+private const val ARRAY_TYPE_TEXT = "array"
+private const val ARRAY_CARET_OFFSET_FROM_TAIL = 1
 
 class TiBasicCompletionContributor : CompletionContributor() {
 
@@ -50,14 +59,11 @@ class TiBasicCompletionContributor : CompletionContributor() {
         TiBasicKeywords.getKeywords()
             .filter { it !in functionNames }
             .forEach { keyword -> result.caseInsensitive().addElement(LookupElementBuilder.create(keyword).withTypeText("keyword")) }
-        file.variableAccesses()
-            .map { it.node.firstChildNode.text.uppercase() }
-            .distinct()
-            .sorted()
-            .forEach { name ->
+        variableCompletions(file)
+            .forEach { completion ->
                 result.caseInsensitive().addElement(
                     PrioritizedLookupElement.withGrouping(
-                        LookupElementBuilder.create(name).withTypeText("variable"),
+                        completion.lookupElement(),
                         VARIABLE_GROUPING,
                     )
                 )
@@ -86,4 +92,47 @@ class TiBasicCompletionContributor : CompletionContributor() {
         while (start > 0 && docText[start - 1].isLetterOrDigit()) start--
         return docText.substring(start, offset)
     }
+
+    private fun variableCompletions(file: TiBasicFile): List<VariableCompletion> =
+        TiBasicVariableCollector.collectCached(file)
+            .mapNotNull { variable ->
+                when (variable.type) {
+                    TiBasicVariableType.NUMERIC, TiBasicVariableType.STRING ->
+                        VariableCompletion(variable.name, VARIABLE_TYPE_TEXT)
+
+                    TiBasicVariableType.NUMERIC_ARRAY,
+                    TiBasicVariableType.STRING_ARRAY,
+                    TiBasicVariableType.DIM_DECLARATION,
+                        -> VariableCompletion(
+                        variable.name + ARRAY_PARENS,
+                        ARRAY_TYPE_TEXT,
+                        arrayCompletionInsertHandler,
+                    )
+
+                    TiBasicVariableType.USER_FUNCTION -> null
+                }
+            }
+            .distinctBy { it.lookupText }
+            .sortedBy { it.lookupText }
+
+    private data class VariableCompletion(
+        val lookupText: String,
+        val typeText: String,
+        val insertHandler: InsertHandler<LookupElement>? = null,
+    ) {
+        fun lookupElement(): LookupElementBuilder =
+            LookupElementBuilder.create(lookupText)
+                .withTypeText(typeText)
+                .let { builder -> insertHandler?.let(builder::withInsertHandler) ?: builder }
+    }
+
+}
+
+val arrayCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
+    context.setAddCompletionChar(false)
+    val document = context.document
+    if (context.tailOffset < document.textLength && document.charsSequence[context.tailOffset] == RPAREN) {
+        document.deleteString(context.tailOffset, context.tailOffset + 1)
+    }
+    context.editor.caretModel.moveToOffset(context.tailOffset - ARRAY_CARET_OFFSET_FROM_TAIL)
 }

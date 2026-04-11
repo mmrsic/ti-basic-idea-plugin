@@ -221,7 +221,8 @@ The annotator inspects every file and highlights:
 ### Editor assistance
 
 - **Keyword and variable completion** — on-demand autocomplete (Ctrl+Space) for all TI-Basic keywords and all variables
-  defined in the current file (case-insensitive); keywords and variables appear in separate groups
+  defined in the current file (case-insensitive); keywords and variables appear in separate groups, and array variables
+  are shown as `NAME()` and inserted with the cursor placed between the parentheses
 - **CALL subprogram completion** — when the cursor is at the subprogram name position (directly after `CALL` or on an
   existing subprogram name token), autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated
   group;
