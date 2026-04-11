@@ -12,13 +12,13 @@ Every non-empty line must begin with a **line number**.
 
 The lexer classifies each line into one of five kinds before tokenizing it:
 
-| Kind                     | Pattern                                                          | PSI node                                           |
-|--------------------------|------------------------------------------------------------------|----------------------------------------------------|
-| `VALID_STATEMENT`        | `[ws] lineNumber [ws] keyword [ws] argument?`                    | `TiBasicLine` containing a statement node          |
-| `LINE_NUMBER_ONLY`       | `[ws] lineNumber [ws]`                                           | `TiBasicLine` with no child statement              |
-| `LET_IMPLICIT_STATEMENT` | `[ws] lineNumber [ws] variable [ws] = ...`  (no leading keyword) | `TiBasicLine` containing `TiBasicLetStatement`     |
-| `UNKNOWN_STATEMENT`      | `[ws] lineNumber [ws] unrecognisedText`                          | `TiBasicLine` containing `TiBasicUnknownStatement` |
-| `NO_LINE_NUMBER`         | anything else (non-blank)                                        | `TiBasicInvalidLine` (annotated as error)          |
+| Kind                     | Pattern                                                                | PSI node                                           |
+|--------------------------|------------------------------------------------------------------------|----------------------------------------------------|
+| `VALID_STATEMENT`        | `[ws] lineNumber [ws] keyword [ws] argument?`                          | `TiBasicLine` containing a statement node          |
+| `LINE_NUMBER_ONLY`       | `[ws] lineNumber [ws]`                                                 | `TiBasicLine` with no child statement              |
+| `LET_IMPLICIT_STATEMENT` | `[ws] lineNumber [ws] variableAccess [ws] = ...`  (no leading keyword) | `TiBasicLine` containing `TiBasicLetStatement`     |
+| `UNKNOWN_STATEMENT`      | `[ws] lineNumber [ws] unrecognisedText`                                | `TiBasicLine` containing `TiBasicUnknownStatement` |
+| `NO_LINE_NUMBER`         | anything else (non-blank)                                              | `TiBasicInvalidLine` (annotated as error)          |
 
 Blank lines are silently ignored.
 

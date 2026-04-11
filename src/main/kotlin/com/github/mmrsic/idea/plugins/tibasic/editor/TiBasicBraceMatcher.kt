@@ -11,7 +11,7 @@ class TiBasicBraceMatcher : PairedBraceMatcher {
     override fun getPairs(): Array<BracePair> =
         arrayOf(BracePair(TiBasicTokenTypes.LPAREN, TiBasicTokenTypes.RPAREN, false))
 
-    override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?): Boolean = false
+    override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?): Boolean = true
 
     override fun getCodeConstructStart(file: PsiFile, openingBraceOffset: Int): Int = openingBraceOffset
 }

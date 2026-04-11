@@ -23,11 +23,11 @@ class TiBasicBraceMatcherTest : TestCase() {
         assertFalse(pair.isStructural)
     }
 
-    fun `test isPairedBracesAllowedBeforeType returns false to prevent auto-pair on typing`() {
-        assertFalse(braceMatcher.isPairedBracesAllowedBeforeType(TiBasicTokenTypes.LPAREN, null))
+    fun `test isPairedBracesAllowedBeforeType returns true for LPAREN`() {
+        assertTrue(braceMatcher.isPairedBracesAllowedBeforeType(TiBasicTokenTypes.LPAREN, null))
     }
 
-    fun `test isPairedBracesAllowedBeforeType returns false for RPAREN`() {
-        assertFalse(braceMatcher.isPairedBracesAllowedBeforeType(TiBasicTokenTypes.RPAREN, null))
+    fun `test isPairedBracesAllowedBeforeType returns true for RPAREN`() {
+        assertTrue(braceMatcher.isPairedBracesAllowedBeforeType(TiBasicTokenTypes.RPAREN, null))
     }
 }

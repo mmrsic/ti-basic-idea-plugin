@@ -55,6 +55,7 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCompletionContributor"
         />
+        <typedHandler implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicClosingParenTypedHandler"/>
         <lang.parserDefinition
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicParserDefinition"

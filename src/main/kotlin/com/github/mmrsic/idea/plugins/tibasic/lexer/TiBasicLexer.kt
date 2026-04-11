@@ -27,7 +27,6 @@ class TiBasicLexer : LexerBase() {
                 RegexOption.IGNORE_CASE
             )
         val LINE_NUMBER_ONLY = Regex("""^([ \t]*)(\d+)([ \t]*)$""")
-        val IMPLICIT_LET_LINE = Regex("""^[ \t]*\d+[ \t]+[A-Za-z@\[\]\\_][A-Za-z0-9@_]*\$?(?:[ \t]*\([^)]*\))?[ \t]*=.*$""")
         val UNKNOWN_STATEMENT_LINE = Regex("""^([ \t]*)(\d+)([ \t]+)(\S.*)$""")
         val TRAILING_WS = Regex("""([ \t]*)$""")
         val VALID_VARIABLE_NAME = Regex("""^[A-Z@\[\]\\_][A-Z0-9@_]{0,13}\$$""", RegexOption.IGNORE_CASE)
@@ -114,9 +113,66 @@ class TiBasicLexer : LexerBase() {
     private fun classifyLine(lineText: String): LineKind {
         if (VALID_LINE.containsMatchIn(lineText)) return LineKind.VALID_STATEMENT
         if (LINE_NUMBER_ONLY.containsMatchIn(lineText)) return LineKind.LINE_NUMBER_ONLY
-        if (IMPLICIT_LET_LINE.containsMatchIn(lineText)) return LineKind.LET_IMPLICIT_STATEMENT
+        if (isImplicitLetLine(lineText)) return LineKind.LET_IMPLICIT_STATEMENT
         if (UNKNOWN_STATEMENT_LINE.containsMatchIn(lineText)) return LineKind.UNKNOWN_STATEMENT
         return LineKind.NO_LINE_NUMBER
+    }
+
+    private fun isImplicitLetLine(lineText: String): Boolean {
+        var i = 0
+        while (i < lineText.length && lineText[i].isWhitespace()) i++
+        val lineNumberStart = i
+        while (i < lineText.length && lineText[i].isDigit()) i++
+        if (i == lineNumberStart || i >= lineText.length || !lineText[i].isWhitespace()) return false
+        while (i < lineText.length && lineText[i].isWhitespace()) i++
+        if (i >= lineText.length || !isVariableFirstChar(lineText[i])) return false
+        i++
+        while (i < lineText.length && isVariableContinuationChar(lineText[i])) i++
+        if (i < lineText.length && lineText[i] == '$') i++
+        while (i < lineText.length && lineText[i].isWhitespace()) i++
+        if (i < lineText.length && lineText[i] == '(') {
+            i = findClosingParenIndex(lineText, i)?.plus(1) ?: return false
+            while (i < lineText.length && lineText[i].isWhitespace()) i++
+        }
+        return i < lineText.length && lineText[i] == '='
+    }
+
+    private fun findClosingParenIndex(text: String, openingParenIndex: Int): Int? {
+        var depth = 0
+        var i = openingParenIndex
+        while (i < text.length) {
+            when (text[i]) {
+                '"' -> {
+                    i++
+                    while (i < text.length) {
+                        if (text[i] == '"') {
+                            i++
+                            if (i < text.length && text[i] == '"') {
+                                i++
+                            } else {
+                                break
+                            }
+                        } else {
+                            i++
+                        }
+                    }
+                }
+
+                '(' -> {
+                    depth++
+                    i++
+                }
+
+                ')' -> {
+                    depth--
+                    if (depth == 0) return i
+                    i++
+                }
+
+                else -> i++
+            }
+        }
+        return null
     }
 
     private fun tokenizeValidLine(lineStart: Int, match: MatchResult): List<LineToken> {
@@ -397,7 +453,7 @@ class TiBasicLexer : LexerBase() {
 
     private fun tokenizeIdentifier(s: String, offset: Int, start: Int): LineToken {
         var i = start + 1
-        while (i < s.length && (s[i].isLetterOrDigit() || s[i] in "@_")) i++
+        while (i < s.length && isVariableContinuationChar(s[i])) i++
         if (i < s.length && s[i] == '$') i++
         val text = s.substring(start, i)
         val end: Int
@@ -581,6 +637,9 @@ class TiBasicLexer : LexerBase() {
 
     private fun isVariableFirstChar(c: Char): Boolean =
         c.isLetter() || c in "@[]\\_"
+
+    private fun isVariableContinuationChar(c: Char): Boolean =
+        c.isLetterOrDigit() || c in "@_"
 
     private fun appendToken(
         result: MutableList<LineToken>,

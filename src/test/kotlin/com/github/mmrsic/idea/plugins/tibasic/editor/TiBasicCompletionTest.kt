@@ -106,14 +106,34 @@ class TiBasicCompletionTest : TiBasicTestBase() {
     }
 
 
-    fun testCompletionAcceptedWithOpeningParenDoesNotAddAnotherClosingParen() {
-        myFixture.configureByText("test.tibasic", "100 DIM FELD$(10)\n200 FELD$(<caret>)")
+    fun testCompletionSuggestsVariableInEmptyArraySubscript() {
+        myFixture.configureByText("test.tibasic", "100 LET INDEX=1\n200 FELD$(<caret>)")
         myFixture.completeBasic()
-        if (myFixture.lookup != null) {
-            myFixture.finishLookup('(')
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Variable INDEX must be suggested inside empty array subscript", popupItems.contains("INDEX"))
+        assertTrue("Function SIN must be suggested inside empty array subscript", popupItems.contains("SIN"))
+    }
+
+    fun testCompletionAcceptedInExistingArrayParensKeepsSingleClosingParen() {
+        myFixture.configureByText("test.tibasic", "100 LET INDEX=1\n200 FELD$(IN<caret>)")
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "INDEX" }
+            myFixture.finishLookup('\n')
         }
-        assertEquals("100 DIM FELD$(10)\n200 FELD$()", myFixture.editor.document.text)
-        assertEquals("100 DIM FELD$(10)\n200 FELD$(".length, myFixture.editor.caretModel.offset)
+        assertEquals("100 LET INDEX=1\n200 FELD$(INDEX)", myFixture.editor.document.text)
+        assertEquals("100 LET INDEX=1\n200 FELD$(INDEX".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testCompletionInNestedArraySubscriptKeepsOuterClosingParen() {
+        myFixture.configureByText("test.tibasic", "100 DIM FZ(10)\n200 FELD$(1,F<caret>)")
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "FZ()" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("100 DIM FZ(10)\n200 FELD$(1,FZ())", myFixture.editor.document.text)
+        assertEquals("100 DIM FZ(10)\n200 FELD$(1,FZ(".length, myFixture.editor.caretModel.offset)
     }
 
     fun testCompletionSuggestsOnlyDistinctVariables() {
@@ -168,6 +188,20 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         myFixture.completeBasic()
         val popupItems = myFixture.lookupElementStrings ?: emptyList()
         assertTrue("Variable ROW must be suggested inside CALL argument list", popupItems.contains("ROW"))
+    }
+
+    fun testCompletionSuggestsVariableInArraySubscript() {
+        myFixture.configureByText("test.tibasic", "100 LET INDEX=1\n200 LET ARR(IN<caret>)=0")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Variable INDEX must be suggested inside array subscript", popupItems.contains("INDEX"))
+    }
+
+    fun testCompletionSuggestsFunctionInArraySubscript() {
+        myFixture.configureByText("test.tibasic", "100 LET ARR(S<caret>)=0")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Function SIN must be suggested inside array subscript", popupItems.contains("SIN"))
     }
 
     fun testCompletionDoesNotSuggestSubprogramInCallArgument() {

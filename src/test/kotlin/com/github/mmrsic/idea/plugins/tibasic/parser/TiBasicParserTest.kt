@@ -25,6 +25,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRestoreStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicReturnStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicStopStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicTabFunction
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicUnknownStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
 import com.intellij.testFramework.ParsingTestCase
 
@@ -1108,6 +1109,20 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testImplicitLetWithNestedParensInSubscriptProducesLetStatement() {
+        val file = parseCode("100 FELD$(1,FZ(F))=A$")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(1, line.children.filterIsInstance<TiBasicLetStatement>().size)
+        assertEquals(0, line.children.filterIsInstance<TiBasicUnknownStatement>().size)
+    }
+
+    fun testImplicitLetWithNestedParensAndSegFunctionProducesLetStatement() {
+        val file = parseCode("1130 FELD$(1,FZ(F))=SEG$(FELD$(1,FZ(F)))")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        assertEquals(1, line.children.filterIsInstance<TiBasicLetStatement>().size)
+        assertEquals(0, line.children.filterIsInstance<TiBasicUnknownStatement>().size)
+    }
+
     fun testExplicitLetWithSubscriptedVariableProducesLetStatement() {
         val file = parseCode("100 LET A(1) = 5")
         val stmts = file.children.filterIsInstance<TiBasicLine>()[0]
@@ -1975,5 +1990,4 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
 
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
-
 

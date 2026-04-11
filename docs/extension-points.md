@@ -57,6 +57,18 @@ and function names appear in separate groups in the popup.
 
 ---
 
+### `typedHandler`
+
+| Attribute        | Value                                              |
+|------------------|----------------------------------------------------|
+| `implementation` | `tibasic.editor.TiBasicClosingParenTypedHandler`   |
+
+Intercepts typed `)` characters in TI-Basic files. If the caret is already directly
+before an existing `)`, the handler moves the caret over that character and stops the
+typed character from being inserted, preventing duplicated closing parentheses.
+
+---
+
 ### `lang.parserDefinition`
 
 | Attribute             | Value                                    |

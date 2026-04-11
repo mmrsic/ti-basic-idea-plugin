@@ -9,10 +9,11 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
 import com.intellij.codeInsight.completion.CompletionContributor
-import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
+import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
+import com.intellij.codeInsight.lookup.AutoCompletionPolicy
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 
@@ -20,6 +21,7 @@ private const val VARIABLE_GROUPING = 1
 private const val CALL_SUBPROGRAM_GROUPING = 2
 private const val FUNCTION_GROUPING = 3
 private const val ARRAY_PARENS = "()"
+private const val SELECT_WITH_OPEN_PAREN = '('
 private const val RPAREN = ')'
 private const val VARIABLE_TYPE_TEXT = "variable"
 private const val ARRAY_TYPE_TEXT = "array"
@@ -35,10 +37,19 @@ class TiBasicCompletionContributor : CompletionContributor() {
             return
         }
         val file = parameters.position.containingFile as? TiBasicFile ?: return
+        val identifierPrefix = identifierBeforeCaret(parameters)
+        val completionResult = if (identifierPrefix.isNotEmpty() || isEmptyArraySubscriptContext(parameters)) {
+            result.withPrefixMatcher(identifierPrefix).caseInsensitive()
+        } else {
+            result.caseInsensitive()
+        }
         if (isCallSubprogramContext(parameters)) {
             TiBasicCallSubprograms.names().sorted().forEach { name ->
-                result.caseInsensitive().addElement(
-                    PrioritizedLookupElement.withGrouping(LookupElementBuilder.create(name).withTypeText("subprogram"), CALL_SUBPROGRAM_GROUPING)
+                completionResult.addElement(
+                    PrioritizedLookupElement.withGrouping(
+                        LookupElementBuilder.create(name).withTypeText("subprogram").manualCompletion(),
+                        CALL_SUBPROGRAM_GROUPING,
+                    )
                 )
             }
             return
@@ -46,22 +57,27 @@ class TiBasicCompletionContributor : CompletionContributor() {
         if (isOptionBaseContext(parameters)) {
             val wordAtCursor = wordBeforeCaret(parameters)
             result.withPrefixMatcher(wordAtCursor).caseInsensitive()
-                .addElement(LookupElementBuilder.create("BASE").withTypeText("keyword"))
+                .addElement(LookupElementBuilder.create("BASE").withTypeText("keyword").manualCompletion())
             return
         }
         val functionNames = TiBasicBuiltInFunctions.allNames()
         functionNames.sorted()
             .forEach { name ->
-                result.caseInsensitive().addElement(
-                    PrioritizedLookupElement.withGrouping(LookupElementBuilder.create(name).withTypeText("function"), FUNCTION_GROUPING)
+                completionResult.addElement(
+                    PrioritizedLookupElement.withGrouping(
+                        LookupElementBuilder.create(name).withTypeText("function").manualCompletion(),
+                        FUNCTION_GROUPING,
+                    )
                 )
             }
         TiBasicKeywords.getKeywords()
             .filter { it !in functionNames }
-            .forEach { keyword -> result.caseInsensitive().addElement(LookupElementBuilder.create(keyword).withTypeText("keyword")) }
+            .forEach { keyword ->
+                completionResult.addElement(LookupElementBuilder.create(keyword).withTypeText("keyword").manualCompletion())
+            }
         variableCompletions(file)
             .forEach { completion ->
-                result.caseInsensitive().addElement(
+                completionResult.addElement(
                     PrioritizedLookupElement.withGrouping(
                         completion.lookupElement(),
                         VARIABLE_GROUPING,
@@ -89,8 +105,19 @@ class TiBasicCompletionContributor : CompletionContributor() {
         val docText = parameters.editor.document.text
         val offset = parameters.offset
         var start = offset
-        while (start > 0 && docText[start - 1].isLetterOrDigit()) start--
+        while (start > 0 && isCompletionIdentifierChar(docText[start - 1])) start--
         return docText.substring(start, offset)
+    }
+
+    private fun identifierBeforeCaret(parameters: CompletionParameters): String = wordBeforeCaret(parameters)
+
+    private fun isEmptyArraySubscriptContext(parameters: CompletionParameters): Boolean {
+        val text = parameters.editor.document.charsSequence
+        val offset = parameters.offset
+        return offset > 0 &&
+            offset < text.length &&
+            text[offset - 1] == '(' &&
+            text[offset] == ')'
     }
 
     private fun variableCompletions(file: TiBasicFile): List<VariableCompletion> =
@@ -120,18 +147,28 @@ class TiBasicCompletionContributor : CompletionContributor() {
         val typeText: String,
         val insertHandler: InsertHandler<LookupElement>? = null,
     ) {
-        fun lookupElement(): LookupElementBuilder =
+        fun lookupElement(): LookupElement =
             LookupElementBuilder.create(lookupText)
                 .withTypeText(typeText)
                 .let { builder -> insertHandler?.let(builder::withInsertHandler) ?: builder }
+                .manualCompletion()
     }
 
 }
 
+private fun LookupElementBuilder.manualCompletion(): LookupElement =
+    withAutoCompletionPolicy(AutoCompletionPolicy.NEVER_AUTOCOMPLETE)
+
+private fun isCompletionIdentifierChar(char: Char): Boolean = char.isLetterOrDigit() || char == '$'
+
 val arrayCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
     context.setAddCompletionChar(false)
     val document = context.document
-    if (context.tailOffset < document.textLength && document.charsSequence[context.tailOffset] == RPAREN) {
+    if (
+        context.completionChar == SELECT_WITH_OPEN_PAREN &&
+        context.tailOffset < document.textLength &&
+        document.charsSequence[context.tailOffset] == RPAREN
+    ) {
         document.deleteString(context.tailOffset, context.tailOffset + 1)
     }
     context.editor.caretModel.moveToOffset(context.tailOffset - ARRAY_CARET_OFFSET_FROM_TAIL)
