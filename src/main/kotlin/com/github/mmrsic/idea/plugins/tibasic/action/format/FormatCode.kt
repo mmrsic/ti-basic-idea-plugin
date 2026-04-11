@@ -26,6 +26,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOptionBaseStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicPrintStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicReadStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRestoreStatement
+import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 import com.intellij.psi.TokenType
 
@@ -100,14 +101,17 @@ private fun formattedLine(line: TiBasicLine): String {
             return formattedCloseLine(line.lineNumber(), statement as TiBasicCloseStatement)
     }
 
+    if (statement is TiBasicLetStatement) {
+        return formattedLetLine(line.lineNumber(), statement)
+    }
+
     val statementUpper = statementText.uppercase()
     val firstToken = statementUpper.takeWhile { it.isLetterOrDigit() }
     val keywordMatch = TiBasicKeywords.getKeywords()
         .map { it.uppercase() }
         .firstOrNull { it == firstToken }
         ?: return "${line.lineNumber()} ${
-            if (statement is TiBasicLetStatement) removeWhitespaceOutsideStrings(uppercaseOutsideStrings(statementText))
-            else uppercaseOutsideStrings(statementText)
+            uppercaseOutsideStrings(statementText)
         }"
     val afterKeyword = statementText.drop(keywordMatch.length)
     if (keywordMatch == "REM") {
@@ -123,6 +127,13 @@ private fun formattedLine(line: TiBasicLine): String {
         "${line.lineNumber()} $keywordMatch $formattedArg"
     }
 }
+
+private fun formattedLetLine(lineNumber: Int, statement: TiBasicLetStatement): String =
+    if (statement.node.firstChildNode?.elementType == TiBasicTokenTypes.LET_KEYWORD) {
+        formattedSimpleLine(lineNumber, statement) { removeWhitespaceOutsideStrings(uppercaseOutsideStrings(it)) }
+    } else {
+        "$lineNumber ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(statement.text.trim()))}"
+    }
 
 private fun formattedIfLine(lineNumber: Int, statement: TiBasicIfStatement): String {
     val stmtStart = statement.textRange.startOffset
@@ -394,16 +405,7 @@ private fun formattedOnGotoLine(lineNumber: Int, statement: TiBasicOnGotoStateme
         else "$lineNumber ON ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
     }
     val canonicalGoto = canonicalGotoKeyword(gotoNode.text)
-    val gotoRelStart = gotoNode.startOffset - stmtStart
-    val gotoRelEnd = gotoNode.startOffset + gotoNode.textLength - stmtStart
-    val exprPart = stmtText.substring(onKeywordNode.textLength, gotoRelStart).trim()
-    val lineNumsPart = stmtText.substring(gotoRelEnd).trim()
-    return buildString {
-        append("$lineNumber ON")
-        if (exprPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))}")
-        append(" $canonicalGoto")
-        if (lineNumsPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(lineNumsPart)}")
-    }
+    return format(gotoNode, stmtStart, stmtText, onKeywordNode, lineNumber, canonicalGoto)
 }
 
 private fun formattedOnGosubLine(lineNumber: Int, statement: TiBasicOnGosubStatement): String {
@@ -416,17 +418,7 @@ private fun formattedOnGosubLine(lineNumber: Int, statement: TiBasicOnGosubState
         return if (argText.isEmpty()) "$lineNumber ON"
         else "$lineNumber ON ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(argText))}"
     }
-    val canonicalGosub = canonicalGosubKeyword(gosubNode.text)
-    val gosubRelStart = gosubNode.startOffset - stmtStart
-    val gosubRelEnd = gosubNode.startOffset + gosubNode.textLength - stmtStart
-    val exprPart = stmtText.substring(onKeywordNode.textLength, gosubRelStart).trim()
-    val lineNumsPart = stmtText.substring(gosubRelEnd).trim()
-    return buildString {
-        append("$lineNumber ON")
-        if (exprPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))}")
-        append(" $canonicalGosub")
-        if (lineNumsPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(lineNumsPart)}")
-    }
+    return format(gosubNode, stmtStart, stmtText, onKeywordNode, lineNumber, canonicalGosubKeyword(gosubNode.text))
 }
 
 private fun canonicalGotoKeyword(rawText: String): String {
@@ -437,6 +429,26 @@ private fun canonicalGotoKeyword(rawText: String): String {
 private fun canonicalGosubKeyword(rawText: String): String {
     val normalized = rawText.trim().replace(Regex("""[ \t]+"""), " ").uppercase()
     return if (normalized == "GO SUB") "GO SUB" else "GOSUB"
+}
+
+private fun format(
+    node: ASTNode,
+    stmtStart: Int,
+    stmtText: String,
+    onKeywordNode: ASTNode,
+    lineNumber: Int,
+    keyword: String
+): String {
+    val relStart = node.startOffset - stmtStart
+    val relEnd = node.startOffset + node.textLength - stmtStart
+    val exprPart = stmtText.substring(onKeywordNode.textLength, relStart).trim()
+    val lineNumsPart = stmtText.substring(relEnd).trim()
+    return buildString {
+        append("$lineNumber ON")
+        if (exprPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(uppercaseOutsideStrings(exprPart))}")
+        append(" $keyword")
+        if (lineNumsPart.isNotEmpty()) append(" ${removeWhitespaceOutsideStrings(lineNumsPart)}")
+    }
 }
 
 fun uppercaseOutsideStrings(text: String): String =
