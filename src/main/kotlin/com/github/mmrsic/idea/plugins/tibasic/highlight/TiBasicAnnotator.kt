@@ -1003,10 +1003,16 @@ class TiBasicAnnotator : Annotator {
 
     private fun annotateExpression(expr: TiBasicExpression, holder: AnnotationHolder) {
         val children = expr.node.nonWhitespaceChildren
+        if (children.isEmpty()) return
         val openParens = children.count { it.elementType == TiBasicTokenTypes.LPAREN }
         val closeParens = children.count { it.elementType == TiBasicTokenTypes.RPAREN }
         if (openParens > closeParens) {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, expr)
+            return
+        }
+        val invalidRange = invalidExpressionRange(children, expr.textRange)
+        if (invalidRange != null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, invalidRange)
             return
         }
         if (children.isNotEmpty() && children.none { it.elementType in EXPRESSION_VALUE_NODE_TYPES }) {
@@ -1030,6 +1036,95 @@ class TiBasicAnnotator : Annotator {
             }
         }
     }
+
+    private fun invalidExpressionRange(children: List<ASTNode>, expressionRange: TextRange): TextRange? =
+        parseExpressionSyntax(children, startIndex = 0, expressionRange = expressionRange).invalidRange
+
+    private fun parseExpressionSyntax(
+        children: List<ASTNode>,
+        startIndex: Int,
+        expressionRange: TextRange,
+        openingParenIndex: Int? = null,
+    ): ExpressionSyntaxResult {
+        var index = startIndex
+        var expectsOperand = true
+        var consumedOperand = false
+        while (index < children.size) {
+            val child = children[index]
+            if (expectsOperand) {
+                when {
+                    child.elementType in UNARY_EXPRESSION_OPERATOR_TYPES -> index++
+                    child.elementType == TiBasicTokenTypes.LPAREN -> {
+                        val nested = parseExpressionSyntax(children, index + 1, expressionRange, index)
+                        if (nested.invalidRange != null) return nested
+                        index = nested.nextIndex
+                        expectsOperand = false
+                        consumedOperand = true
+                    }
+
+                    child.elementType == TiBasicTokenTypes.RPAREN -> {
+                        return ExpressionSyntaxResult(
+                            nextIndex = index + 1,
+                            invalidRange = invalidParenthesizedRange(children, openingParenIndex, index),
+                        )
+                    }
+
+                    child.isExpressionOperand() -> {
+                        index++
+                        expectsOperand = false
+                        consumedOperand = true
+                    }
+
+                    else -> return ExpressionSyntaxResult(index + 1, child.textRange)
+                }
+            } else {
+                when {
+                    child.elementType == TiBasicTokenTypes.RPAREN -> {
+                        return if (openingParenIndex != null) {
+                            ExpressionSyntaxResult(nextIndex = index + 1)
+                        } else {
+                            ExpressionSyntaxResult(nextIndex = index + 1, invalidRange = child.textRange)
+                        }
+                    }
+
+                    child.elementType in BINARY_EXPRESSION_OPERATOR_TYPES -> {
+                        index++
+                        expectsOperand = true
+                    }
+
+                    child.elementType == TiBasicTokenTypes.LPAREN || child.isExpressionOperand() ->
+                        return ExpressionSyntaxResult(index + 1, child.textRange)
+
+                    else -> return ExpressionSyntaxResult(index + 1, child.textRange)
+                }
+            }
+        }
+        if (openingParenIndex != null) {
+            val openingParen = children[openingParenIndex]
+            return ExpressionSyntaxResult(
+                nextIndex = index,
+                invalidRange = TextRange(openingParen.startOffset, expressionRange.endOffset),
+            )
+        }
+        return when {
+            !consumedOperand -> ExpressionSyntaxResult(nextIndex = index, invalidRange = expressionRange)
+            expectsOperand -> ExpressionSyntaxResult(nextIndex = index, invalidRange = children.last().textRange)
+            else -> ExpressionSyntaxResult(nextIndex = index)
+        }
+    }
+
+    private fun invalidParenthesizedRange(
+        children: List<ASTNode>,
+        openingParenIndex: Int?,
+        closingParenIndex: Int,
+    ): TextRange =
+        if (openingParenIndex == null) {
+            children[closingParenIndex].textRange
+        } else {
+            val openingParen = children[openingParenIndex]
+            val closingParen = children[closingParenIndex]
+            TextRange(openingParen.startOffset, closingParen.startOffset + closingParen.textLength)
+        }
 
     private fun annotateCallStatement(statement: TiBasicCallStatement, holder: AnnotationHolder) {
         val name = statement.subprogramName()
@@ -1429,6 +1524,11 @@ class TiBasicAnnotator : Annotator {
 
 private data class DefSignature(val lineNumber: Int, val hasParameter: Boolean)
 
+private data class ExpressionSyntaxResult(
+    val nextIndex: Int,
+    val invalidRange: TextRange? = null,
+)
+
 private val FILE_NUMBER_RANGE = 1..255
 
 private val COMMANDS_UPPERCASE = TiBasicKeywords.getCommands().map { it.uppercase() }.toSet()
@@ -1462,12 +1562,34 @@ private val NUMERIC_MISMATCH_TYPES = setOf(
     TiBasicTokenTypes.POW_OP,
 )
 
+private val UNARY_EXPRESSION_OPERATOR_TYPES = setOf(
+    TiBasicTokenTypes.PLUS_OP,
+    TiBasicTokenTypes.MINUS_OP,
+)
+
+private val BINARY_EXPRESSION_OPERATOR_TYPES = setOf(
+    TiBasicTokenTypes.PLUS_OP,
+    TiBasicTokenTypes.MINUS_OP,
+    TiBasicTokenTypes.MUL_OP,
+    TiBasicTokenTypes.DIV_OP,
+    TiBasicTokenTypes.POW_OP,
+    TiBasicTokenTypes.CONCAT_OP,
+    TiBasicTokenTypes.EQ_OP,
+    TiBasicTokenTypes.LT_OP,
+    TiBasicTokenTypes.GT_OP,
+    TiBasicTokenTypes.NEQ_OP,
+    TiBasicTokenTypes.LE_OP,
+    TiBasicTokenTypes.GE_OP,
+)
+
 private val EXPRESSION_VALUE_NODE_TYPES = setOf(
     TiBasicTokenTypes.NUMERIC_LITERAL,
     TiBasicTokenTypes.STRING_LITERAL,
     TiBasicNodeTypes.VARIABLE_ACCESS,
     TiBasicNodeTypes.FUNCTION_CALL,
 )
+
+private fun ASTNode.isExpressionOperand(): Boolean = elementType in EXPRESSION_VALUE_NODE_TYPES
 
 private val ALLOWED_FOR_STATEMENT_CHILD_TYPES = setOf(
     TiBasicTokenTypes.FOR_KEYWORD,
@@ -1477,4 +1599,3 @@ private val ALLOWED_FOR_STATEMENT_CHILD_TYPES = setOf(
     TiBasicTokenTypes.TO_KEYWORD,
     TiBasicTokenTypes.STEP_KEYWORD,
 )
-

@@ -427,6 +427,37 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testNoErrorForNonEmptyParenthesizedExpressionAfterMultiplication() {
+        configureFile("3110 GANG(GN)=(GANG(GN)+1)*(GN)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForEmptyParenthesizedExpressionAfterMultiplication() {
+        configureFile(
+            "3110 GANG(GN)=(GANG(GN)+1)*<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">()</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testNoErrorForNegatedParenthesizedExpressionAfterMultiplication() {
+        configureFile("3110 GANG(GN)=(GANG(GN)+1)*(-GN)")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForUnaryMinusOnlyParenthesizedExpressionAfterMultiplication() {
+        configureFile(
+            "3110 GANG(GN)=(GANG(GN)+1)*<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">(-)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForUnaryPlusOnlyParenthesizedExpressionAfterMultiplication() {
+        configureFile(
+            "3110 GANG(GN)=(GANG(GN)+1)*<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">(+)</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testErrorForNumericVariableTooLong() {
         configureFile(
             "100 PRINT <error descr=\"Bad variable name\">ABCDEFGHIJKLMNOP</error>",
