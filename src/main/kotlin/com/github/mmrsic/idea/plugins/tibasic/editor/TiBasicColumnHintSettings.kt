@@ -6,22 +6,30 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.SettingsCategory
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
-import com.intellij.util.xmlb.XmlSerializerUtil
 
 @Service(Service.Level.APP)
 @State(name = "TiBasicColumnHintSettings", storages = [Storage("editor.xml")], category = SettingsCategory.CODE)
-class TiBasicColumnHintSettings : PersistentStateComponent<TiBasicColumnHintSettings> {
+class TiBasicColumnHintSettings : PersistentStateComponent<TiBasicColumnHintSettings.State> {
 
-    var displayMode: ColumnHintDisplayMode = ColumnHintDisplayMode.ALL_LINES
+    var guidesEnabled: Boolean = true
+
+    data class State(
+        var guidesEnabled: Boolean = true,
+        var displayMode: String? = null,
+    )
 
     companion object {
+        private const val LEGACY_DISABLED_MODE = "DISABLED"
+
         fun getInstance(): TiBasicColumnHintSettings =
             ApplicationManager.getApplication().getService(TiBasicColumnHintSettings::class.java)
     }
 
-    override fun getState(): TiBasicColumnHintSettings = this
+    override fun getState(): State = State(guidesEnabled = guidesEnabled)
 
-    override fun loadState(state: TiBasicColumnHintSettings) {
-        XmlSerializerUtil.copyBean(state, this)
+    override fun loadState(state: State) {
+        guidesEnabled = state.displayMode?.let(::guidesEnabledFromLegacyMode) ?: state.guidesEnabled
     }
+
+    private fun guidesEnabledFromLegacyMode(displayMode: String): Boolean = displayMode != LEGACY_DISABLED_MODE
 }

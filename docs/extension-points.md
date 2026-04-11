@@ -195,41 +195,42 @@ replacement keeps the global action ID and shortcut, routes TI-Basic files to
 
 ---
 
-### `codeInsight.declarativeInlayProvider` — TI-99/4A display column breaks
+### `postStartupActivity` — TI-99/4A display column guides
 
-| Attribute             | Value                                             |
-|-----------------------|---------------------------------------------------|
-| `language`            | `TI-Basic`                                        |
-| `implementationClass` | `tibasic.editor.TiBasicDisplayColumnHintProvider` |
-| `isEnabledByDefault`  | `true`                                            |
-| `group`               | `OTHER_GROUP`                                     |
-| `providerId`          | `tibasic.display.column.hints`                    |
-| `bundle`              | `messages.TiBasicBundle`                          |
-| `nameKey`             | `inlay.hints.display.columns.name`                |
+| Attribute        | Value                                                             |
+|------------------|-------------------------------------------------------------------|
+| `implementation` | `tibasic.editor.TiBasicDisplayColumnGuideInitializer`             |
 
-```xml
+Registers editor lifecycle handling for TI-Basic display column guides. On project startup the
+initializer installs a per-editor controller for already open editors and adds an `EditorFactory`
+listener for future editors in the same project.
 
-<codeInsight.declarativeInlayProvider
-        language="TI-Basic"
-        implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnHintProvider"
-        isEnabledByDefault="true"
-        group="OTHER_GROUP"
-        providerId="tibasic.display.column.hints"
-        bundle="messages.TiBasicBundle"
-        nameKey="inlay.hints.display.columns.name"
-/>
-```
+The controller (`TiBasicDisplayColumnGuideController`) adds one `RangeHighlighter` per TI-Basic
+editor and assigns a `CustomHighlighterRenderer` (`TiBasicDisplayColumnGuideRenderer`) that draws
+thin vertical guide lines at every 28th character position required by the longest line in the
+file. Because the guides are painted as an overlay, they do not reserve horizontal space and
+therefore do not shift the code layout.
 
-Inserts a `┊` inlay marker at every 28th character of each source line.
-The TI-99/4A text mode shows 28 visible columns per screen row; these markers let programmers see
-exactly where the real hardware would wrap to the next row without leaving the editor.
-The hints can be toggled via *Settings → Editor → Inlay Hints → Other → TI-99/4A Display Column Breaks*.
+The guide calculation remains centralized in `TiBasicDisplayColumnGuides.kt`: `longestLineLength(...)`
+finds the maximum source-line length of the document, and `displayColumnGuideColumns(...)` derives
+the global guide columns from that value. The constant `TI99_4A_DISPLAY_COLUMNS = 28` defines the
+TI-99/4A screen width.
 
-Implementation uses the **declarative InlayHints API** (`InlayHintsProvider` /
-`OwnBypassCollector.collectHintsForFile`). The offset calculation logic is extracted into the
-package-level function `displayColumnBreakOffsets(lineStart, lineLength, columnWidth)` in
-`TiBasicDisplayColumnHintProvider.kt` — also used directly in tests. The constant
-`TI99_4A_DISPLAY_COLUMNS = 28` defines the column width.
+---
+
+### `applicationConfigurable` — Display Column Guides
+
+| Attribute  | Value                                                 |
+|------------|-------------------------------------------------------|
+| `parentId` | `editor`                                              |
+| `id`       | `tibasic.display.column.guides`                       |
+| `instance` | `tibasic.editor.TiBasicDisplayColumnGuideConfigurable` |
+| `key`      | `display.columns.settings.title`                      |
+| `bundle`   | `messages.TiBasicBundle`                              |
+
+Settings UI under **Settings › Editor › TI-Basic Display Column Guides** with a single checkbox to
+enable or disable the guides. The configurable persists `guidesEnabled` via
+`TiBasicColumnHintSettings` and triggers a refresh of all open editors after apply.
 
 ---
 

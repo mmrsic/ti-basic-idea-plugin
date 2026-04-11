@@ -238,9 +238,10 @@ The annotator inspects every file and highlights:
 - **CALL SCREEN gutter preview** — for every `CALL SCREEN(colorCode)` line a solid 16×16 color square appears in the
   gutter showing the chosen background color (`colorCode` may be a literal or a constant numeric variable; a
   transparent checkerboard is shown when the color cannot be resolved)
-- **TI-99/4A display column-break indicators** — inlay markers (`┊`) are inserted at every 28th character of each
-  editor line, showing exactly where the TI-99/4A's 28-column text display would wrap to the next screen row; the
-  hints can be toggled in *Settings → Editor → Inlay Hints → Other → TI-99/4A Display Column Breaks*
+- **TI-99/4A display column guides** — thin overlay guide lines are drawn across the whole visible file at every 28th
+  character position needed by the longest line in the file, showing exactly where the TI-99/4A's 28-column text
+  display would wrap to the next screen row without shifting the surrounding code layout; the guides can be enabled or
+  disabled in *Settings → Editor → TI-Basic Display Column Guides*
 - **Reformat Code** (Ctrl+Alt+L) — the standard IDEA "Reformat Code" action is mapped to **Format TI-BASIC** for
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file

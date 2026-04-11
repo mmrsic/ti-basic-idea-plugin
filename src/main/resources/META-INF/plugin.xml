@@ -75,20 +75,6 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallScreenLineMarkerProvider"
         />
-        <codeInsight.declarativeInlayProvider
-                language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnHintProvider"
-                isEnabledByDefault="true"
-                group="OTHER_GROUP"
-                providerId="tibasic.display.column.hints"
-                bundle="messages.TiBasicBundle"
-                nameKey="inlay.hints.display.columns.name"
-        />
-        <codeInsight.declarativeInlayProviderCustomSettingsProvider
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnHintSettingsProvider"
-                providerId="tibasic.display.column.hints"
-                language="TI-Basic"
-        />
         <applicationService
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicColumnHintSettings"
         />
@@ -115,13 +101,24 @@
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicParenAutoCloseSettings"
         />
         <postStartupActivity
+                implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnGuideInitializer"
+        />
+        <postStartupActivity
                 implementation="com.github.mmrsic.idea.plugins.tibasic.action.format.TiBasicReformatCodeActionOverrideInitializer"
+        />
+        <applicationConfigurable
+                parentId="editor"
+                instance="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnGuideConfigurable"
+                id="tibasic.display.column.guides"
+                key="display.columns.settings.title"
+                bundle="messages.TiBasicBundle"
         />
         <applicationConfigurable
                 parentId="editor"
                 instance="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicParenAutoCloseConfigurable"
                 id="tibasic.paren.auto.close"
                 key="paren.auto.close.settings.title"
+                bundle="messages.TiBasicBundle"
         />
         <lang.findUsagesProvider
                 language="TI-Basic"
