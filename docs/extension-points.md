@@ -59,13 +59,14 @@ and function names appear in separate groups in the popup.
 
 ### `typedHandler`
 
-| Attribute        | Value                                              |
-|------------------|----------------------------------------------------|
-| `implementation` | `tibasic.editor.TiBasicClosingParenTypedHandler`   |
+| Attribute        | Value                                               |
+|------------------|-----------------------------------------------------|
+| `implementation` | `tibasic.editor.TiBasicPairedCharacterTypedHandler` |
 
-Intercepts typed `)` characters in TI-Basic files. If the caret is already directly
-before an existing `)`, the handler moves the caret over that character and stops the
-typed character from being inserted, preventing duplicated closing parentheses.
+Intercepts typed `(`, `)` and `"` characters in TI-Basic files. It inserts matching
+closing delimiters for opening parentheses and quotes, skips over an existing closing
+`)` or `"` when that delimiter should be reused, and inserts doubled quotes inside an
+existing string literal.
 
 ---
 
@@ -232,13 +233,13 @@ TI-99/4A screen width.
 
 ### `applicationConfigurable` — Display Column Guides
 
-| Attribute  | Value                                                 |
-|------------|-------------------------------------------------------|
-| `parentId` | `editor`                                              |
-| `id`       | `tibasic.display.column.guides`                       |
+| Attribute  | Value                                                  |
+|------------|--------------------------------------------------------|
+| `parentId` | `editor`                                               |
+| `id`       | `tibasic.display.column.guides`                        |
 | `instance` | `tibasic.editor.TiBasicDisplayColumnGuideConfigurable` |
-| `key`      | `display.columns.settings.title`                      |
-| `bundle`   | `messages.TiBasicBundle`                              |
+| `key`      | `display.columns.settings.title`                       |
+| `bundle`   | `messages.TiBasicBundle`                               |
 
 Settings UI under **Settings › Editor › TI-Basic Display Column Guides** with a single checkbox to
 enable or disable the guides. The configurable persists `guidesEnabled` via
@@ -432,7 +433,7 @@ properties and functions. These are collected in `tibasic.ext`:
 |---------------------------------|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ASTNodeExtensions.kt`          | `ASTNode`          | `allChildren` — all child nodes; `nonWhitespaceChildren` — children excluding whitespace; `firstChildType` — element type of first child; `childrenOfType(type)` — children matching a type; `firstChildOfType(type)` — first child matching a type; `childrenAfter(type)` — children after the first node of a given type |
 | `AnnotationHolderExtensions.kt` | `AnnotationHolder` | `error(message, element)`, `error(message, range)` — create error annotations; `warning(message, element)`, `warning(message, range)` — create warning annotations                                                                                                                                                         |
-| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type; `lineNumberReferenceNodes()` — all NUMERIC_LITERAL AST nodes that are branch-target line number references (covers GOTO, GOSUB, ON GOTO, ON GOSUB, IF-THEN/ELSE, RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) (**`tibasic.ext`**) |
+| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type; `lineNumberReferenceNodes()` — all NUMERIC_LITERAL AST nodes that are branch-target line number references (covers GOTO, GOSUB, ON GOTO, ON GOSUB, IF-THEN/ELSE, RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) (**`tibasic.ext`**)                             |
 | `PsiElementExtensions.kt`       | `PsiElement`       | `containingTiBasicFile` — casts `containingFile` to `TiBasicFile?` (**`tibasic.psi`** — lives alongside the PSI types it returns)                                                                                                                                                                                          |
 
 When you find yourself calling a raw framework method that is verbose or obscures intent,
