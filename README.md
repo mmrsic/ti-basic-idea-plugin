@@ -246,6 +246,9 @@ The annotator inspects every file and highlights:
   `ON ... GOTO/GOSUB`, `IF ... THEN/ELSE`, `RESTORE`, `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE`), a gutter icon appears
   next to that target line; the tooltip summarizes the referring line numbers, and clicking the icon opens a
   navigation list of the referring lines
+- **Ctrl+B / Ctrl+Click for line-number references** — the referenced numeric literals in `GOTO`, `GOSUB`,
+  `ON ... GOTO/GOSUB`, `IF ... THEN/ELSE`, `RESTORE`, `BREAK`, `UNBREAK`, `TRACE`, and `UNTRACE` navigate directly to
+  the matching target line in the same file; unresolved or out-of-range targets stay non-navigable
 - **TI-99/4A display column guides** — thin overlay guide lines are drawn across the whole visible file at every 28th
   character position needed by the longest line in the file, showing exactly where the TI-99/4A's 28-column text
   display would wrap to the next screen row without shifting the surrounding code layout; the guides can be enabled or
@@ -283,7 +286,7 @@ src/
 ├── main/
 │   ├── kotlin/com/github/mmrsic/idea/plugins/tibasic/
 │   │   ├── action/          File actions, formatter, and resequencing
-│   │   ├── editor/          Completion, Shift+Enter, gutter previews/reference markers, and display column hints
+│   │   ├── editor/          Completion, Shift+Enter, line-number navigation, gutter previews/reference markers, and display column hints
 │   │   ├── ext/             Kotlin wrappers around IntelliJ framework APIs
 │   │   ├── findusages/      Find Usages provider, handler, target evaluator, and read/write detection
 │   │   ├── highlight/       Annotator and syntax highlighting
@@ -298,7 +301,7 @@ src/
     └── kotlin/com/github/mmrsic/idea/plugins/tibasic/
         ├── TiBasicTestBase.kt                  Shared test base class
         ├── action/                             Formatter and resequencing tests
-        ├── editor/                             Completion, Shift+Enter, gutter preview/reference, and display column hint tests
+        ├── editor/                             Completion, Shift+Enter, line-number navigation, gutter preview/reference, and display column hint tests
         ├── findusages/                         Variable, statement, subprogram, and function usage tests
         ├── highlight/                          General and statement-specific annotator tests
         ├── lang/                               Icon and language-related tests

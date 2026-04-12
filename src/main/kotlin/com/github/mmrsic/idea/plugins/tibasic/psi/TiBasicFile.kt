@@ -11,6 +11,7 @@ class TiBasicFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, Ti
     override fun getFileType(): FileType = TiBasicFileType
     override fun toString(): String = "TI-Basic File"
     fun lines(): List<TiBasicLine> = children.filterIsInstance<TiBasicLine>()
+    fun lineByNumber(lineNumber: Int): TiBasicLine? = lines().firstOrNull { it.lineNumber() == lineNumber }
     fun forStatements(): List<TiBasicForStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicForStatement>() }
     fun nextStatements(): List<TiBasicNextStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicNextStatement>() }
     fun variableAccesses(): List<TiBasicVariableAccess> = PsiTreeUtil.findChildrenOfType(this, TiBasicVariableAccess::class.java).toList()
@@ -18,4 +19,3 @@ class TiBasicFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, Ti
     fun dimStatements(): List<TiBasicDimStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicDimStatement>() }
     fun optionBaseStatements(): List<TiBasicOptionBaseStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicOptionBaseStatement>() }
 }
-

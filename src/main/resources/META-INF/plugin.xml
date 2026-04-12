@@ -55,7 +55,8 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCompletionContributor"
         />
-        <typedHandler implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicPairedCharacterTypedHandler"/>
+        <typedHandler
+                implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicPairedCharacterTypedHandler"/>
         <lang.parserDefinition
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicParserDefinition"
@@ -132,6 +133,8 @@
         <findUsagesHandlerFactory
                 implementation="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesHandlerFactory"
         />
+        <gotoDeclarationHandler
+                implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicGotoDeclarationHandler"/>
         <targetElementEvaluator
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicTargetElementEvaluator"

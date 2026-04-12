@@ -347,6 +347,30 @@ UX behavior:
 
 ---
 
+### `gotoDeclarationHandler` — line-number declaration navigation
+
+| Attribute        | Value                                          |
+|------------------|------------------------------------------------|
+| `implementation` | `tibasic.editor.TiBasicGotoDeclarationHandler` |
+
+```xml
+<gotoDeclarationHandler
+        implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicGotoDeclarationHandler"
+/>
+```
+
+Handles declaration navigation for referenced `NUMERIC_LITERAL` PSI elements in the same
+statement contexts already covered by `PsiElement.lineNumberReferenceNodes()`: `GOTO`, `GOSUB`,
+`ON ... GOTO`, `ON ... GOSUB`, `IF ... THEN ... [ELSE ...]`, `RESTORE`, and line-number-list
+statements (`BREAK`, `UNBREAK`, `TRACE`, `UNTRACE`).
+
+The handler resolves file-locally through `TiBasicFile.lineByNumber(...)`, which enables
+standard IntelliJ declaration navigation (`Ctrl+B`, qualified mouse click) from the
+referencing numeric literal to the referenced target line. Unresolved or out-of-range line
+numbers yield no target, so they do not navigate anywhere.
+
+---
+
 ### Actions
 
 Both actions are added to the editor popup menu (`EditorPopupMenu`) and the `Code` menu (`CodeMenu`).
