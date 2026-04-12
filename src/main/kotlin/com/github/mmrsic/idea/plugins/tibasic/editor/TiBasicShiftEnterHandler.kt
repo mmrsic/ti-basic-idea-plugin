@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.VALID_LINE_NUMBER_RANGE
+import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
 import com.github.mmrsic.idea.plugins.tibasic.util.countUnclosedParens
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.editor.Caret

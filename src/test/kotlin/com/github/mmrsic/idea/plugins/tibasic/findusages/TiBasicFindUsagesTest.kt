@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.findusages
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
 import com.intellij.psi.util.PsiTreeUtil
 
 class TiBasicFindUsagesTest : TiBasicTestBase() {

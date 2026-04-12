@@ -1,9 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDimStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOptionBaseStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDimStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOptionBaseStatement
 import com.intellij.testFramework.ParsingTestCase
 
 class TiBasicDimParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition()) {

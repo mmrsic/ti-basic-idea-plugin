@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.findusages
 
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFunctionCall
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicFunctionCall
 import com.intellij.codeInsight.TargetElementEvaluatorEx2
 import com.intellij.psi.PsiElement
 

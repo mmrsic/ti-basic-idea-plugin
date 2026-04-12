@@ -1,8 +1,8 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
 import com.intellij.testFramework.ParsingTestCase
 
 class TiBasicCallParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition()) {

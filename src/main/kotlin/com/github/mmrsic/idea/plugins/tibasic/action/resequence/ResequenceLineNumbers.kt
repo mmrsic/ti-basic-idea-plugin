@@ -2,7 +2,7 @@ package com.github.mmrsic.idea.plugins.tibasic.action.resequence
 
 import com.github.mmrsic.idea.plugins.tibasic.ext.lineNumberReferenceNodes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 

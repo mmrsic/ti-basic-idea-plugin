@@ -1,11 +1,11 @@
 package com.github.mmrsic.idea.plugins.tibasic.parser
 
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCloseStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOpenOption
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOpenStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicCloseStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOpenOption
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOpenStatement
 import com.intellij.testFramework.ParsingTestCase
 
 class TiBasicOpenCloseParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition()) {

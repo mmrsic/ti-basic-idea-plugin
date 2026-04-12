@@ -2,6 +2,13 @@ package com.github.mmrsic.idea.plugins.tibasic.psi
 
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicFileType
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDefStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDimStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicForStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicNextStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOptionBaseStatement
 import com.intellij.extapi.psi.PsiFileBase
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.psi.FileViewProvider

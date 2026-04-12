@@ -1,6 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.findusages
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReferenceBase

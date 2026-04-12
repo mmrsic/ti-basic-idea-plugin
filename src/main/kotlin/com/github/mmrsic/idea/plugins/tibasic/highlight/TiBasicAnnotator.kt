@@ -18,7 +18,44 @@ import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.*
+import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
+import com.github.mmrsic.idea.plugins.tibasic.psi.contracts.TiBasicFileNumberStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.contracts.TiBasicRecordNumberStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicFunctionCall
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicTabFunction
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicCloseStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDefStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDeleteStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDimStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicEndStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicForStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicIfStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicInputStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicInvalidLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLetStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLineNumberListStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicNextStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOnGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOnGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOpenStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOptionBaseStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicRandomizeStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicReadStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicRestoreStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicReturnStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicScreenPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicStopStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicUnknownStatement
 import com.intellij.lang.ASTNode
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
@@ -359,19 +396,9 @@ class TiBasicAnnotator : Annotator {
             holder.error("Incorrect statement", statement)
             return
         }
-        val fileNumberExpr = statement.fileNumberExpr()
-        if (fileNumberExpr == null) {
-            holder.error("Incorrect statement", statement)
-            return
-        }
-        if (isStringExpression(fileNumberExpr)) {
-            holder.error("Numeric expression expected", fileNumberExpr)
-        } else {
-            annotateFileNumberRange(fileNumberExpr, holder)
-        }
-        val dotNode = statement.node.firstChildOfType(TiBasicTokenTypes.DOT)
-        val recNode = statement.node.firstChildOfType(TiBasicTokenTypes.REC_KEYWORD)
-        if (dotNode != null && recNode == null) {
+        if (annotateFileNumberExpression(statement, holder)) return
+        val recNode = statement.recKeywordNode()
+        if (statement.node.firstChildOfType(TiBasicTokenTypes.DOT) != null && recNode == null) {
             holder.error("Incorrect statement", statement)
             return
         }
@@ -395,6 +422,23 @@ class TiBasicAnnotator : Annotator {
             statement,
             holder,
         )
+    }
+
+    private fun annotateFileNumberExpression(
+        statement: TiBasicFileNumberStatement,
+        holder: AnnotationHolder
+    ): Boolean {
+        val fileNumberExpr = statement.fileNumberExpr()
+        if (fileNumberExpr == null) {
+            holder.error("Incorrect statement", statement)
+            return true
+        }
+        if (isStringExpression(fileNumberExpr)) {
+            holder.error("Numeric expression expected", fileNumberExpr)
+        } else {
+            annotateFileNumberRange(fileNumberExpr, holder)
+        }
+        return false
     }
 
     private fun annotateReadStatement(statement: TiBasicReadStatement, holder: AnnotationHolder) {
@@ -453,22 +497,7 @@ class TiBasicAnnotator : Annotator {
         } else {
             annotateFileNumberRange(fileNumberExpr, holder)
         }
-        val commaNode = statement.node.firstChildOfType(TiBasicTokenTypes.COMMA)
-        val recNode = statement.node.firstChildOfType(TiBasicTokenTypes.REC_KEYWORD)
-        if (commaNode != null && recNode == null) {
-            holder.error("Incorrect statement", statement)
-            return
-        }
-        if (recNode != null) {
-            val recordNumberExpr = statement.recordNumberExpr()
-            if (recordNumberExpr == null) {
-                holder.error("Incorrect statement", statement)
-                return
-            }
-            if (isStringExpression(recordNumberExpr)) {
-                holder.error("Numeric expression expected", recordNumberExpr)
-            }
-        }
+        if (annotateRecNode(statement, statement.node.firstChildOfType(TiBasicTokenTypes.COMMA), holder)) return
         val validChildTypes = setOf(
             TiBasicTokenTypes.RESTORE_KEYWORD,
             TokenType.WHITE_SPACE,
@@ -789,32 +818,9 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateFilePrintStatement(statement: TiBasicPrintStatement, holder: AnnotationHolder) {
-        val fileNumberExpr = statement.fileNumberExpr()
-        if (fileNumberExpr == null) {
-            holder.error("Incorrect statement", statement)
-            return
-        }
-        if (isStringExpression(fileNumberExpr)) {
-            holder.error("Numeric expression expected", fileNumberExpr)
-        } else {
-            annotateFileNumberRange(fileNumberExpr, holder)
-        }
+        if (annotateFileNumberExpression(statement, holder)) return
         val dotNode = statement.node.firstChildOfType(TiBasicTokenTypes.DOT)
-        val recNode = statement.node.firstChildOfType(TiBasicTokenTypes.REC_KEYWORD)
-        if (dotNode != null && recNode == null) {
-            holder.error("Incorrect statement", statement)
-            return
-        }
-        if (recNode != null) {
-            val recordNumberExpr = statement.recordNumberExpr()
-            if (recordNumberExpr == null) {
-                holder.error("Incorrect statement", statement)
-                return
-            }
-            if (isStringExpression(recordNumberExpr)) {
-                holder.error("Numeric expression expected", recordNumberExpr)
-            }
-        }
+        if (annotateRecNode(statement, dotNode, holder)) return
         val colonNode = statement.node.firstChildOfType(TiBasicTokenTypes.COLON)
         if (colonNode == null) {
             holder.error("Incorrect statement", statement)
@@ -842,6 +848,29 @@ class TiBasicAnnotator : Annotator {
             .firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
             ?.psi as? TiBasicExpression
         annotatePrintArgNodes(argNodes, holder, firstArgExpr)
+    }
+
+    private fun annotateRecNode(
+        statement: TiBasicRecordNumberStatement,
+        dotNode: ASTNode?,
+        holder: AnnotationHolder
+    ): Boolean {
+        val recNode = statement.recKeywordNode()
+        if (dotNode != null && recNode == null) {
+            holder.error("Incorrect statement", statement)
+            return true
+        }
+        if (recNode != null) {
+            val recordNumberExpr = statement.recordNumberExpr()
+            if (recordNumberExpr == null) {
+                holder.error("Incorrect statement", statement)
+                return true
+            }
+            if (isStringExpression(recordNumberExpr)) {
+                holder.error("Numeric expression expected", recordNumberExpr)
+            }
+        }
+        return false
     }
 
     private fun annotatePrintArgNodes(
@@ -1357,7 +1386,7 @@ class TiBasicAnnotator : Annotator {
 
     private fun isEmptySubscriptAccess(node: ASTNode): Boolean =
         node.childrenOfType(TiBasicNodeTypes.EXPRESSION).isEmpty() &&
-            node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
+                node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
 
     private fun duplicateLineNumbers(lines: List<TiBasicLine>): Set<TiBasicLine> {
         val seen = mutableSetOf<Int>()
@@ -1389,16 +1418,7 @@ class TiBasicAnnotator : Annotator {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
             return
         }
-        val fileNumberExpr = statement.fileNumberExpr()
-        if (fileNumberExpr == null) {
-            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
-            return
-        }
-        if (isStringExpression(fileNumberExpr)) {
-            holder.error("Numeric expression expected", fileNumberExpr)
-        } else {
-            annotateFileNumberRange(fileNumberExpr, holder)
-        }
+        if (annotateFileNumberExpression(statement, holder)) return
         val colonNode = statement.node.firstChildOfType(TiBasicTokenTypes.COLON)
         if (colonNode == null) {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
@@ -1486,17 +1506,7 @@ class TiBasicAnnotator : Annotator {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
             return
         }
-        val expressions = statement.node.childrenOfType(TiBasicNodeTypes.EXPRESSION)
-        val fileNumberExpr = expressions.getOrNull(0)?.psi as? TiBasicExpression
-        if (fileNumberExpr == null) {
-            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
-            return
-        }
-        if (isStringExpression(fileNumberExpr)) {
-            holder.error("Numeric expression expected", fileNumberExpr)
-        } else {
-            annotateFileNumberRange(fileNumberExpr, holder)
-        }
+        if (annotateFileNumberExpression(statement, holder)) return
         val colonNode = statement.node.firstChildOfType(TiBasicTokenTypes.COLON)
         val deleteNode = statement.node.firstChildOfType(TiBasicTokenTypes.DELETE_KEYWORD)
         val trailingGarbage = statement.node.childrenAfter(TiBasicTokenTypes.HASH)

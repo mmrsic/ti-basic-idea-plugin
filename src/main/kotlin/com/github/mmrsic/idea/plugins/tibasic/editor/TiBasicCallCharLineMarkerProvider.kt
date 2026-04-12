@@ -3,8 +3,8 @@ package com.github.mmrsic.idea.plugins.tibasic.editor
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
 import com.intellij.codeInsight.daemon.LineMarkerInfo

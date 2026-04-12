@@ -2,9 +2,9 @@ package com.github.mmrsic.idea.plugins.tibasic.findusages
 
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicLexer
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicDefStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFunctionCall
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicFunctionCall
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDefStatement
 import com.intellij.lang.cacheBuilder.WordOccurrence
 import com.intellij.lang.cacheBuilder.WordsScanner
 import com.intellij.lang.findUsages.FindUsagesProvider

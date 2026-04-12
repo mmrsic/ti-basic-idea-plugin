@@ -3,7 +3,7 @@ package com.github.mmrsic.idea.plugins.tibasic.editor
 import com.github.mmrsic.idea.plugins.tibasic.ext.lineNumberReferenceNodes
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.VALID_LINE_NUMBER_RANGE
+import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
 import com.intellij.codeInsight.editorActions.CopyPastePreProcessor
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.RawText

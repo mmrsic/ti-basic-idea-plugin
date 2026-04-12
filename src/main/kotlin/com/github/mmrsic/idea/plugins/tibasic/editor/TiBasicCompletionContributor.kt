@@ -14,6 +14,7 @@ import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
+import com.intellij.codeInsight.lookup.AutoCompletionPolicy
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 
@@ -32,13 +33,7 @@ private const val FUNCTION_PARENS = "()"
 class TiBasicCompletionContributor : CompletionContributor() {
 
     override fun fillCompletionVariants(parameters: CompletionParameters, result: CompletionResultSet) {
-        if (parameters.invocationCount == 0) {
-            return
-        }
-        if (parameters.position.language != TiBasicLanguage) {
-            return
-        }
-        val file = parameters.position.containingFile as? TiBasicFile ?: return
+        val file = extractTiBasicFile(parameters) ?: return
         val identifierRange = identifierRangeBeforeCaret(parameters)
         val identifierPrefix = identifierRange?.let { parameters.editor.document.text.substring(it.first, it.last + 1) }.orEmpty()
         val completionResult = if (identifierPrefix.isNotEmpty() || isEmptyArraySubscriptContext(parameters)) {
@@ -89,6 +84,11 @@ class TiBasicCompletionContributor : CompletionContributor() {
             }
     }
 
+    private fun extractTiBasicFile(parameters: CompletionParameters): TiBasicFile? =
+        if (parameters.invocationCount == 0) null
+        else if (parameters.position.language != TiBasicLanguage) null
+        else parameters.position.containingFile as? TiBasicFile
+
     private fun isCallSubprogramContext(parameters: CompletionParameters): Boolean {
         val pos = parameters.position
         if (pos.node.elementType == TiBasicTokenTypes.CALL_SUBPROGRAM_NAME) return true
@@ -96,12 +96,14 @@ class TiBasicCompletionContributor : CompletionContributor() {
         return prevLeaf?.node?.elementType == TiBasicTokenTypes.CALL_KEYWORD
     }
 
+    private val optionBaseRegex = Regex("""^OPTION\s+[A-Za-z0-9]*$""", RegexOption.IGNORE_CASE)
+
     private fun isOptionBaseContext(parameters: CompletionParameters): Boolean {
         val docText = parameters.editor.document.text
         val lineStart = docText.lastIndexOf('\n', parameters.offset - 1) + 1
         val textBeforeCaret = docText.substring(lineStart, parameters.offset)
         val statementPart = textBeforeCaret.trimStart().dropWhile { it.isDigit() }.trimStart()
-        return Regex("""^OPTION\s+[A-Za-z0-9]*$""", RegexOption.IGNORE_CASE).matches(statementPart)
+        return optionBaseRegex.matches(statementPart)
     }
 
     private fun wordBeforeCaret(parameters: CompletionParameters): String {
@@ -123,17 +125,11 @@ class TiBasicCompletionContributor : CompletionContributor() {
     private fun isEmptyArraySubscriptContext(parameters: CompletionParameters): Boolean {
         val text = parameters.editor.document.charsSequence
         val offset = parameters.offset
-        return offset > 0 &&
-                offset < text.length &&
-                text[offset - 1] == '(' &&
-                text[offset] == ')'
+        return offset in 1 until text.length
+                && text[offset - 1] == '(' && text[offset] == ')'
     }
 
-    private fun variableCompletions(
-        file: TiBasicFile,
-        identifierPrefix: String,
-        identifierStartOffset: Int?,
-    ): List<VariableCompletion> =
+    private fun variableCompletions(file: TiBasicFile, identifierPrefix: String, identifierStartOffset: Int?): List<VariableCompletion> =
         TiBasicVariableCollector.collectCached(file)
             .filterNot { entry ->
                 identifierStartOffset != null &&
@@ -198,7 +194,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
 }
 
 private fun LookupElementBuilder.autoCompleteSingleMatch(): LookupElement = withAutoCompletionPolicy(
-    com.intellij.codeInsight.lookup.AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE,
+    AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE,
 )
 
 private fun isCompletionIdentifierChar(char: Char): Boolean = char.isLetterOrDigit() || char == '$'

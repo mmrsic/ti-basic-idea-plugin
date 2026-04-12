@@ -2,8 +2,8 @@ package com.github.mmrsic.idea.plugins.tibasic.action.format
 
 import com.github.mmrsic.idea.plugins.tibasic.action.TiBasicFileAction
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicInvalidLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicInvalidLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.util.replaceFileText
 import com.github.mmrsic.idea.plugins.tibasic.util.replaceRange
 import com.intellij.openapi.actionSystem.AnActionEvent

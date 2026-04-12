@@ -19,8 +19,15 @@ fun countUnclosedParens(lineText: String): Int {
                     }
                 }
             }
-            '(' -> { open++; i++ }
-            ')' -> { open = maxOf(0, open - 1); i++ }
+
+            '(' -> {
+                open++; i++
+            }
+
+            ')' -> {
+                open = maxOf(0, open - 1); i++
+            }
+
             else -> i++
         }
     }

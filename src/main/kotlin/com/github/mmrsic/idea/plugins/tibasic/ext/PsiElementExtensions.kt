@@ -1,16 +1,16 @@
 package com.github.mmrsic.idea.plugins.tibasic.ext
 
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGosubStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicGotoStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicIfStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicLineNumberListStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGosubStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicOnGotoStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicRestoreStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.VALID_LINE_NUMBER_RANGE
+import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
 import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicIfStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLineNumberListStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOnGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicOnGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicRestoreStatement
 import com.intellij.lang.ASTNode
 import com.intellij.psi.PsiElement
 

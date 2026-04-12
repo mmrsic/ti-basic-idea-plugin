@@ -1,6 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.findusages
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicVariableAccess
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.AccessType
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
 import com.intellij.codeInsight.highlighting.ReadWriteAccessDetector
