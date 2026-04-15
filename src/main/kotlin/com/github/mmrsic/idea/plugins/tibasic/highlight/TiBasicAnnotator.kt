@@ -20,9 +20,9 @@ import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
+import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.contracts.TiBasicFileNumberStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.contracts.TiBasicRecordNumberStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicFunctionCall
@@ -1217,9 +1217,13 @@ class TiBasicAnnotator : Annotator {
         }
         argNodes.forEachIndexed { index, argNode ->
             val expr = argNode.psi as? TiBasicExpression ?: return@forEachIndexed
-            val expectedType = subprogram.argTypes[index % subprogram.argTypes.size]
+            val argRule = subprogram.argRuleAt(index)
+            if (argRule.requiresNumericVariableTarget && expr.numericVariableTarget() == null) {
+                holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+                return
+            }
             val isString = isStringExpression(expr)
-            val mismatch = when (expectedType) {
+            val mismatch = when (argRule.type) {
                 CallArgType.NUMERIC -> isString
                 CallArgType.STRING -> !isString
             }

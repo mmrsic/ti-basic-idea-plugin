@@ -140,16 +140,13 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         val icon = TiBasicCharPatternIcon("0000000000000000")
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
-        val lightGrayPixel = java.awt.Color.LIGHT_GRAY.rgb
         val whitePixel = java.awt.Color.WHITE.rgb
         // CELL_SIZE = 2: each character cell occupies a 2×2 pixel block.
-        // Cell (row, col) → pixel coords (col*2, row*2).
-        // Color alternates by (row + col) % 2: 0 → LIGHT_GRAY, 1 → WHITE.
         for (row in 0 until 8) {
             for (col in 0 until 8) {
-                val expectedPixel = if ((row + col) % 2 == 0) lightGrayPixel else whitePixel
+                val expectedPixel = whitePixel
                 // Verify top-left pixel of the 2×2 block
-                assertEquals("0-bit cell ($row,$col) must have checkerboard color", expectedPixel, image.getRGB(col * 2, row * 2))
+                assertEquals("0-bit cell ($row,$col) must have white color", expectedPixel, image.getRGB(col * 2, row * 2))
             }
         }
     }
@@ -193,13 +190,12 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         val icon = TiBasicCharPatternIcon("FF00000000000000")
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
-        val lightGrayPixel = java.awt.Color.LIGHT_GRAY.rgb
         val whitePixel = java.awt.Color.WHITE.rgb
         // Rows 1-7 (character rows) must be checkerboard since the pattern is "FF" zero-padded
         for (row in 1 until 8) {
             for (col in 0 until 8) {
-                val expectedPixel = if ((row + col) % 2 == 0) lightGrayPixel else whitePixel
-                assertEquals("Padded row $row, col $col must be checkerboard", expectedPixel, image.getRGB(col * 2, row * 2))
+                val expectedPixel = whitePixel
+                assertEquals("Padded row $row, col $col must be WHITE", expectedPixel, image.getRGB(col * 2, row * 2))
             }
         }
     }

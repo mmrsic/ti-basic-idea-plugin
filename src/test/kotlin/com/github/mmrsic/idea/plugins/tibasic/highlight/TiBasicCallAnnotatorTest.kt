@@ -24,6 +24,16 @@ class TiBasicCallAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
+    fun `test CALL GCHAR with scalar target variable no error`() {
+        configureFile("100 CALL GCHAR(1,2,C)")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL GCHAR with array target variable no error`() {
+        configureFile("100 CALL GCHAR(1,2,C(1))")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
     fun `test CALL SOUND with three arguments no error`() {
         configureFile("100 CALL SOUND(100,440,2)")
         myFixture.checkHighlighting(true, false, true)
@@ -81,6 +91,21 @@ class TiBasicCallAnnotatorTest : TiBasicTestBase() {
 
     fun `test CALL GCHAR with wrong argument count gives error`() {
         configureFile("100 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL GCHAR(1,2)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL GCHAR with literal third argument gives error`() {
+        configureFile("100 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL GCHAR(1,2,42)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL GCHAR with arithmetic third argument gives error`() {
+        configureFile("100 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL GCHAR(1,2,C+1)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test CALL GCHAR with string variable third argument gives error`() {
+        configureFile("100 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL GCHAR(1,2,C$)</error>")
         myFixture.checkHighlighting(true, false, true)
     }
 

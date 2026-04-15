@@ -56,7 +56,7 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 | `CALL COLOR(set,fg,bg)`      | 3 numerics                                    | Set foreground/background colors for a character set |
 | `CALL HCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)          | Print character horizontally (optionally n times)    |
 | `CALL VCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)          | Print character vertically (optionally n times)      |
-| `CALL GCHAR(row,col,var)`    | 3 numerics                                    | Read character at position into a variable           |
+| `CALL GCHAR(row,col,var)`    | 2 numerics, 1 numeric variable or array entry | Read character at position into a variable           |
 | `CALL CHAR(code,pattern$)`   | 1 numeric, 1 string                           | Define a custom character pattern                    |
 | `CALL KEY(unit,key,status)`  | 3 numerics                                    | Read keyboard input                                  |
 | `CALL JOYST(unit,x,y)`       | 3 numerics                                    | Read joystick input                                  |

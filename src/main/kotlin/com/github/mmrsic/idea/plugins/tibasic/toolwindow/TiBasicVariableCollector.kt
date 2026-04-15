@@ -3,6 +3,8 @@ package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
+import com.github.mmrsic.idea.plugins.tibasic.lang.CallArgAccess
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicCallSubprograms
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
@@ -108,12 +110,12 @@ object TiBasicVariableCollector {
                 val exprParent = directParent.parent
                 if (exprParent is TiBasicCallStatement) {
                     val argIndex = exprParent.arguments().indexOf(directParent)
-                    when (exprParent.subprogramName()) {
-                        "GCHAR" -> if (argIndex == 2) AccessType.WRITE else AccessType.READ
-                        "KEY" -> if (argIndex in 1..2) AccessType.WRITE else AccessType.READ
-                        "JOYST" -> if (argIndex in 1..2) AccessType.WRITE else AccessType.READ
-                        else -> AccessType.READ
-                    }
+                    TiBasicCallSubprograms.byName(exprParent.subprogramName())
+                        ?.takeIf { argIndex >= 0 }
+                        ?.argRuleAt(argIndex)
+                        ?.access
+                        ?.let { access -> if (access == CallArgAccess.WRITE) AccessType.WRITE else AccessType.READ }
+                        ?: AccessType.READ
                 } else {
                     AccessType.READ
                 }

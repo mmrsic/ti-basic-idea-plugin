@@ -2,6 +2,8 @@ package com.github.mmrsic.idea.plugins.tibasic.psi.expression
 
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
+import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildType
+import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicVariableReference
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
@@ -12,7 +14,13 @@ import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.LocalSearchScope
 
-class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node)
+class TiBasicExpression(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun variableAccess(): TiBasicVariableAccess? =
+        (node.nonWhitespaceChildren.singleOrNull()?.psi as? TiBasicVariableAccess)
+
+    fun numericVariableTarget(): TiBasicVariableAccess? =
+        variableAccess()?.takeIf { it.node.firstChildType == TiBasicTokenTypes.NUMERIC_VARIABLE }
+}
 
 class TiBasicCallStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun subprogramName(): String? =
@@ -48,4 +56,3 @@ class TiBasicFunctionCall(node: ASTNode) : ASTWrapperPsiElement(node) {
 }
 
 class TiBasicTabFunction(node: ASTNode) : ASTWrapperPsiElement(node)
-

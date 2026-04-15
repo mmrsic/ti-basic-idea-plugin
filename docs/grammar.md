@@ -167,6 +167,8 @@ lineNumberListStatement = listKeyword whitespace lineNumberList ;
 callStatement           = CALL [ whitespace ] CALL_SUBPROGRAM_NAME
                           [ LPAREN [ callArgList ] RPAREN ]
                           { token } ;   (* trailing tokens annotated as error for CLEAR *)
+                          (* `CALL GCHAR(row,col,var)` requires `var` to be a numeric variable access;
+                             scalar variables and array accesses are allowed targets *)
 callArgList             = expression { COMMA expression } ;
 randomizeStatement      = RANDOMIZE [ whitespace numericExpression ] ;
                           (* without argument: system clock is used as seed;

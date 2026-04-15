@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `CALL GCHAR` now requires its third argument to be a numeric variable target; other expressions are highlighted as `INCORRECT STATEMENT`
+
 ## [1.2.0] - 2026-04-04
 
 ### Added
