@@ -3,10 +3,10 @@ package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 import com.github.mmrsic.idea.plugins.tibasic.lang.fileTypeExtensions
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.intellij.codeInsight.highlighting.HighlightManager
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -125,18 +125,20 @@ class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(Bo
     override fun dispose() = Unit
 
     private fun installDocumentListener() {
-        com.intellij.openapi.editor.EditorFactory.getInstance().eventMulticaster
+        val psiDocumentManager = PsiDocumentManager.getInstance(project)
+        EditorFactory.getInstance().eventMulticaster
             .addDocumentListener(object : DocumentListener {
                 override fun documentChanged(event: DocumentEvent) {
-                    val vFile = FileDocumentManager.getInstance().getFile(event.document) ?: return
-                    ApplicationManager.getApplication().invokeLater({
-                        if (vFile.extension !in fileTypeExtensions) return@invokeLater
-                        PsiDocumentManager.getInstance(project).performWhenAllCommitted {
-                            val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(event.document) as? TiBasicFile
-                                ?: return@performWhenAllCommitted
-                            if (psiFile === currentFile || currentFile == null) refresh()
+                    val currentVirtualFile = currentFile?.virtualFile ?: return
+                    val changedVirtualFile = FileDocumentManager.getInstance().getFile(event.document) ?: return
+                    if (changedVirtualFile != currentVirtualFile || changedVirtualFile.extension !in fileTypeExtensions) {
+                        return
+                    }
+                    psiDocumentManager.performWhenAllCommitted {
+                        if (!project.isDisposed && currentFile?.virtualFile == changedVirtualFile) {
+                            refresh()
                         }
-                    }, project.disposed)
+                    }
                 }
             }, this)
     }
