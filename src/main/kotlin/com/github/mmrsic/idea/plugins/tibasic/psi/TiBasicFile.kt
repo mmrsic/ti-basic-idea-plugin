@@ -2,6 +2,7 @@ package com.github.mmrsic.idea.plugins.tibasic.psi
 
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicFileType
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
+import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDefStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDimStatement
@@ -22,6 +23,7 @@ class TiBasicFile(viewProvider: FileViewProvider) : PsiFileBase(viewProvider, Ti
     fun forStatements(): List<TiBasicForStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicForStatement>() }
     fun nextStatements(): List<TiBasicNextStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicNextStatement>() }
     fun variableAccesses(): List<TiBasicVariableAccess> = PsiTreeUtil.findChildrenOfType(this, TiBasicVariableAccess::class.java).toList()
+    fun callStatements(): List<TiBasicCallStatement> = PsiTreeUtil.findChildrenOfType(this, TiBasicCallStatement::class.java).toList()
     fun defStatements(): List<TiBasicDefStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicDefStatement>() }
     fun dimStatements(): List<TiBasicDimStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicDimStatement>() }
     fun optionBaseStatements(): List<TiBasicOptionBaseStatement> = lines().flatMap { it.children.filterIsInstance<TiBasicOptionBaseStatement>() }

@@ -234,6 +234,9 @@ The annotator inspects every file and highlights:
 - **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated
   group; if exactly one matching suggestion remains, it is inserted immediately without opening the popup; functions
   that require parentheses insert `()` and place the cursor between them, while `RND` remains without parentheses
+- **Character-code quick documentation** — pressing `Ctrl+Q` on the character-code argument of `CALL CHAR`, `CALL HCHAR`,
+  `CALL VCHAR`, or on the argument of `CHR$` shows the resolved code, its ASCII character (if any), its TI-Basic
+  character group (`32..159` in groups of 8), and any matching `CALL CHAR` overrides in the current file
 - **CALL CHAR gutter preview** — for lines containing `CALL CHAR(code,pattern$)` with a valid hex pattern of up to
   16 characters, a 16×16 px black-and-white pictogram appears in the gutter showing the defined 8×8 character
   (1-bit → black, 0-bit → white, with a dark-gray border); the pattern may be a string literal or a constant string

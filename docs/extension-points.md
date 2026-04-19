@@ -41,6 +41,21 @@ Returns a `TiBasicSyntaxHighlighter` instance. The highlighter maps token types 
 
 ---
 
+### `lang.documentationProvider`
+
+| Attribute             | Value                                                       |
+|-----------------------|-------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                  |
+| `implementationClass` | `tibasic.editor.TiBasicCharacterCodeDocumentationProvider`  |
+
+Provides Quick Documentation (`Ctrl+Q`) for the character-code argument positions of
+`CALL CHAR`, `CALL HCHAR`, `CALL VCHAR`, and the argument of `CHR$`.
+The documentation resolves numeric literals and constant numeric variables, shows the
+ASCII character if one exists, computes the TI-Basic character group for codes
+`32..159`, and lists file-local `CALL CHAR` overrides for the same code.
+
+---
+
 ### `completion.contributor`
 
 | Attribute             | Value                                         |
