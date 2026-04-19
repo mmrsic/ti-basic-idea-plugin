@@ -11,6 +11,8 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 - Custom file icon for TI-Basic source files
 - Each source line must start with a **line number** in the range **1–32767**; lines without a number are flagged as
   errors
+- Typing a non-digit directly after a bare line number automatically inserts the required separating space
+  (for example `100P` becomes `100 P`)
 
 ### Supported statements
 

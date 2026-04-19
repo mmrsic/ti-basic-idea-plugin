@@ -30,9 +30,16 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
             OPENING_PAREN -> insertPair(editor, "$OPENING_PAREN$CLOSING_PAREN", placeCaretInsidePair = true)
             CLOSING_PAREN -> skipExistingClosingParen(editor)
             DOUBLE_QUOTE -> handleDoubleQuote(editor)
-            else -> Result.CONTINUE
+            else -> handleLineNumberSpacing(editor, c)
         }
     }
+
+    private fun handleLineNumberSpacing(editor: Editor, typedChar: Char): Result =
+        if (shouldInsertSpaceAfterLineNumber(currentLineContext(editor), typedChar)) {
+            insertPair(editor, " $typedChar", placeCaretInsidePair = false)
+        } else {
+            Result.CONTINUE
+        }
 
     private fun handleDoubleQuote(editor: Editor): Result {
         if (shouldSkipExistingClosingQuote(editor)) {
@@ -88,18 +95,6 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
             !isEscapedQuote(lineContext.text, lineContext.caretInLine)
     }
 
-    private fun currentLineContext(editor: Editor): LineContext {
-        val document = editor.document
-        val offset = editor.caretModel.offset
-        val lineNumber = document.getLineNumber(offset)
-        val lineStart = document.getLineStartOffset(lineNumber)
-        val lineEnd = document.getLineEndOffset(lineNumber)
-        return LineContext(
-            text = document.text.substring(lineStart, lineEnd),
-            caretInLine = offset - lineStart,
-        )
-    }
-
     private fun isInsideStringLiteral(lineText: String, caretInLine: Int): Boolean {
         var insideStringLiteral = false
         var index = 0
@@ -122,9 +117,4 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
         index + 1 < lineText.length &&
             lineText[index] == DOUBLE_QUOTE &&
             lineText[index + 1] == DOUBLE_QUOTE
-
-    private data class LineContext(
-        val text: String,
-        val caretInLine: Int,
-    )
 }

@@ -4,6 +4,47 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
 
+    fun testTypingLetterAfterLineNumberOnlyInsertsSingleSpace() {
+        myFixture.configureByText("test.tibasic", "100<caret>")
+
+        myFixture.type('P')
+
+        myFixture.checkResult("100 P")
+        assertEquals("100 P".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testTypingDigitAfterLineNumberOnlyDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100<caret>")
+
+        myFixture.type('1')
+
+        myFixture.checkResult("1001")
+    }
+
+    fun testTypingLetterAfterLineNumberWithExistingSpaceDoesNotInsertExtraSpace() {
+        myFixture.configureByText("test.tibasic", "100 <caret>")
+
+        myFixture.type('P')
+
+        myFixture.checkResult("100 P")
+    }
+
+    fun testTypingLetterAfterExistingStatementTextDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 P<caret>")
+
+        myFixture.type('R')
+
+        myFixture.checkResult("100 PR")
+    }
+
+    fun testTypingLetterAfterLineNumberOnlyInNonTiBasicFileDoesNotInsertSpace() {
+        myFixture.configureByText("test.txt", "100<caret>")
+
+        myFixture.type('P')
+
+        myFixture.checkResult("100P")
+    }
+
     fun testTypingOpeningParenCreatesMatchingClosingParen() {
         myFixture.configureByText("test.tibasic", "1130 CALL HCHAR<caret>")
 

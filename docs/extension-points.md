@@ -69,7 +69,9 @@ and function names appear in separate groups in the popup.
 Intercepts typed `(`, `)` and `"` characters in TI-Basic files. It inserts matching
 closing delimiters for opening parentheses and quotes, skips over an existing closing
 `)` or `"` when that delimiter should be reused, and inserts doubled quotes inside an
-existing string literal.
+existing string literal. For all other non-digit characters, when the caret is at the
+end of a line that consists only of a valid line number, it inserts the required
+separating space before the typed character.
 
 ---
 
