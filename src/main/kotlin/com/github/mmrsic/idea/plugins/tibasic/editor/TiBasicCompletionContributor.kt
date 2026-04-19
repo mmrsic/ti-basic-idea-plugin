@@ -21,14 +21,14 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 private const val VARIABLE_GROUPING = 1
 private const val CALL_SUBPROGRAM_GROUPING = 2
 private const val FUNCTION_GROUPING = 3
-private const val ARRAY_PARENS = "()"
+private const val COMPLETION_PARENS = "()"
 private const val SELECT_WITH_OPEN_PAREN = '('
 private const val RPAREN = ')'
 private const val VARIABLE_TYPE_TEXT = "variable"
 private const val ARRAY_TYPE_TEXT = "array"
+private const val SUBPROGRAM_TYPE_TEXT = "subprogram"
 private const val FUNCTION_TYPE_TEXT = "function"
 private const val PAREN_CARET_OFFSET_FROM_TAIL = 1
-private const val FUNCTION_PARENS = "()"
 
 class TiBasicCompletionContributor : CompletionContributor() {
 
@@ -45,7 +45,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
             TiBasicCallSubprograms.names().sorted().forEach { name ->
                 completionResult.addElement(
                     PrioritizedLookupElement.withGrouping(
-                        LookupElementBuilder.create(name).withTypeText("subprogram").autoCompleteSingleMatch(),
+                        callSubprogramCompletion(name),
                         CALL_SUBPROGRAM_GROUPING,
                     )
                 )
@@ -147,7 +147,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
                     TiBasicVariableType.STRING_ARRAY,
                     TiBasicVariableType.DIM_DECLARATION,
                         -> VariableCompletion(
-                        variable.name + ARRAY_PARENS,
+                        variable.name + COMPLETION_PARENS,
                         ARRAY_TYPE_TEXT,
                         arrayCompletionInsertHandler,
                     )
@@ -158,26 +158,40 @@ class TiBasicCompletionContributor : CompletionContributor() {
             .distinctBy { it.lookupText }
             .sortedBy { it.lookupText }
 
+    private fun callSubprogramCompletion(name: String): LookupElement =
+        callableCompletion(
+            name,
+            SUBPROGRAM_TYPE_TEXT,
+            TiBasicCallSubprograms.byName(name)?.requiresParentheses() == true,
+        )
+
     private fun functionCompletion(name: String): LookupElement {
-        val signature = TiBasicBuiltInFunctions.byName(name)
-        return LookupElementBuilder.create(name)
+        val requiresParentheses = TiBasicBuiltInFunctions.byName(name)?.requiresParentheses() == true
+        return callableCompletion(
+            name,
+            FUNCTION_TYPE_TEXT,
+            requiresParentheses,
+        )
+    }
+
+    private fun callableCompletion(lookupText: String, typeText: String, requiresParentheses: Boolean): LookupElement =
+        LookupElementBuilder.create(lookupText)
             .let { builder ->
-                if (signature?.requiresParentheses() == true) {
-                    builder.withTailText(FUNCTION_PARENS, true)
+                if (requiresParentheses) {
+                    builder.withTailText(COMPLETION_PARENS, true)
                 } else {
                     builder
                 }
             }
-            .withTypeText(FUNCTION_TYPE_TEXT)
+            .withTypeText(typeText)
             .let { builder ->
-                if (signature?.requiresParentheses() == true) {
+                if (requiresParentheses) {
                     builder.withInsertHandler(parenCompletionInsertHandler)
                 } else {
                     builder
                 }
             }
             .autoCompleteSingleMatch()
-    }
 
     private data class VariableCompletion(
         val lookupText: String,
@@ -200,6 +214,8 @@ private fun LookupElementBuilder.autoCompleteSingleMatch(): LookupElement = with
 private fun isCompletionIdentifierChar(char: Char): Boolean = char.isLetterOrDigit() || char == '$'
 
 private fun BuiltInFunctionSignature.requiresParentheses(): Boolean = argCount > 0
+private fun com.github.mmrsic.idea.plugins.tibasic.lang.CallSubprogramSignature.requiresParentheses(): Boolean =
+    validArgCounts.any { it > 0 }
 
 private val parenCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
     context.setAddCompletionChar(false)
@@ -217,7 +233,7 @@ private val parenCompletionInsertHandler = InsertHandler<LookupElement> { contex
         context.editor.caretModel.moveToOffset(caretOffset)
         return@InsertHandler
     }
-    document.insertString(tailOffset, FUNCTION_PARENS)
+    document.insertString(tailOffset, COMPLETION_PARENS)
     context.editor.caretModel.moveToOffset(tailOffset + PAREN_CARET_OFFSET_FROM_TAIL)
 }
 

@@ -228,7 +228,8 @@ The annotator inspects every file and highlights:
   shown as `NAME()` and inserted with the cursor placed between the parentheses
 - **CALL subprogram completion** — when the cursor is at the subprogram name position (directly after `CALL` or on an
   existing subprogram name token), autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated
-  group;
+  group; subprograms with arguments insert `()` and place the cursor between them, while `CLEAR` remains without
+  parentheses;
   inside CALL argument lists, the general completion (variables, functions, keywords) is offered instead
 - **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated
   group; if exactly one matching suggestion remains, it is inserted immediately without opening the popup; functions

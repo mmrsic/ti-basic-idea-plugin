@@ -219,6 +219,26 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         assertNull(presentation.tailText)
     }
 
+    fun testCallSubprogramCompletionShowsParenthesesInLookupPopup() {
+        myFixture.configureByText("test.tibasic", "100 CALL S<caret>")
+        myFixture.completeBasic()
+        val item = myFixture.lookup?.items?.firstOrNull { it.lookupString == "SCREEN" }
+        assertNotNull("SCREEN must be offered in the lookup popup", item)
+        val presentation = LookupElementPresentation()
+        item!!.renderElement(presentation)
+        assertEquals("()", presentation.tailText)
+    }
+
+    fun testCallClearCompletionDoesNotShowParenthesesInLookupPopup() {
+        myFixture.configureByText("test.tibasic", "100 CALL C<caret>")
+        myFixture.completeBasic()
+        val item = myFixture.lookup?.items?.firstOrNull { it.lookupString == "CLEAR" }
+        assertNotNull("CLEAR must be offered in the lookup popup", item)
+        val presentation = LookupElementPresentation()
+        item!!.renderElement(presentation)
+        assertNull(presentation.tailText)
+    }
+
     fun testCompletionInsertsParenthesesForSelectedFunction() {
         myFixture.configureByText("test.tibasic", "100 LET X=<caret>")
         myFixture.completeBasic()
@@ -269,8 +289,27 @@ class TiBasicCompletionTest : TiBasicTestBase() {
     fun testCompletionSuggestsSubprogramAtCallNamePositionWithPartialName() {
         myFixture.configureByText("test.tibasic", "100 CALL SCR<caret>")
         myFixture.completeBasic()
-        assertEquals("100 CALL SCREEN", myFixture.editor.document.text)
+        assertEquals("100 CALL SCREEN()", myFixture.editor.document.text)
+        assertEquals("100 CALL SCREEN(".length, myFixture.editor.caretModel.offset)
         assertNull("Single CALL subprogram completion should not show a lookup popup", myFixture.lookup)
+    }
+
+    fun testCompletionInsertsParenthesesForSelectedCallSubprogram() {
+        myFixture.configureByText("test.tibasic", "100 CALL C<caret>")
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "COLOR" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("100 CALL COLOR()", myFixture.editor.document.text)
+        assertEquals("100 CALL COLOR(".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testCompletionKeepsExistingCallParensWhenSelectingSubprogram() {
+        myFixture.configureByText("test.tibasic", "100 CALL SCR<caret>()")
+        myFixture.completeBasic()
+        assertEquals("100 CALL SCREEN()", myFixture.editor.document.text)
+        assertEquals("100 CALL SCREEN(".length, myFixture.editor.caretModel.offset)
     }
 
     fun testCompletionShowsLookupWhenMultipleMatchesRemain() {
