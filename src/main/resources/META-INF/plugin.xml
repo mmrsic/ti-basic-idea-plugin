@@ -61,6 +61,8 @@
         />
         <typedHandler
                 implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicPairedCharacterTypedHandler"/>
+        <backspaceHandlerDelegate
+                implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicPairedCharacterBackspaceHandler"/>
         <lang.parserDefinition
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicParserDefinition"

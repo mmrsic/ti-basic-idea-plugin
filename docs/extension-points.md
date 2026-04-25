@@ -90,6 +90,20 @@ separating space before the typed character.
 
 ---
 
+### `backspaceHandlerDelegate`
+
+| Attribute        | Value                                                   |
+|------------------|---------------------------------------------------------|
+| `implementation` | `tibasic.editor.TiBasicPairedCharacterBackspaceHandler` |
+
+Intercepts Backspace in TI-Basic files for auto-paired string delimiters. When the
+caret is between an empty pair of double quotes (`"<caret>"`), deleting the opening
+quote also deletes the matching closing quote so empty string literals behave like
+parentheses during editing. In all other cases, it delegates to the standard
+IntelliJ backspace behavior unchanged.
+
+---
+
 ### `lang.parserDefinition`
 
 | Attribute             | Value                                    |

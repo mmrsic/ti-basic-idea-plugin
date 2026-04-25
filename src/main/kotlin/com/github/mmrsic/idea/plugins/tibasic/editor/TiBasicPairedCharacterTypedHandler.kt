@@ -2,16 +2,12 @@ package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.util.countUnclosedParens
+import com.github.mmrsic.idea.plugins.tibasic.util.isRemLine
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
-
-private const val OPENING_PAREN = '('
-private const val CLOSING_PAREN = ')'
-private const val DOUBLE_QUOTE = '"'
-private const val DOUBLE_QUOTE_PAIR = "\"\""
 
 class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
 
@@ -76,6 +72,9 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
         }
         val lineContext = currentLineContext(editor)
         val lineText = lineContext.text
+        if (isRemLine(lineText)) {
+            return true
+        }
         val caretInLine = lineContext.caretInLine
         val unclosedBeforeCaret = countUnclosedParens(lineText.substring(0, caretInLine))
         val unclosedAfterCurrentParen = countUnclosedParens(lineText.substring(0, caretInLine + 1))

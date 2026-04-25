@@ -2,8 +2,10 @@ package com.github.mmrsic.idea.plugins.tibasic.util
 
 private val REM_LINE_PATTERN = Regex("""^\s*\d+\s+REM\b.*""", RegexOption.IGNORE_CASE)
 
+fun isRemLine(lineText: String): Boolean = REM_LINE_PATTERN.matches(lineText)
+
 fun countUnclosedParens(lineText: String): Int {
-    if (REM_LINE_PATTERN.matches(lineText)) return 0
+    if (isRemLine(lineText)) return 0
     var open = 0
     var i = 0
     while (i < lineText.length) {

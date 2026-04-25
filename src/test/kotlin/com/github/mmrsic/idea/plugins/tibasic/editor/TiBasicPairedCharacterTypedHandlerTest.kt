@@ -79,6 +79,23 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
         myFixture.checkResult("1130 FELD$(1,FZ())")
     }
 
+    fun testTypingClosingParenSkipsExistingParenInRemLine() {
+        myFixture.configureByText("test.tibasic", "100 rem d(5<caret>)")
+
+        myFixture.type(')')
+
+        myFixture.checkResult("100 rem d(5)")
+        assertEquals("100 rem d(5)".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testTypingClosingParenInsertsParenInRemLineWhenNoClosingParenExists() {
+        myFixture.configureByText("test.tibasic", "100 rem d(5<caret>")
+
+        myFixture.type(')')
+
+        myFixture.checkResult("100 rem d(5)")
+    }
+
     fun testTypingOpeningQuoteCreatesMatchingClosingQuote() {
         myFixture.configureByText("test.tibasic", "100 PRINT <caret>")
 
@@ -104,5 +121,22 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
 
         myFixture.checkResult("100 PRINT \"A\"\"B\"")
         assertEquals("100 PRINT \"A\"\"".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testBackspaceInEmptyStringDeletesBothQuotes() {
+        myFixture.configureByText("test.tibasic", "100 A$=\"<caret>\"")
+
+        myFixture.performEditorAction("EditorBackSpace")
+
+        myFixture.checkResult("100 A$=")
+        assertEquals("100 A$=".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testBackspaceBeforeStringContentDeletesOnlyOpeningQuote() {
+        myFixture.configureByText("test.tibasic", "100 A$=\"<caret>X\"")
+
+        myFixture.performEditorAction("EditorBackSpace")
+
+        myFixture.checkResult("100 A$=X\"")
     }
 }

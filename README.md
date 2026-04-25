@@ -13,6 +13,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
   errors
 - Typing a non-digit directly after a bare line number automatically inserts the required separating space
   (for example `100P` becomes `100 P`)
+- Typing `(` or `"` inserts the matching closing delimiter; Backspace between an empty `""` pair removes both quotes
 
 ### Supported statements
 
