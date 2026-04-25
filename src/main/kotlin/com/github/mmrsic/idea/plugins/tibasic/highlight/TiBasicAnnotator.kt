@@ -620,8 +620,9 @@ class TiBasicAnnotator : Annotator {
             return
         }
 
-        if (isStringExpression(expression)) {
-            holder.error("String-number mismatch", expression)
+        val mismatchRange = numericContextMismatchRange(expression)
+        if (mismatchRange != null) {
+            holder.error("String-number mismatch", mismatchRange)
         }
 
         val afterBranch = children
@@ -695,8 +696,9 @@ class TiBasicAnnotator : Annotator {
             return
         }
 
-        if (isStringExpression(expression)) {
-            holder.error("String-number mismatch", expression)
+        val mismatchRange = numericContextMismatchRange(expression)
+        if (mismatchRange != null) {
+            holder.error("String-number mismatch", mismatchRange)
         }
 
         val afterThen = children.dropWhile { it.elementType != TiBasicTokenTypes.THEN_KEYWORD }.drop(1)
@@ -1309,6 +1311,38 @@ class TiBasicAnnotator : Annotator {
         return false
     }
 
+    private fun numericContextMismatchRange(expr: TiBasicExpression): TextRange? =
+        numericContextMismatchRange(expr.node.nonWhitespaceChildren)
+
+    private fun numericContextMismatchRange(children: List<ASTNode>): TextRange? {
+        val significantChildren = children.dropWhile { it.elementType in UNARY_EXPRESSION_OPERATOR_TYPES }
+        if (significantChildren.isEmpty()) return null
+        val arithmeticOperatorIndex = firstTopLevelBinaryOperatorIndex(significantChildren, ARITHMETIC_OPERATOR_TYPES)
+        if (arithmeticOperatorIndex != null) {
+            return numericContextMismatchRange(significantChildren.subList(0, arithmeticOperatorIndex))
+                ?: numericContextMismatchRange(significantChildren.subList(arithmeticOperatorIndex + 1, significantChildren.size))
+        }
+        if (isFullyParenthesized(significantChildren)) {
+            return numericContextMismatchRange(significantChildren.subList(1, significantChildren.lastIndex))
+        }
+        if (firstTopLevelBinaryOperatorIndex(significantChildren, COMPARISON_OP_TYPES) != null) return null
+        val concatOperatorIndex = firstTopLevelBinaryOperatorIndex(significantChildren, setOf(TiBasicTokenTypes.CONCAT_OP))
+        if (concatOperatorIndex != null) {
+            return significantChildren[concatOperatorIndex].textRange
+        }
+        val first = significantChildren.first()
+        return when {
+            first.elementType == TiBasicTokenTypes.STRING_LITERAL -> first.textRange
+            first.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
+                    first.firstChildType == TiBasicTokenTypes.STRING_VARIABLE -> first.textRange
+
+            first.elementType == TiBasicNodeTypes.FUNCTION_CALL &&
+                    first.firstChildType == TiBasicTokenTypes.STRING_FUNCTION_KEYWORD -> first.textRange
+
+            else -> null
+        }
+    }
+
     private fun annotateLineNumber(line: TiBasicLine, holder: AnnotationHolder) {
         val lineNumberNode = line.node.firstChildNode
         val lineNumber = lineNumberNode.text.toLongOrNull()
@@ -1543,6 +1577,49 @@ private data class ExpressionSyntaxResult(
     val invalidRange: TextRange? = null,
 )
 
+private fun firstTopLevelBinaryOperatorIndex(children: List<ASTNode>, operatorTypes: Set<IElementType>): Int? {
+    var nestingDepth = 0
+    var expectsOperand = true
+    children.forEachIndexed { index, child ->
+        when (child.elementType) {
+            TiBasicTokenTypes.LPAREN -> nestingDepth++
+            TiBasicTokenTypes.RPAREN -> {
+                nestingDepth--
+                if (nestingDepth == 0) {
+                    expectsOperand = false
+                }
+            }
+
+            else -> if (nestingDepth == 0) {
+                when {
+                    child.isExpressionOperand() -> expectsOperand = false
+                    child.elementType in UNARY_EXPRESSION_OPERATOR_TYPES && expectsOperand -> Unit
+                    child.elementType in operatorTypes && !expectsOperand -> return index
+                }
+            }
+        }
+    }
+    return null
+}
+
+private fun isFullyParenthesized(children: List<ASTNode>): Boolean {
+    if (children.size < 2) return false
+    if (children.first().elementType != TiBasicTokenTypes.LPAREN || children.last().elementType != TiBasicTokenTypes.RPAREN) {
+        return false
+    }
+    var nestingDepth = 0
+    children.forEachIndexed { index, child ->
+        when (child.elementType) {
+            TiBasicTokenTypes.LPAREN -> nestingDepth++
+            TiBasicTokenTypes.RPAREN -> nestingDepth--
+        }
+        if (nestingDepth == 0 && index < children.lastIndex) {
+            return false
+        }
+    }
+    return nestingDepth == 0
+}
+
 private val FILE_NUMBER_RANGE = 1..255
 
 private val COMMANDS_UPPERCASE = TiBasicKeywords.getCommands().map { it.uppercase() }.toSet()
@@ -1569,6 +1646,14 @@ private val STRING_MISMATCH_TYPES = setOf(
 
 private val NUMERIC_MISMATCH_TYPES = setOf(
     TiBasicTokenTypes.NUMERIC_LITERAL,
+    TiBasicTokenTypes.PLUS_OP,
+    TiBasicTokenTypes.MINUS_OP,
+    TiBasicTokenTypes.MUL_OP,
+    TiBasicTokenTypes.DIV_OP,
+    TiBasicTokenTypes.POW_OP,
+)
+
+private val ARITHMETIC_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.PLUS_OP,
     TiBasicTokenTypes.MINUS_OP,
     TiBasicTokenTypes.MUL_OP,

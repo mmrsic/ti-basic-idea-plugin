@@ -1379,6 +1379,15 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testErrorForIfWithStringOperandInArithmeticCondition() {
+        configureFile(
+            "950 IF (C$(I,2)=\"BUBE\")*(<error descr=\"String-number mismatch\">Q$</error>)THEN 960 ELSE 1230\n" +
+                    "960 PRINT \"OK\"\n" +
+                    "1230 PRINT \"END\"",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testErrorForIfThenWithInvalidLineNumber() {
         configureFile(
             "100 IF X>0 THEN <error descr=\"Bad line number\">99999</error>",
