@@ -1102,8 +1102,17 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testNoErrorForUnaryPlusWithOperand() {
-        configureFile("160 XDIR=+5")
+    fun testErrorForImplicitLetWithUnaryPlusOperand() {
+        configureFile(
+            "160 XDIR=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">+5</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForExplicitLetWithUnaryPlusOperand() {
+        configureFile(
+            "160 LET XDIR=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">+5</error>",
+        )
         myFixture.checkHighlighting(true, false, false)
     }
 

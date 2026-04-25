@@ -799,6 +799,10 @@ class TiBasicAnnotator : Annotator {
             holder.error("Incorrect statement", statement)
             return
         }
+        if (expression.hasLeadingUnaryPlusOperand()) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, expression)
+            return
+        }
         val isStringVar = varAccessNode.firstChildType == TiBasicTokenTypes.STRING_VARIABLE
         val isStringExpr = isStringExpression(expression)
         if (isStringVar != isStringExpr) {
@@ -1331,14 +1335,10 @@ class TiBasicAnnotator : Annotator {
             return significantChildren[concatOperatorIndex].textRange
         }
         val first = significantChildren.first()
-        return when {
-            first.elementType == TiBasicTokenTypes.STRING_LITERAL -> first.textRange
-            first.elementType == TiBasicNodeTypes.VARIABLE_ACCESS &&
-                    first.firstChildType == TiBasicTokenTypes.STRING_VARIABLE -> first.textRange
-
-            first.elementType == TiBasicNodeTypes.FUNCTION_CALL &&
-                    first.firstChildType == TiBasicTokenTypes.STRING_FUNCTION_KEYWORD -> first.textRange
-
+        return when (first.elementType) {
+            TiBasicTokenTypes.STRING_LITERAL -> first.textRange
+            TiBasicNodeTypes.VARIABLE_ACCESS if first.firstChildType == TiBasicTokenTypes.STRING_VARIABLE -> first.textRange
+            TiBasicNodeTypes.FUNCTION_CALL if first.firstChildType == TiBasicTokenTypes.STRING_FUNCTION_KEYWORD -> first.textRange
             else -> null
         }
     }
@@ -1576,6 +1576,11 @@ private data class ExpressionSyntaxResult(
     val nextIndex: Int,
     val invalidRange: TextRange? = null,
 )
+
+private fun TiBasicExpression.hasLeadingUnaryPlusOperand(): Boolean {
+    val children = node.nonWhitespaceChildren
+    return children.size > 1 && children.firstOrNull()?.elementType == TiBasicTokenTypes.PLUS_OP
+}
 
 private fun firstTopLevelBinaryOperatorIndex(children: List<ASTNode>, operatorTypes: Set<IElementType>): Int? {
     var nestingDepth = 0
