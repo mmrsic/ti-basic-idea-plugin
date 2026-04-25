@@ -161,12 +161,17 @@ class FormatCodeTest : TiBasicTestBase() {
 
     fun testRemPreservesSingleSpaceInComment() {
         val file = configureFile("100 REM hello world")
-        assertEquals("100 REM  hello world", formattedText(file))
+        assertEquals("100 REM hello world", formattedText(file))
     }
 
     fun testRemLowercaseKeywordIsUppercased() {
         val file = configureFile("100 rem  hello world")
         assertEquals("100 REM  hello world", formattedText(file))
+    }
+
+    fun testRemCommentTextRemainsUntouched() {
+        val file = configureFile("100 rem MiXeD  case ;  stays")
+        assertEquals("100 REM MiXeD  case ;  stays", formattedText(file))
     }
 
     fun testGotoKeywordIsUppercased() {

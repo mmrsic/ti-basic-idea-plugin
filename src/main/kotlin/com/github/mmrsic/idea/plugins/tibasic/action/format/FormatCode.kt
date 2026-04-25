@@ -105,6 +105,7 @@ private fun formattedLine(line: TiBasicLine): String {
         return formattedLetLine(line.lineNumber(), statement)
     }
 
+    val rawStatementText = statement.text.trimStart()
     val statementUpper = statementText.uppercase()
     val firstToken = statementUpper.takeWhile { it.isLetterOrDigit() }
     val keywordMatch = TiBasicKeywords.getKeywords()
@@ -115,9 +116,9 @@ private fun formattedLine(line: TiBasicLine): String {
         }"
     val afterKeyword = statementText.drop(keywordMatch.length)
     if (keywordMatch == "REM") {
-        val trimmedRem = afterKeyword.trim()
-        return if (trimmedRem.isEmpty()) "${line.lineNumber()} $keywordMatch"
-        else "${line.lineNumber()} $keywordMatch  $trimmedRem"
+        val rawAfterKeyword = rawStatementText.drop(firstToken.length)
+        return if (rawAfterKeyword.isBlank()) "${line.lineNumber()} $keywordMatch"
+        else "${line.lineNumber()} $keywordMatch$rawAfterKeyword"
     }
     val trimmedArgument = afterKeyword.trim()
     return if (trimmedArgument.isEmpty()) {
