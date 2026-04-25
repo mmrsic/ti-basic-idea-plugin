@@ -135,8 +135,8 @@ See [`architecture.md`](architecture.md) for the full list of checks.
 | `implementation` | `tibasic.editor.TiBasicPastePreProcessor`         |
 
 Intercepts paste operations in TI-Basic files. When the caret (or selection end) is at the
-end of the file, replaces the line numbers of any pasted TI-Basic lines with auto-incremented
-values starting at the next multiple of 10 after the highest valid line number in the file.
+end of the file, replaces the line numbers of any pasted TI-Basic lines with auto-generated
+values based on the configured automatic line-number delta and optional 10-rounding mode.
 Line number references within statements (GOTO, GOSUB, ON GOTO, ON GOSUB, IF-THEN/ELSE,
 RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) are shifted by the same delta as their containing line.
 Lines in the pasted text without a valid TI-Basic line number are left unchanged.
@@ -153,12 +153,12 @@ Has no effect when pasting into the middle of the file or into non-TI-Basic file
 
 When the caret (or selection end) is at or after the last TI-Basic line, duplicates
 the line(s) and replaces the line numbers of the newly inserted copies with
-auto-incremented values starting at the next multiple of 10 after the highest valid
-line number in the file. Line number references within statements (GOTO, GOSUB, ON GOTO,
+auto-generated values based on the configured automatic line-number delta and optional
+10-rounding mode. Line number references within statements (GOTO, GOSUB, ON GOTO,
 ON GOSUB, IF-THEN/ELSE, RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) are shifted by the same
 delta as their containing line. When the caret is not at the end of the file, delegates to
 the standard IntelliJ duplicate handler unchanged. Multiple selected lines at the end
-are each renumbered consecutively (`maxLine+10`, `maxLine+20`, …).
+are each renumbered consecutively according to the same configured sequence.
 
 ---
 
@@ -170,9 +170,10 @@ are each renumbered consecutively (`maxLine+10`, `maxLine+20`, …).
 | `implementationClass` | `tibasic.editor.TiBasicShiftEnterHandler` |
 
 Intercepts the Shift+Enter keystroke to insert a new line and automatically prepend the
-next logical line number. When `TiBasicParenAutoCloseSettings.autoCloseOnShiftEnter` is
-enabled (default: on), it also appends `)` characters for each unclosed `(` on the
-current line before inserting the new line.
+next logical line number using the configured automatic line-number delta and optional
+10-rounding mode. When `TiBasicParenAutoCloseSettings.autoCloseOnShiftEnter` is enabled
+(default: on), it also appends `)` characters for each unclosed `(` on the current line
+before inserting the new line.
 
 ---
 
@@ -215,6 +216,19 @@ Persists two boolean settings (`autoCloseOnShiftEnter`, `autoCloseOnEnter`) to
 
 ---
 
+### `applicationService` — `TiBasicAutoLineNumberSettings`
+
+| Attribute               | Value                                          |
+|-------------------------|------------------------------------------------|
+| `serviceImplementation` | `tibasic.editor.TiBasicAutoLineNumberSettings` |
+
+Persists the automatic line-number settings to `editor.xml`: the numeric delta to add
+for generated line numbers and an optional mode that rounds every generated number to a
+multiple of 10. When rounding is enabled, generation still advances to the next
+strictly greater 10er-Zahl so duplicate line numbers cannot occur.
+
+---
+
 ### `applicationConfigurable` — Parenthesis Auto-Close
 
 | Attribute  | Value                                              |
@@ -226,6 +240,21 @@ Persists two boolean settings (`autoCloseOnShiftEnter`, `autoCloseOnEnter`) to
 
 Settings UI under **Settings › Editor › TI-Basic Parenthesis Auto-Close** with two
 checkboxes to independently enable auto-close on Shift+Enter and on Enter.
+
+---
+
+### `applicationConfigurable` — Automatic Line Numbers
+
+| Attribute  | Value                                              |
+|------------|----------------------------------------------------|
+| `parentId` | `editor`                                           |
+| `id`       | `tibasic.auto.line.number`                         |
+| `instance` | `tibasic.editor.TiBasicAutoLineNumberConfigurable` |
+| `key`      | `auto.line.number.settings.title`                  |
+
+Settings UI under **Settings › Editor › TI-Basic Automatic Line Numbers** with an
+integer delta field and a checkbox to round every generated line number to a multiple
+of 10.
 
 ---
 

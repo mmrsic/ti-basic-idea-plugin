@@ -112,6 +112,9 @@
         <applicationService
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicParenAutoCloseSettings"
         />
+        <applicationService
+                serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicAutoLineNumberSettings"
+        />
         <postStartupActivity
                 implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnGuideInitializer"
         />
@@ -130,6 +133,13 @@
                 instance="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicParenAutoCloseConfigurable"
                 id="tibasic.paren.auto.close"
                 key="paren.auto.close.settings.title"
+                bundle="messages.TiBasicBundle"
+        />
+        <applicationConfigurable
+                parentId="editor"
+                instance="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicAutoLineNumberConfigurable"
+                id="tibasic.auto.line.number"
+                key="auto.line.number.settings.title"
                 bundle="messages.TiBasicBundle"
         />
         <lang.findUsagesProvider

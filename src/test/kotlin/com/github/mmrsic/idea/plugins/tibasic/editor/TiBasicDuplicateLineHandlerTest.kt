@@ -1,8 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
-
-class TiBasicDuplicateLineHandlerTest : BasePlatformTestCase() {
+class TiBasicDuplicateLineHandlerTest : TiBasicAutoLineNumberTestBase() {
 
     fun testDuplicateSingleLineAtEndIncrements() {
         myFixture.configureByText("test.tibasic", "100 PRINT<caret>")
@@ -10,10 +8,10 @@ class TiBasicDuplicateLineHandlerTest : BasePlatformTestCase() {
         assertEquals("100 PRINT\n110 PRINT", myFixture.editor.document.text)
     }
 
-    fun testDuplicateLineAtEndNotMultipleOfTenRoundsUp() {
+    fun testDuplicateLineAtEndNotMultipleOfTenAddsConfiguredDelta() {
         myFixture.configureByText("test.tibasic", "105 PRINT<caret>")
         myFixture.performEditorAction("EditorDuplicate")
-        assertEquals("105 PRINT\n110 PRINT", myFixture.editor.document.text)
+        assertEquals("105 PRINT\n115 PRINT", myFixture.editor.document.text)
     }
 
     fun testDuplicateLastLineUsesLargestLineNumber() {
@@ -64,5 +62,22 @@ class TiBasicDuplicateLineHandlerTest : BasePlatformTestCase() {
         myFixture.configureByText("test.tibasic", "100 RESTORE 100<caret>")
         myFixture.performEditorAction("EditorDuplicate")
         assertEquals("100 RESTORE 100\n110 RESTORE 110", myFixture.editor.document.text)
+    }
+
+    fun testDuplicateLineUsesConfiguredDelta() {
+        TiBasicAutoLineNumberSettings.getInstance().autoLineNumberDelta = 5
+        myFixture.configureByText("test.tibasic", "100 PRINT<caret>")
+        myFixture.performEditorAction("EditorDuplicate")
+        assertEquals("100 PRINT\n105 PRINT", myFixture.editor.document.text)
+    }
+
+    fun testDuplicateMultipleLinesRoundToTensAdvancesStrictly() {
+        TiBasicAutoLineNumberSettings.getInstance().autoLineNumberDelta = 3
+        TiBasicAutoLineNumberSettings.getInstance().roundToTens = true
+        myFixture.configureByText("test.tibasic", "<selection>100 PRINT\n200 PRINT\n</selection>")
+        myFixture.performEditorAction("EditorDuplicate")
+        val text = myFixture.editor.document.text
+        assertTrue("Expected 210 in duplicated text, actual: '$text'", text.contains("210 PRINT"))
+        assertTrue("Expected 220 in duplicated text, actual: '$text'", text.contains("220 PRINT"))
     }
 }

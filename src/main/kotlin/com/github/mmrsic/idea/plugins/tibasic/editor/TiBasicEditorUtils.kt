@@ -10,6 +10,8 @@ import com.intellij.openapi.editor.Editor
 internal data class TextReplacement(val start: Int, val end: Int, val newText: String)
 internal data class LineContext(val text: String, val caretInLine: Int)
 
+private const val LINE_NUMBER_ROUNDING_STEP = 10
+
 internal fun applyTextReplacements(text: String, replacements: List<TextReplacement>): String {
     val result = StringBuilder(text)
     replacements.sortedByDescending { it.start }.forEach { r ->
@@ -31,7 +33,28 @@ internal fun List<TiBasicLine>.maxValidLineNumber(): Int =
         .maxOrNull() ?: 0
 
 internal fun nextLineNumber(maxLineNumber: Int, increment: Int): Int =
-    ((maxLineNumber / 10) + 1 + increment) * 10
+    nextLineNumber(
+        maxLineNumber = maxLineNumber,
+        increment = increment,
+        delta = TiBasicAutoLineNumberSettings.getInstance().autoLineNumberDelta,
+        roundToTens = TiBasicAutoLineNumberSettings.getInstance().roundToTens,
+    )
+
+internal fun nextLineNumber(maxLineNumber: Int, increment: Int, delta: Int, roundToTens: Boolean): Int {
+    val rawNextLineNumber = maxLineNumber + delta * (increment + 1)
+    if (!roundToTens) {
+        return rawNextLineNumber
+    }
+
+    var previousGeneratedLineNumber = maxLineNumber
+    repeat(increment + 1) { index ->
+        val rawLineNumber = maxLineNumber + delta * (index + 1)
+        previousGeneratedLineNumber = roundUpToNextStrictlyGreaterMultipleOfTen(
+            maxOf(rawLineNumber, previousGeneratedLineNumber + 1),
+        )
+    }
+    return previousGeneratedLineNumber
+}
 
 internal fun currentLineContext(editor: Editor): LineContext {
     val document = editor.document
@@ -65,4 +88,13 @@ private fun createsUnknownStatementWithInsertedSeparator(lineText: String, typed
         lexer.advance()
     }
     return false
+}
+
+private fun roundUpToNextStrictlyGreaterMultipleOfTen(number: Int): Int {
+    val remainder = number % LINE_NUMBER_ROUNDING_STEP
+    return if (remainder == 0) {
+        number
+    } else {
+        number + (LINE_NUMBER_ROUNDING_STEP - remainder)
+    }
 }

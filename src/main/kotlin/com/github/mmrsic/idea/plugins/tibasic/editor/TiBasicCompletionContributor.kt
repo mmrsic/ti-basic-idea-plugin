@@ -28,7 +28,9 @@ private const val VARIABLE_TYPE_TEXT = "variable"
 private const val ARRAY_TYPE_TEXT = "array"
 private const val SUBPROGRAM_TYPE_TEXT = "subprogram"
 private const val FUNCTION_TYPE_TEXT = "function"
+private const val KEYWORD_TYPE_TEXT = "keyword"
 private const val PAREN_CARET_OFFSET_FROM_TAIL = 1
+private val functionLikeKeywords = setOf("TAB")
 
 class TiBasicCompletionContributor : CompletionContributor() {
 
@@ -71,7 +73,7 @@ class TiBasicCompletionContributor : CompletionContributor() {
         TiBasicKeywords.getKeywords()
             .filter { it !in functionNames }
             .forEach { keyword ->
-                completionResult.addElement(LookupElementBuilder.create(keyword).withTypeText("keyword").autoCompleteSingleMatch())
+                completionResult.addElement(keywordCompletion(keyword))
             }
         variableCompletions(file, identifierPrefix, identifierRange?.first)
             .forEach { completion ->
@@ -192,6 +194,15 @@ class TiBasicCompletionContributor : CompletionContributor() {
                 }
             }
             .autoCompleteSingleMatch()
+
+    private fun keywordCompletion(keyword: String): LookupElement =
+        if (keyword in functionLikeKeywords) {
+            callableCompletion(keyword, KEYWORD_TYPE_TEXT, true)
+        } else {
+            LookupElementBuilder.create(keyword)
+                .withTypeText(KEYWORD_TYPE_TEXT)
+                .autoCompleteSingleMatch()
+        }
 
     private data class VariableCompletion(
         val lookupText: String,

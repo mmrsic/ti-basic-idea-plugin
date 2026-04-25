@@ -13,6 +13,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
   errors
 - Typing a non-digit directly after a bare line number automatically inserts the required separating space
   (for example `100P` becomes `100 P`)
+- Automatic line-number insertion for **Shift+Enter**, **Duplicate at end**, and **Paste at end** supports a configurable delta and optional rounding to multiples of 10
 - Typing `(` or `"` inserts the matching closing delimiter; Backspace between an empty `""` pair removes both quotes
 
 ### Supported statements
@@ -235,6 +236,8 @@ The annotator inspects every file and highlights:
 - **Built-in function completion** — autocomplete (Ctrl+Space) suggests all built-in function names in a dedicated
   group; if exactly one matching suggestion remains, it is inserted immediately without opening the popup; functions
   that require parentheses insert `()` and place the cursor between them, while `RND` remains without parentheses
+- **TAB completion** — the `TAB` screen-positioning function is completed with `()` as well, with the cursor placed
+  between the parentheses
 - **Character-code quick documentation** — pressing `Ctrl+Q` on the character-code argument of `CALL CHAR`, `CALL HCHAR`,
   `CALL VCHAR`, or on the argument of `CHR$` shows the resolved code, its ASCII character (if any), its TI-Basic
   character group (`32..159` in groups of 8), and any matching `CALL CHAR` overrides in the current file

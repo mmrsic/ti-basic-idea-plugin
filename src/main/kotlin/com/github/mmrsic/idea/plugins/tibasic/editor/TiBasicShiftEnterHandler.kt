@@ -1,7 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
 import com.github.mmrsic.idea.plugins.tibasic.util.countUnclosedParens
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.editor.Caret
@@ -49,10 +48,7 @@ class TiBasicShiftEnterHandler(private val originalHandler: EditorActionHandler)
 
     private fun insertNewLineWithAutoLineNumber(editor: Editor, file: TiBasicFile) {
         closeUnclosedParensAtLineEnd(editor)
-        val maxLineNumber = file.lines()
-            .mapNotNull { it.lineNumber().takeIf { n -> n in VALID_LINE_NUMBER_RANGE } }
-            .maxOrNull() ?: 0
-        val nextLineNumber = ((maxLineNumber / 10) + 1) * 10
+        val nextLineNumber = nextLineNumber(file.lines().maxValidLineNumber(), 0)
         val document = editor.document
         val lineEnd = document.getLineEndOffset(document.getLineNumber(editor.caretModel.offset))
         val insertText = "\n$nextLineNumber "

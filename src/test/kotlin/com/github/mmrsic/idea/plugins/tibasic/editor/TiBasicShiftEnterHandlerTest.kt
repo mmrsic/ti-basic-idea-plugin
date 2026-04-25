@@ -1,8 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
-
-class TiBasicShiftEnterHandlerTest : BasePlatformTestCase() {
+class TiBasicShiftEnterHandlerTest : TiBasicAutoLineNumberTestBase() {
 
     override fun setUp() {
         super.setUp()
@@ -20,10 +18,10 @@ class TiBasicShiftEnterHandlerTest : BasePlatformTestCase() {
         assertEquals("100 PRINT \"A\"\n110 ", myFixture.editor.document.text)
     }
 
-    fun testShiftEnterAfterLineNotMultipleOfTenRoundsUp() {
+    fun testShiftEnterAfterLineNotMultipleOfTenAddsConfiguredDelta() {
         myFixture.configureByText("test.tibasic", "105 PRINT \"A\"<caret>")
         myFixture.performEditorAction("EditorStartNewLine")
-        assertEquals("105 PRINT \"A\"\n110 ", myFixture.editor.document.text)
+        assertEquals("105 PRINT \"A\"\n115 ", myFixture.editor.document.text)
     }
 
     fun testShiftEnterAfterMultipleLinesUsesLargestLineNumber() {
@@ -42,6 +40,20 @@ class TiBasicShiftEnterHandlerTest : BasePlatformTestCase() {
         myFixture.configureByText("test.tibasic", "<caret>")
         myFixture.performEditorAction("EditorStartNewLine")
         assertEquals("\n10 ", myFixture.editor.document.text)
+    }
+
+    fun testShiftEnterUsesConfiguredDelta() {
+        TiBasicAutoLineNumberSettings.getInstance().autoLineNumberDelta = 5
+        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"<caret>")
+        myFixture.performEditorAction("EditorStartNewLine")
+        assertEquals("100 PRINT \"A\"\n105 ", myFixture.editor.document.text)
+    }
+
+    fun testShiftEnterRoundsGeneratedLineNumberToTensWhenEnabled() {
+        TiBasicAutoLineNumberSettings.getInstance().roundToTens = true
+        myFixture.configureByText("test.tibasic", "105 PRINT \"A\"<caret>")
+        myFixture.performEditorAction("EditorStartNewLine")
+        assertEquals("105 PRINT \"A\"\n120 ", myFixture.editor.document.text)
     }
 
     fun testShiftEnterBetweenNumberedLinesDoesNotInsertLineNumber() {
@@ -101,4 +113,3 @@ class TiBasicShiftEnterHandlerTest : BasePlatformTestCase() {
         assertFalse(myFixture.editor.document.text.startsWith("100 REM (unclosed)"))
     }
 }
-

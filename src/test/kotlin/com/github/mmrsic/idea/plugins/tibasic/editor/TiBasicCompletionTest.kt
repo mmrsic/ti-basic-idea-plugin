@@ -239,6 +239,16 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         assertNull(presentation.tailText)
     }
 
+    fun testTabCompletionShowsParenthesesInLookupPopup() {
+        myFixture.configureByText("test.tibasic", "100 PRINT T<caret>")
+        myFixture.completeBasic()
+        val item = myFixture.lookup?.items?.firstOrNull { it.lookupString == "TAB" }
+        assertNotNull("TAB must be offered in the lookup popup", item)
+        val presentation = LookupElementPresentation()
+        item!!.renderElement(presentation)
+        assertEquals("()", presentation.tailText)
+    }
+
     fun testCompletionInsertsParenthesesForSelectedFunction() {
         myFixture.configureByText("test.tibasic", "100 LET X=<caret>")
         myFixture.completeBasic()
@@ -270,6 +280,17 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         }
         assertEquals("100 LET X=RND", myFixture.editor.document.text)
         assertEquals("100 LET X=RND".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testCompletionInsertsParenthesesForTabKeyword() {
+        myFixture.configureByText("test.tibasic", "100 PRINT T<caret>")
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "TAB" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("100 PRINT TAB()", myFixture.editor.document.text)
+        assertEquals("100 PRINT TAB(".length, myFixture.editor.caretModel.offset)
     }
 
     fun testCompletionDoesNotSuggestSubprogramInCallArgument() {
