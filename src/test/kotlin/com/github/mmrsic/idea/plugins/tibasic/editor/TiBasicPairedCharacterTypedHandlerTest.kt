@@ -21,6 +21,14 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
         myFixture.checkResult("1001")
     }
 
+    fun testTypingSpaceAfterLineNumberOnlyDoesNotInsertExtraSpace() {
+        myFixture.configureByText("test.tibasic", "100<caret>")
+
+        myFixture.type(' ')
+
+        myFixture.checkResult("100 ")
+    }
+
     fun testTypingLetterAfterLineNumberWithExistingSpaceDoesNotInsertExtraSpace() {
         myFixture.configureByText("test.tibasic", "100 <caret>")
 
