@@ -68,6 +68,62 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         )
     }
 
+    fun testCompletionSuggestsGeneratedLineNumberAtStartOfEligibleUnnumberedLastLine() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\n<caret>PRINT \"B\"")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("Generated line number 110 must be suggested", popupItems.contains("110"))
+    }
+
+    fun testCompletionShowsGeneratedLineNumberFirstOnBlankEligibleLastLine() {
+        myFixture.configureByText("test.tibasic", "100 LET A=1\n<caret>")
+        myFixture.completeBasic()
+        assertEquals("110", myFixture.lookup?.items?.firstOrNull()?.lookupString)
+    }
+
+    fun testCompletionShowsGeneratedLineNumberFirstForMatchingTypedDigits() {
+        myFixture.configureByText("test.tibasic", "100 LET A=1\n11<caret>PRINT A")
+        myFixture.completeBasic()
+        val appliedText = myFixture.editor.document.text
+        val firstLookupItem = myFixture.lookup?.items?.firstOrNull()?.lookupString
+        assertTrue(
+            "Generated line number 110 must be inserted or shown as the first suggestion for matching typed digits",
+            appliedText == "100 LET A=1\n110 PRINT A" || firstLookupItem == "110",
+        )
+    }
+
+    fun testCompletionDoesNotSuggestGeneratedLineNumberForNonMatchingTypedDigits() {
+        myFixture.configureByText("test.tibasic", "100 LET A=1\n12<caret>PRINT A")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertFalse("Generated line number must not be suggested for non-matching typed digits", popupItems.contains("110"))
+    }
+
+    fun testCompletionInsertsGeneratedLineNumberWithTrailingSpace() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\n<caret>PRINT \"B\"")
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "110" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("100 PRINT \"A\"\n110 PRINT \"B\"", myFixture.editor.document.text)
+        assertEquals("100 PRINT \"A\"\n110 ".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testCompletionSuggestsGeneratedLineNumberUsingRoundedSettings() {
+        val settings = TiBasicAutoLineNumberSettings.getInstance()
+        val previousRoundToTens = settings.roundToTens
+        try {
+            settings.roundToTens = true
+            myFixture.configureByText("test.tibasic", "105 PRINT \"A\"\n<caret>")
+            myFixture.completeBasic()
+            val popupItems = myFixture.lookupElementStrings ?: emptyList()
+            assertTrue("Rounded generated line number 120 must be suggested", popupItems.contains("120"))
+        } finally {
+            settings.roundToTens = previousRoundToTens
+        }
+    }
+
     fun testCompletionSuggestsNumericVariable() {
         myFixture.configureByText("test.tibasic", "100 LET A=5\n200 <caret>")
         myFixture.completeBasic()
@@ -313,6 +369,27 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         assertEquals("100 CALL SCREEN()", myFixture.editor.document.text)
         assertEquals("100 CALL SCREEN(".length, myFixture.editor.caretModel.offset)
         assertNull("Single CALL subprogram completion should not show a lookup popup", myFixture.lookup)
+    }
+
+    fun testCompletionDoesNotSuggestGeneratedLineNumberInMiddleOfLine() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\nPR<caret>INT \"B\"")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertFalse("Generated line number must not be suggested in the middle of a line", popupItems.contains("110"))
+    }
+
+    fun testCompletionDoesNotSuggestGeneratedLineNumberWhenCurrentLineAlreadyStartsWithNumber() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\n<caret>110 PRINT \"B\"")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertFalse("Generated line number must not be suggested for an already numbered line", popupItems.contains("120"))
+    }
+
+    fun testCompletionDoesNotSuggestGeneratedLineNumberBeforeLaterNumberedLine() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\n<caret>\n200 PRINT \"B\"")
+        myFixture.completeBasic()
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertFalse("Generated line number must not be suggested before later numbered lines", popupItems.contains("210"))
     }
 
     fun testCompletionInsertsParenthesesForSelectedCallSubprogram() {

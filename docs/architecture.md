@@ -73,9 +73,12 @@ PSI tree              (tibasic.psi + subpackages)
     │       completion (variables + functions + keywords) is offered.
     │       Triggered by Ctrl+Space only; auto-popup is disabled. If exactly
     │       one match remains after filtering, it is inserted immediately
-    │       without showing the lookup popup. Built-in functions, the TAB
-    │       keyword-function, and CALL subprograms with arguments insert `()`
-    │       and place the caret between them.
+    │       without showing the lookup popup. At the beginning of the current
+    │       eligible unnumbered last line, completion also offers the same
+    │       auto-generated line number that Shift+Enter would insert there.
+    │       Built-in functions, the TAB keyword-function, and CALL subprograms
+    │       with arguments insert `()`, while generated line numbers insert a
+    │       trailing space and place the caret after it.
     │
     ├──▶ TiBasicCharacterCodeDocumentationProvider (tibasic.editor)
     │       Provides Quick Documentation (Ctrl+Q) for character-code positions

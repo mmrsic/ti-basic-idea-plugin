@@ -18,12 +18,16 @@ import com.intellij.codeInsight.lookup.AutoCompletionPolicy
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 
+private const val AUTO_LINE_NUMBER_GROUPING = 0
 private const val VARIABLE_GROUPING = 1
 private const val CALL_SUBPROGRAM_GROUPING = 2
 private const val FUNCTION_GROUPING = 3
+private const val PROMINENT_AUTO_LINE_NUMBER_PRIORITY = 100.0
 private const val COMPLETION_PARENS = "()"
 private const val SELECT_WITH_OPEN_PAREN = '('
 private const val RPAREN = ')'
+private const val COMPLETION_SEPARATOR = " "
+private const val AUTO_LINE_NUMBER_TYPE_TEXT = "line number"
 private const val VARIABLE_TYPE_TEXT = "variable"
 private const val ARRAY_TYPE_TEXT = "array"
 private const val SUBPROGRAM_TYPE_TEXT = "subprogram"
@@ -59,6 +63,14 @@ class TiBasicCompletionContributor : CompletionContributor() {
             result.withPrefixMatcher(wordAtCursor).caseInsensitive()
                 .addElement(LookupElementBuilder.create("BASE").withTypeText("keyword").autoCompleteSingleMatch())
             return
+        }
+        if (shouldOfferAutoLineNumberCompletion(parameters.editor, file)) {
+            completionResult.addElement(
+                promotedAutoLineNumberCompletion(
+                    autoLineNumberCompletion(file),
+                    shouldPromoteAutoLineNumber(parameters),
+                )
+            )
         }
         val functionNames = TiBasicBuiltInFunctions.allNames()
         functionNames.sorted()
@@ -167,6 +179,29 @@ class TiBasicCompletionContributor : CompletionContributor() {
             TiBasicCallSubprograms.byName(name)?.requiresParentheses() == true,
         )
 
+    private fun autoLineNumberCompletion(file: TiBasicFile): LookupElement =
+        LookupElementBuilder.create(generatedAutoLineNumber(file).toString())
+            .withTypeText(AUTO_LINE_NUMBER_TYPE_TEXT)
+            .withInsertHandler(autoLineNumberCompletionInsertHandler)
+            .autoCompleteSingleMatch()
+
+    private fun shouldPromoteAutoLineNumber(parameters: CompletionParameters): Boolean =
+        currentLineContext(parameters.editor).let { lineContext ->
+            lineContext.text.isBlank() || typedLineNumberPrefix(lineContext) != null
+        }
+
+    private fun promotedAutoLineNumberCompletion(completion: LookupElement, shouldPromote: Boolean): LookupElement {
+        val groupedCompletion = PrioritizedLookupElement.withGrouping(
+            completion,
+            AUTO_LINE_NUMBER_GROUPING,
+        )
+        return if (shouldPromote) {
+            PrioritizedLookupElement.withPriority(groupedCompletion, PROMINENT_AUTO_LINE_NUMBER_PRIORITY)
+        } else {
+            groupedCompletion
+        }
+    }
+
     private fun functionCompletion(name: String): LookupElement {
         val requiresParentheses = TiBasicBuiltInFunctions.byName(name)?.requiresParentheses() == true
         return callableCompletion(
@@ -259,4 +294,14 @@ val arrayCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
         document.deleteString(context.tailOffset, context.tailOffset + 1)
     }
     context.editor.caretModel.moveToOffset(context.tailOffset - PAREN_CARET_OFFSET_FROM_TAIL)
+}
+
+private val autoLineNumberCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
+    context.setAddCompletionChar(false)
+    val document = context.document
+    val tailOffset = context.tailOffset
+    if (tailOffset >= document.textLength || !document.charsSequence[tailOffset].isWhitespace()) {
+        document.insertString(tailOffset, COMPLETION_SEPARATOR)
+    }
+    context.editor.caretModel.moveToOffset(tailOffset + COMPLETION_SEPARATOR.length)
 }

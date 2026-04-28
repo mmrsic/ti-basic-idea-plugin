@@ -28,6 +28,23 @@ internal fun isAtEndOfFile(editor: Editor, file: TiBasicFile): Boolean {
     return file.lines().none { it.textRange.startOffset > checkOffset }
 }
 
+internal fun shouldAutoInsertLineNumber(editor: Editor, file: TiBasicFile): Boolean =
+    isAtEndOfFile(editor, file)
+
+internal fun generatedAutoLineNumber(file: TiBasicFile): Int =
+    nextLineNumber(file.lines().maxValidLineNumber(), 0)
+
+internal fun shouldOfferAutoLineNumberCompletion(editor: Editor, file: TiBasicFile): Boolean {
+    val lineContext = currentLineContext(editor)
+    val generatedLineNumber = generatedAutoLineNumber(file).toString()
+    return shouldAutoInsertLineNumber(editor, file) &&
+        if (lineContext.caretInLine == 0) {
+            !startsWithLineNumber(lineContext.text)
+        } else {
+            typedLineNumberPrefix(lineContext)?.let(generatedLineNumber::startsWith) == true
+        }
+}
+
 internal fun List<TiBasicLine>.maxValidLineNumber(): Int =
     mapNotNull { it.lineNumber().takeIf { n -> n in VALID_LINE_NUMBER_RANGE } }
         .maxOrNull() ?: 0
@@ -98,3 +115,12 @@ private fun roundUpToNextStrictlyGreaterMultipleOfTen(number: Int): Int {
         number + (LINE_NUMBER_ROUNDING_STEP - remainder)
     }
 }
+
+private fun startsWithLineNumber(lineText: String): Boolean =
+    lineText.dropWhile { it.isWhitespace() }
+        .takeWhile { it.isDigit() }
+        .isNotEmpty()
+
+internal fun typedLineNumberPrefix(lineContext: LineContext): String? =
+    lineContext.text.take(lineContext.caretInLine)
+        .takeIf { prefix -> prefix.isNotEmpty() && prefix.all(Char::isDigit) }

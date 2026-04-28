@@ -40,18 +40,11 @@ class TiBasicShiftEnterHandler(private val originalHandler: EditorActionHandler)
         }
     }
 
-    private fun shouldAutoInsertLineNumber(editor: Editor, file: TiBasicFile): Boolean {
-        val cursorOffset = editor.caretModel.offset
-        return file.lines()
-            .none { it.textRange.startOffset > cursorOffset }
-    }
-
     private fun insertNewLineWithAutoLineNumber(editor: Editor, file: TiBasicFile) {
         closeUnclosedParensAtLineEnd(editor)
-        val nextLineNumber = nextLineNumber(file.lines().maxValidLineNumber(), 0)
         val document = editor.document
         val lineEnd = document.getLineEndOffset(document.getLineNumber(editor.caretModel.offset))
-        val insertText = "\n$nextLineNumber "
+        val insertText = "\n${generatedAutoLineNumber(file)} "
         document.insertString(lineEnd, insertText)
         editor.caretModel.moveToOffset(lineEnd + insertText.length)
     }

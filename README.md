@@ -224,10 +224,13 @@ The annotator inspects every file and highlights:
 
 ### Editor assistance
 
-- **Keyword and variable completion** — on-demand autocomplete (Ctrl+Space) for all TI-Basic keywords and all variables
-  defined in the current file (case-insensitive); if exactly one matching suggestion remains, it is inserted
-  immediately without opening the popup; keywords and variables appear in separate groups, and array variables are
-  shown as `NAME()` and inserted with the cursor placed between the parentheses
+- **Keyword, variable, and line-number completion** — on-demand autocomplete (Ctrl+Space) for all TI-Basic keywords,
+  all variables defined in the current file, and the next automatically generated line number at the beginning of the
+  current eligible unnumbered last line; completion is case-insensitive where applicable, and if exactly one matching
+  suggestion remains, it is inserted immediately without opening the popup; keywords and variables appear in separate
+  groups, a blank eligible last line or a matching typed line-number prefix shows the generated line number as the
+  first suggestion, array variables are shown as `NAME()` and inserted with the cursor placed between the parentheses,
+  and the generated line number inserts with the required trailing space
 - **CALL subprogram completion** — when the cursor is at the subprogram name position (directly after `CALL` or on an
   existing subprogram name token), autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated
   group; subprograms with arguments insert `()` and place the cursor between them, while `CLEAR` remains without

@@ -66,11 +66,14 @@ ASCII character if one exists, computes the TI-Basic character group for codes
 Provides on-demand completion suggestions (Ctrl+Space only; auto-popup is disabled).
 If exactly one match remains after filtering, that match is inserted immediately
 without showing the lookup popup. Built-in functions and CALL subprograms with
-arguments insert `()` and place the caret between them.
+arguments insert `()` and place the caret between them, while generated line
+numbers insert a trailing space and place the caret after it.
 Suggests all TI-Basic keywords from `TiBasicKeywords.getKeywords()`, all variables
 defined in the current file, CALL subprogram names (from `TiBasicCallSubprograms`) when
 the cursor is immediately after `CALL`, and built-in function names (from
-`TiBasicBuiltInFunctions`) in expression context. Keywords, variables, subprogram names,
+`TiBasicBuiltInFunctions`) in expression context. At the beginning of the current
+eligible unnumbered last line, it also suggests the same next auto-generated line
+number that Shift+Enter would insert there. Keywords, variables, subprogram names,
 and function names appear in separate groups in the popup.
 
 ---
