@@ -1738,6 +1738,11 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
+    fun testReadWithTrailingCommaIsError() {
+        configureFile("2050 READ DD<error descr=\"Incorrect statement\">,</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
     fun testReadWithNoVariablesIsError() {
         configureFile(
             "100 <error descr=\"Incorrect statement\">READ</error>"

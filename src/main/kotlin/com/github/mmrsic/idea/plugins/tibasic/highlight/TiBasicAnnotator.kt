@@ -222,9 +222,9 @@ class TiBasicAnnotator : Annotator {
             holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
             return
         }
-        val lastContentNode = statement.node.nonWhitespaceChildren.lastOrNull { it.elementType != TiBasicTokenTypes.DIM_KEYWORD }
-        if (lastContentNode?.elementType == TiBasicTokenTypes.COMMA) {
-            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, lastContentNode.textRange)
+        val trailingCommaNode = trailingVariableListComma(statement, TiBasicTokenTypes.DIM_KEYWORD)
+        if (trailingCommaNode != null) {
+            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, trailingCommaNode.textRange)
             return
         }
         for (varAccess in varAccesses) {
@@ -442,12 +442,22 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateReadStatement(statement: TiBasicReadStatement, holder: AnnotationHolder) {
+        val trailingCommaNode = trailingVariableListComma(statement, TiBasicTokenTypes.READ_KEYWORD)
+        if (trailingCommaNode != null) {
+            holder.error("Incorrect statement", trailingCommaNode.textRange)
+            return
+        }
         annotateVariableList(
             statement.node.nonWhitespaceChildren.filter { it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS },
             statement,
             holder,
         )
     }
+
+    private fun trailingVariableListComma(statement: PsiElement, keywordType: IElementType): ASTNode? =
+        statement.node.nonWhitespaceChildren
+            .lastOrNull { it.elementType != keywordType }
+            ?.takeIf { it.elementType == TiBasicTokenTypes.COMMA }
 
     private fun annotateVariableList(varAccessNodes: List<ASTNode>, statement: PsiElement, holder: AnnotationHolder) {
         if (varAccessNodes.isEmpty()) {
