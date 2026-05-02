@@ -19,6 +19,7 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
 
 private const val CALL_CHAR_SUBPROGRAM = "CHAR"
+private const val CALL_COLOR_SUBPROGRAM = "COLOR"
 private const val CALL_HCHAR_SUBPROGRAM = "HCHAR"
 private const val CALL_VCHAR_SUBPROGRAM = "VCHAR"
 private const val CHR_FUNCTION = "CHR$"
@@ -26,9 +27,24 @@ private const val CHARACTER_GROUP_START_CODE = 32
 private const val CHARACTER_GROUP_END_CODE = 159
 private const val CHARACTER_GROUP_SIZE = 8
 private const val FIRST_CHARACTER_GROUP = 1
+private const val LAST_CODE_OFFSET_IN_CHARACTER_GROUP = CHARACTER_GROUP_SIZE - 1
 private const val DELETE_CHARACTER_CODE = 127
 private const val SPACE_CHARACTER_CODE = 32
 private const val MAX_CHAR_PATTERN_LENGTH = 16
+private const val CALL_COLOR_SET_ARG_INDEX = 0
+private const val CALL_COLOR_FOREGROUND_ARG_INDEX = 1
+private const val CALL_COLOR_BACKGROUND_ARG_INDEX = 2
+private const val CALL_COLOR_SET_MEANING = "Character set whose characters receive the specified foreground and background colors"
+private const val CALL_COLOR_FOREGROUND_MEANING = "Foreground color applied to the selected character set"
+private const val CALL_COLOR_BACKGROUND_MEANING = "Background color applied to the selected character set"
+private const val VALUE_SECTION = "Value"
+private const val MEANING_SECTION = "Meaning"
+private const val CHARACTER_CODE_RANGE_SECTION = "Character code range"
+private const val ASCII_CHARACTERS_SECTION = "ASCII characters"
+private const val TI_COLOR_NAME_SECTION = "TI color name"
+private const val NON_CONSTANT_VALUE_MESSAGE = "Value is not statically determinable here"
+private const val LAST_CHARACTER_GROUP =
+    ((CHARACTER_GROUP_END_CODE - CHARACTER_GROUP_START_CODE) / CHARACTER_GROUP_SIZE) + FIRST_CHARACTER_GROUP
 private val HEX_CHAR_PATTERN_REGEX = Regex("^[0-9A-Fa-f]{0,16}$")
 private val DATA_HEX_PATTERN_TOKEN_TYPES = setOf(
     TiBasicTokenTypes.STRING_LITERAL,
@@ -55,6 +71,35 @@ internal data class TiBasicHexPatternUsage(
     val title: String,
 ) : TiBasicDocumentationUsage
 
+internal enum class TiBasicCallColorArgument(
+    val usageDescription: String,
+    val title: String,
+    val meaning: String,
+) {
+    CHARACTER_SET(
+        "CALL COLOR character set",
+        "CALL COLOR character set",
+        CALL_COLOR_SET_MEANING,
+    ),
+    FOREGROUND_COLOR(
+        "CALL COLOR foreground color",
+        "CALL COLOR foreground color",
+        CALL_COLOR_FOREGROUND_MEANING,
+    ),
+    BACKGROUND_COLOR(
+        "CALL COLOR background color",
+        "CALL COLOR background color",
+        CALL_COLOR_BACKGROUND_MEANING,
+    ),
+}
+
+internal data class TiBasicCallColorUsage(
+    val expression: TiBasicExpression,
+    val argument: TiBasicCallColorArgument,
+) : TiBasicDocumentationUsage {
+    override val documentationElement: PsiElement = expression
+}
+
 internal data class TiBasicCharacterCodeOverride(
     val lineNumber: Int,
     val pattern: String,
@@ -62,6 +107,7 @@ internal data class TiBasicCharacterCodeOverride(
 
 internal fun resolveDocumentationUsage(element: PsiElement?): TiBasicDocumentationUsage? =
     resolveCharacterCodeUsage(element)
+        ?: resolveCallColorUsage(element)
         ?: resolveCallCharHexPatternUsage(element)
         ?: resolveDataHexPatternUsage(element)
         ?: resolveStringLiteralHexPatternUsage(element)
@@ -148,6 +194,14 @@ internal fun asciiCharacterName(code: Int): String? =
         else -> null
     }
 
+internal fun callColorCharacterSetRange(set: Int): IntRange? =
+    if (set in FIRST_CHARACTER_GROUP..LAST_CHARACTER_GROUP) {
+        val firstCode = CHARACTER_GROUP_START_CODE + ((set - FIRST_CHARACTER_GROUP) * CHARACTER_GROUP_SIZE)
+        firstCode..(firstCode + LAST_CODE_OFFSET_IN_CHARACTER_GROUP)
+    } else {
+        null
+    }
+
 internal fun collectCallCharOverrides(file: TiBasicFile): Map<Int, List<TiBasicCharacterCodeOverride>> =
     CachedValuesManager.getCachedValue(file) {
         CachedValueProvider.Result.create(buildCallCharOverrides(file), file)
@@ -155,9 +209,46 @@ internal fun collectCallCharOverrides(file: TiBasicFile): Map<Int, List<TiBasicC
 
 internal fun buildDocumentation(usage: TiBasicDocumentationUsage): String =
     when (usage) {
+        is TiBasicCallColorUsage -> buildCallColorDocumentation(usage)
         is TiBasicCharacterCodeUsage -> buildCharacterCodeDocumentation(usage)
         is TiBasicHexPatternUsage -> buildHexPatternDocumentation(usage)
     }
+
+internal fun buildCallColorDocumentation(usage: TiBasicCallColorUsage): String {
+    val value = resolveConstantNumericValue(usage.expression, usage.expression.containingTiBasicFile)
+    val sections = mutableListOf(
+        htmlSection("Usage", usage.argument.usageDescription),
+        htmlSection(MEANING_SECTION, usage.argument.meaning),
+    )
+    if (value == null) {
+        sections += htmlSection(VALUE_SECTION, NON_CONSTANT_VALUE_MESSAGE)
+        return htmlDocument(usage.argument.title, sections)
+    }
+    sections += htmlSection(VALUE_SECTION, value.toString())
+    when (usage.argument) {
+        TiBasicCallColorArgument.CHARACTER_SET -> {
+            val characterSetRange = callColorCharacterSetRange(value)
+            sections += htmlSectionRaw(
+                CHARACTER_CODE_RANGE_SECTION,
+                characterSetRange?.let { htmlCode("${it.first}-${it.last}") }
+                    ?: StringUtil.escapeXmlEntities("No CALL COLOR character set for value $value"),
+            )
+            sections += htmlSectionRaw(
+                ASCII_CHARACTERS_SECTION,
+                characterSetRange?.let(::htmlAsciiCharactersForRange)
+                    ?: StringUtil.escapeXmlEntities("No ASCII characters can be derived for this value"),
+            )
+        }
+
+        TiBasicCallColorArgument.FOREGROUND_COLOR,
+        TiBasicCallColorArgument.BACKGROUND_COLOR,
+        -> sections += htmlSection(
+            TI_COLOR_NAME_SECTION,
+            tiColorAt(value)?.name ?: "No TI color for value $value",
+        )
+    }
+    return htmlDocument(documentationTitle(usage.argument.title, value), sections)
+}
 
 internal fun buildCharacterCodeDocumentation(usage: TiBasicCharacterCodeUsage): String {
     val file = usage.expression.containingTiBasicFile
@@ -205,6 +296,22 @@ private fun resolveCallCharacterCodeUsage(
         CALL_VCHAR_SUBPROGRAM ->
             argIndex.takeIf { it == 2 }?.let { TiBasicCharacterCodeUsage(expression, "CALL VCHAR character code") }
 
+        else -> null
+    }
+}
+
+private fun resolveCallColorUsage(element: PsiElement?): TiBasicCallColorUsage? {
+    val expression = when (element) {
+        null -> return null
+        is TiBasicExpression -> element
+        else -> PsiTreeUtil.getParentOfType(element, TiBasicExpression::class.java, false)
+    } ?: return null
+    val callStatement = expression.parent as? TiBasicCallStatement ?: return null
+    if (callStatement.subprogramName() != CALL_COLOR_SUBPROGRAM) return null
+    return when (callStatement.arguments().indexOf(expression)) {
+        CALL_COLOR_SET_ARG_INDEX -> TiBasicCallColorUsage(expression, TiBasicCallColorArgument.CHARACTER_SET)
+        CALL_COLOR_FOREGROUND_ARG_INDEX -> TiBasicCallColorUsage(expression, TiBasicCallColorArgument.FOREGROUND_COLOR)
+        CALL_COLOR_BACKGROUND_ARG_INDEX -> TiBasicCallColorUsage(expression, TiBasicCallColorArgument.BACKGROUND_COLOR)
         else -> null
     }
 }
@@ -333,6 +440,21 @@ private fun htmlSectionRaw(title: String, value: String): String =
 
 private fun htmlCode(value: String): String =
     "<code>${StringUtil.escapeXmlEntities(value)}</code>"
+
+private fun documentationTitle(baseTitle: String, value: Int): String = "$baseTitle $value"
+
+private fun htmlAsciiCharactersForRange(range: IntRange): String {
+    val asciiCharacters = range.mapNotNull { code ->
+        asciiCharacterName(code)?.let { name ->
+            "$code: <code>${StringUtil.escapeXmlEntities(name)}</code>"
+        }
+    }
+    return if (asciiCharacters.isEmpty()) {
+        StringUtil.escapeXmlEntities("No ASCII characters in this character set")
+    } else {
+        asciiCharacters.joinToString("<br/>")
+    }
+}
 
 private fun htmlCharPatternPreview(normalizedPattern: String): String {
     val bitmap = TiBasicCharPatternBitmap.fromHexPattern(normalizedPattern)

@@ -96,6 +96,78 @@ class TiBasicCharacterCodeDocumentationTest : TiBasicTestBase() {
         assertTrue(documentation.contains("0F00000000000000"))
     }
 
+    fun `test quick documentation shows value range and ascii for CALL COLOR set literal`() {
+        val doc = quickDocumentation("100 CALL COLOR(<caret>5,8,16)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL COLOR character set"))
+        assertTrue(documentation.contains("Value"))
+        assertTrue(documentation.contains("5"))
+        assertTrue(documentation.contains("Character code range"))
+        assertTrue(documentation.contains("64-71"))
+        assertTrue(documentation.contains("ASCII characters"))
+        assertTrue(documentation.contains("64"))
+        assertTrue(documentation.contains("@"))
+        assertTrue(documentation.contains("71"))
+        assertTrue(documentation.contains("G"))
+    }
+
+    fun `test quick documentation shows derived data for CALL COLOR constant set variable`() {
+        val doc = quickDocumentation("100 LET S=5\n110 CALL COLOR(<caret>S,8,16)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL COLOR character set"))
+        assertTrue(documentation.contains("64-71"))
+        assertTrue(documentation.contains("@"))
+        assertTrue(documentation.contains("G"))
+    }
+
+    fun `test quick documentation reports unresolved CALL COLOR set expression`() {
+        val doc = quickDocumentation("100 LET S=5\n110 LET S=6\n120 CALL COLOR(<caret>S,8,16)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL COLOR character set"))
+        assertTrue(documentation.contains("Value is not statically determinable here"))
+    }
+
+    fun `test quick documentation shows color name for CALL COLOR foreground literal`() {
+        val doc = quickDocumentation("100 CALL COLOR(5,<caret>8,16)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL COLOR foreground color"))
+        assertTrue(documentation.contains("Value"))
+        assertTrue(documentation.contains("8"))
+        assertTrue(documentation.contains("TI color name"))
+        assertTrue(documentation.contains("Cyan"))
+    }
+
+    fun `test quick documentation shows color name for CALL COLOR constant background variable`() {
+        val doc = quickDocumentation("100 LET BG=16\n110 CALL COLOR(5,8,<caret>BG)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL COLOR background color"))
+        assertTrue(documentation.contains("TI color name"))
+        assertTrue(documentation.contains("White"))
+    }
+
+    fun `test quick documentation reports invalid CALL COLOR foreground value`() {
+        val doc = quickDocumentation("100 CALL COLOR(5,1<caret>7,16)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL COLOR foreground color"))
+        assertTrue(documentation.contains("Value"))
+        assertTrue(documentation.contains("17"))
+        assertTrue(documentation.contains("No TI color for value 17"))
+    }
+
+    fun `test quick documentation reports unresolved CALL COLOR background expression`() {
+        val doc = quickDocumentation("100 LET BG=16\n110 LET BG=2\n120 CALL COLOR(5,8,<caret>BG)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL COLOR background color"))
+        assertTrue(documentation.contains("Value is not statically determinable here"))
+    }
+
     fun `test quick documentation is unavailable for short numeric DATA item`() {
         assertNull(quickDocumentation("10 DATA 3<caret>0,FFFFFFFFFFFFFFFF"))
     }

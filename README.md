@@ -244,6 +244,10 @@ The annotator inspects every file and highlights:
 - **Character-code quick documentation** — pressing `Ctrl+Q` on the character-code argument of `CALL CHAR`, `CALL HCHAR`,
   `CALL VCHAR`, or on the argument of `CHR$` shows the resolved code, its ASCII character (if any), its TI-Basic
   character group (`32..159` in groups of 8), and any matching `CALL CHAR` overrides in the current file
+- **CALL COLOR quick documentation** — pressing `Ctrl+Q` on an argument of `CALL COLOR(set,fg,bg)` first shows the
+  resolved constant value (or a hint when the value is not statically determinable); on `set` it also shows the
+  selected character-code range and all ASCII characters within that range, while on `fg` and `bg` it shows the
+  resolved TI color name
 - **Hex-pattern quick documentation** — pressing `Ctrl+Q` on the pattern argument of `CALL CHAR`, on a hexadecimal
   item in a `DATA` line, or on a string literal elsewhere in the program shows the normalized 16-digit pattern
   together with the same 8x8 black-and-white pictogram used for `CALL CHAR`; general string and `DATA` detection uses
@@ -252,7 +256,7 @@ The annotator inspects every file and highlights:
   16 characters, a 16×16 px black-and-white pictogram appears in the gutter showing the defined 8×8 character
   (1-bit → black, 0-bit → white, with a dark-gray border); the pattern may be a string literal or a constant string
   variable, and shorter patterns are padded with trailing zeroes
-- **CALL COLOR gutter preview** — for lines containing `CALL COLOR(spriteNum,fg,bg)` with resolvable numeric color
+- **CALL COLOR gutter preview** — for lines containing `CALL COLOR(set,fg,bg)` with resolvable numeric color
   arguments, a split color square appears in the gutter (left half = foreground, right half = background TI color;
   literal values and constant numeric variables are resolved, transparent checkerboard shown for non-constant
   arguments)

@@ -54,6 +54,13 @@ The documentation resolves numeric literals and constant numeric variables, show
 ASCII character if one exists, computes the TI-Basic character group for codes
 `32..159`, and lists file-local `CALL CHAR` overrides for the same code.
 
+The same provider also handles all three argument positions of `CALL COLOR(set,fg,bg)`.
+For each argument it first shows the resolved constant value when one can be determined
+from a literal or constant numeric variable; otherwise it reports that the value is not
+statically determinable. On `set`, it additionally explains the character-set role,
+shows the derived character-code range, and lists all ASCII characters within that
+range. On `fg` and `bg`, it shows the derived TI color name for the resolved value.
+
 The same provider also recognizes hexadecimal `DATA` items and renders a popup preview
 for the corresponding 8×8 character pattern. It accepts quoted and unquoted hex payloads
 without a prefix; digit-only items are treated as hex patterns when they start with `0`
@@ -361,7 +368,7 @@ preview for hexadecimal `DATA` items.
 | `language`            | `TI-Basic`                                          |
 | `implementationClass` | `tibasic.editor.TiBasicCallColorLineMarkerProvider` |
 
-Displays a split 16×16 color square in the gutter for every `CALL COLOR(spriteNum,fg,bg)` line.
+Displays a split 16×16 color square in the gutter for every `CALL COLOR(set,fg,bg)` line.
 `fg` and `bg` may be integer literals or **constant numeric variables** (variables assigned exactly
 one distinct numeric literal throughout the file). The left half shows the foreground TI color,
 the right half the background TI color. If an argument cannot be resolved to a constant integer
