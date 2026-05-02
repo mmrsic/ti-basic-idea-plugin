@@ -52,8 +52,28 @@ class TiBasicCharacterCodeDocumentationTest : TiBasicTestBase() {
         assertTrue(documentation.contains("not statically determinable"))
     }
 
-    fun `test quick documentation is unavailable for CALL CHAR pattern argument`() {
-        assertNull(quickDocumentation("100 CALL CHAR(96,P<caret>$)"))
+    fun `test quick documentation shows preview for CALL CHAR pattern literal`() {
+        val doc = quickDocumentation("100 CALL CHAR(96,\"FFFF<caret>FFFFFFFFFFFF\")")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL CHAR hex pattern"))
+        assertTrue(documentation.contains("FFFFFFFFFFFFFFFF"))
+    }
+
+    fun `test quick documentation shows preview for CALL CHAR constant pattern variable`() {
+        val doc = quickDocumentation("100 LET P$=\"0F\"\n110 CALL CHAR(96,P<caret>$)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL CHAR hex pattern"))
+        assertTrue(documentation.contains("0F00000000000000"))
+    }
+
+    fun `test quick documentation shows preview for uninitialized CALL CHAR pattern variable`() {
+        val doc = quickDocumentation("100 CALL CHAR(96,P<caret>$)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL CHAR hex pattern"))
+        assertTrue(documentation.contains("0000000000000000"))
     }
 
     fun `test quick documentation shows preview for DATA hex token`() {
@@ -106,6 +126,26 @@ class TiBasicCharacterCodeDocumentationTest : TiBasicTestBase() {
 
     fun `test quick documentation is unavailable for non hex DATA item`() {
         assertNull(quickDocumentation("10 DATA ZZ<caret>ZZ"))
+    }
+
+    fun `test quick documentation shows preview for generic string literal`() {
+        val doc = quickDocumentation("100 PRINT \"01<caret>23\"")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("String hex pattern"))
+        assertTrue(documentation.contains("0123000000000000"))
+    }
+
+    fun `test quick documentation shows preview for 9 digit generic string literal`() {
+        val doc = quickDocumentation("100 PRINT \"12345678<caret>9\"")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("String hex pattern"))
+        assertTrue(documentation.contains("1234567890000000"))
+    }
+
+    fun `test quick documentation is unavailable for short generic decimal string`() {
+        assertNull(quickDocumentation("100 PRINT \"3<caret>0\""))
     }
 
     fun `test normalize DATA hex pattern rejects short digit only item`() {

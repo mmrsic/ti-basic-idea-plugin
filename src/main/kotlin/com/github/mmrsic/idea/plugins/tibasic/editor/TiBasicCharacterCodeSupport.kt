@@ -47,10 +47,12 @@ internal data class TiBasicCharacterCodeUsage(
     override val documentationElement: PsiElement = expression
 }
 
-internal data class TiBasicDataHexPatternUsage(
+internal data class TiBasicHexPatternUsage(
     override val documentationElement: PsiElement,
     val originalPattern: String,
     val normalizedPattern: String,
+    val usageDescription: String,
+    val title: String,
 ) : TiBasicDocumentationUsage
 
 internal data class TiBasicCharacterCodeOverride(
@@ -59,7 +61,10 @@ internal data class TiBasicCharacterCodeOverride(
 )
 
 internal fun resolveDocumentationUsage(element: PsiElement?): TiBasicDocumentationUsage? =
-    resolveCharacterCodeUsage(element) ?: resolveDataHexPatternUsage(element)
+    resolveCharacterCodeUsage(element)
+        ?: resolveCallCharHexPatternUsage(element)
+        ?: resolveDataHexPatternUsage(element)
+        ?: resolveStringLiteralHexPatternUsage(element)
 
 internal fun resolveCharacterCodeUsage(element: PsiElement?): TiBasicCharacterCodeUsage? {
     val expression = when (element) {
@@ -151,7 +156,7 @@ internal fun collectCallCharOverrides(file: TiBasicFile): Map<Int, List<TiBasicC
 internal fun buildDocumentation(usage: TiBasicDocumentationUsage): String =
     when (usage) {
         is TiBasicCharacterCodeUsage -> buildCharacterCodeDocumentation(usage)
-        is TiBasicDataHexPatternUsage -> buildDataHexPatternDocumentation(usage)
+        is TiBasicHexPatternUsage -> buildHexPatternDocumentation(usage)
     }
 
 internal fun buildCharacterCodeDocumentation(usage: TiBasicCharacterCodeUsage): String {
@@ -213,7 +218,27 @@ private fun resolveFunctionCharacterCodeUsage(
     return TiBasicCharacterCodeUsage(expression, "CHR$ character code")
 }
 
-private fun resolveDataHexPatternUsage(element: PsiElement?): TiBasicDataHexPatternUsage? {
+private fun resolveCallCharHexPatternUsage(element: PsiElement?): TiBasicHexPatternUsage? {
+    val expression = when (element) {
+        null -> return null
+        is TiBasicExpression -> element
+        else -> PsiTreeUtil.getParentOfType(element, TiBasicExpression::class.java, false)
+    } ?: return null
+    val callStatement = expression.parent as? TiBasicCallStatement ?: return null
+    if (callStatement.subprogramName() != CALL_CHAR_SUBPROGRAM) return null
+    if (callStatement.arguments().indexOf(expression) != 1) return null
+    val rawPattern = resolveConstantStringValue(expression, expression.containingTiBasicFile) ?: return null
+    val normalizedPattern = normalizeHexPattern(rawPattern) ?: return null
+    return TiBasicHexPatternUsage(
+        documentationElement = expression,
+        originalPattern = rawPattern,
+        normalizedPattern = normalizedPattern,
+        usageDescription = "CALL CHAR hex pattern",
+        title = "CALL CHAR hex pattern",
+    )
+}
+
+private fun resolveDataHexPatternUsage(element: PsiElement?): TiBasicHexPatternUsage? {
     val dataElement = element
         ?.takeIf { it.node.elementType in DATA_HEX_PATTERN_TOKEN_TYPES }
         ?.takeIf { PsiTreeUtil.getParentOfType(it, TiBasicDataStatement::class.java, false) != null }
@@ -223,10 +248,28 @@ private fun resolveDataHexPatternUsage(element: PsiElement?): TiBasicDataHexPatt
         else -> dataElement.text.trim()
     }
     val normalizedPattern = normalizeDataHexPattern(rawPattern) ?: return null
-    return TiBasicDataHexPatternUsage(
+    return TiBasicHexPatternUsage(
         documentationElement = dataElement,
         originalPattern = rawPattern,
         normalizedPattern = normalizedPattern,
+        usageDescription = "DATA hex pattern",
+        title = "DATA hex pattern",
+    )
+}
+
+private fun resolveStringLiteralHexPatternUsage(element: PsiElement?): TiBasicHexPatternUsage? {
+    val stringLiteral = element
+        ?.takeIf { it.node.elementType == TiBasicTokenTypes.STRING_LITERAL }
+        ?.takeIf { PsiTreeUtil.getParentOfType(it, TiBasicDataStatement::class.java, false) == null }
+        ?: return null
+    val rawPattern = stringLiteral.text.removePrefix("\"").removeSuffix("\"")
+    val normalizedPattern = normalizeDataHexPattern(rawPattern) ?: return null
+    return TiBasicHexPatternUsage(
+        documentationElement = stringLiteral,
+        originalPattern = rawPattern,
+        normalizedPattern = normalizedPattern,
+        usageDescription = "String hex pattern",
+        title = "String hex pattern",
     )
 }
 
@@ -259,10 +302,10 @@ private fun buildCallCharOverrides(file: TiBasicFile): Map<Int, List<TiBasicChar
         )
         .mapValues { (_, overrides) -> overrides.sortedBy { it.lineNumber } }
 
-private fun buildDataHexPatternDocumentation(usage: TiBasicDataHexPatternUsage): String {
+private fun buildHexPatternDocumentation(usage: TiBasicHexPatternUsage): String {
     val lineNumber = PsiTreeUtil.getParentOfType(usage.documentationElement, TiBasicLine::class.java)?.lineNumber()
     val sections = mutableListOf(
-        htmlSection("Usage", "DATA hex pattern"),
+        htmlSection("Usage", usage.usageDescription),
     )
     if (lineNumber != null) {
         sections += htmlSection("Line", lineNumber.toString())
@@ -270,7 +313,7 @@ private fun buildDataHexPatternDocumentation(usage: TiBasicDataHexPatternUsage):
     sections += htmlSectionRaw("Pattern", htmlCode(usage.originalPattern))
     sections += htmlSectionRaw("Normalized pattern", htmlCode(usage.normalizedPattern))
     sections += htmlSectionRaw("Preview", htmlCharPatternPreview(usage.normalizedPattern))
-    return htmlDocument("DATA hex pattern", sections)
+    return htmlDocument(usage.title, sections)
 }
 
 private fun htmlDocument(title: String, sections: List<String>): String =

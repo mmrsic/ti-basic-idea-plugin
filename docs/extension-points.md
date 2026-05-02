@@ -60,6 +60,12 @@ without a prefix; digit-only items are treated as hex patterns when they start w
 and are at most 16 characters long, or when they are 9 to 16 characters long. This keeps
 short ordinary decimal `DATA` values such as `30` excluded.
 
+It also provides the same preview for the pattern argument of `CALL CHAR`. There, constant
+string expressions use the regular `CALL CHAR` hex normalization rules, so valid character
+definitions such as `"30"` remain previewable. Outside `DATA`, plain string literals can
+also show the preview; for those generic string literals, the stricter digit-only rule is
+used to avoid excessive false positives.
+
 ---
 
 ### `completion.contributor`

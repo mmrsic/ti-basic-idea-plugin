@@ -83,9 +83,9 @@ PSI tree              (tibasic.psi + subpackages)
     ├──▶ TiBasicCharacterCodeDocumentationProvider (tibasic.editor)
     │       Provides Quick Documentation (Ctrl+Q) for character-code positions
     │       in `CALL CHAR`, `CALL HCHAR`, `CALL VCHAR`, and `CHR$`.
-    │       It also recognizes hexadecimal `DATA` items and renders the same
-    │       8x8 pattern preview used by `CALL CHAR`, including digit-only
-    │       items that start with `0` or are 9 to 16 digits long.
+    │       It also recognizes `CALL CHAR` pattern definitions, hexadecimal
+    │       `DATA` items, and generic string literals, and renders the same
+    │       8x8 pattern preview used by `CALL CHAR`.
     │       The provider resolves numeric literals and constant numeric
     │       variables, reports the matching ASCII character, computes the
     │       TI-Basic character group for codes 32..159, and summarizes any
