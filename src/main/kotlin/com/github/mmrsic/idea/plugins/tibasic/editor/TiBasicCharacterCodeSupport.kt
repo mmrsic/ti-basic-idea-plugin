@@ -8,6 +8,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicFunctionCall
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
@@ -29,16 +30,36 @@ private const val DELETE_CHARACTER_CODE = 127
 private const val SPACE_CHARACTER_CODE = 32
 private const val MAX_CHAR_PATTERN_LENGTH = 16
 private val HEX_CHAR_PATTERN_REGEX = Regex("^[0-9A-Fa-f]{0,16}$")
+private val DATA_HEX_PATTERN_TOKEN_TYPES = setOf(
+    TiBasicTokenTypes.STRING_LITERAL,
+    TiBasicTokenTypes.NUMERIC_LITERAL,
+    TiBasicTokenTypes.PRINT_ARGUMENT,
+)
+
+internal sealed interface TiBasicDocumentationUsage {
+    val documentationElement: PsiElement
+}
 
 internal data class TiBasicCharacterCodeUsage(
     val expression: TiBasicExpression,
     val usageDescription: String,
-)
+) : TiBasicDocumentationUsage {
+    override val documentationElement: PsiElement = expression
+}
+
+internal data class TiBasicDataHexPatternUsage(
+    override val documentationElement: PsiElement,
+    val originalPattern: String,
+    val normalizedPattern: String,
+) : TiBasicDocumentationUsage
 
 internal data class TiBasicCharacterCodeOverride(
     val lineNumber: Int,
     val pattern: String,
 )
+
+internal fun resolveDocumentationUsage(element: PsiElement?): TiBasicDocumentationUsage? =
+    resolveCharacterCodeUsage(element) ?: resolveDataHexPatternUsage(element)
 
 internal fun resolveCharacterCodeUsage(element: PsiElement?): TiBasicCharacterCodeUsage? {
     val expression = when (element) {
@@ -96,6 +117,17 @@ internal fun normalizeHexPattern(pattern: String?): String? {
     }
 }
 
+internal fun normalizeDataHexPattern(pattern: String?): String? {
+    pattern ?: return null
+    if (pattern.isEmpty()) return null
+    if (pattern.all(Char::isDigit) && !isAcceptedDigitOnlyDataHexPattern(pattern)) return null
+    return normalizeHexPattern(pattern)
+}
+
+private fun isAcceptedDigitOnlyDataHexPattern(pattern: String): Boolean =
+    (pattern.startsWith('0') && pattern.length <= MAX_CHAR_PATTERN_LENGTH) ||
+        pattern.length in 9..MAX_CHAR_PATTERN_LENGTH
+
 internal fun tiBasicCharacterGroup(code: Int): Int? =
     if (code in CHARACTER_GROUP_START_CODE..CHARACTER_GROUP_END_CODE) {
         ((code - CHARACTER_GROUP_START_CODE) / CHARACTER_GROUP_SIZE) + FIRST_CHARACTER_GROUP
@@ -114,6 +146,12 @@ internal fun asciiCharacterName(code: Int): String? =
 internal fun collectCallCharOverrides(file: TiBasicFile): Map<Int, List<TiBasicCharacterCodeOverride>> =
     CachedValuesManager.getCachedValue(file) {
         CachedValueProvider.Result.create(buildCallCharOverrides(file), file)
+    }
+
+internal fun buildDocumentation(usage: TiBasicDocumentationUsage): String =
+    when (usage) {
+        is TiBasicCharacterCodeUsage -> buildCharacterCodeDocumentation(usage)
+        is TiBasicDataHexPatternUsage -> buildDataHexPatternDocumentation(usage)
     }
 
 internal fun buildCharacterCodeDocumentation(usage: TiBasicCharacterCodeUsage): String {
@@ -175,6 +213,23 @@ private fun resolveFunctionCharacterCodeUsage(
     return TiBasicCharacterCodeUsage(expression, "CHR$ character code")
 }
 
+private fun resolveDataHexPatternUsage(element: PsiElement?): TiBasicDataHexPatternUsage? {
+    val dataElement = element
+        ?.takeIf { it.node.elementType in DATA_HEX_PATTERN_TOKEN_TYPES }
+        ?.takeIf { PsiTreeUtil.getParentOfType(it, TiBasicDataStatement::class.java, false) != null }
+        ?: return null
+    val rawPattern = when (dataElement.node.elementType) {
+        TiBasicTokenTypes.STRING_LITERAL -> dataElement.text.removePrefix("\"").removeSuffix("\"")
+        else -> dataElement.text.trim()
+    }
+    val normalizedPattern = normalizeDataHexPattern(rawPattern) ?: return null
+    return TiBasicDataHexPatternUsage(
+        documentationElement = dataElement,
+        originalPattern = rawPattern,
+        normalizedPattern = normalizedPattern,
+    )
+}
+
 private fun constantVariableValue(
     variableName: String?,
     file: TiBasicFile?,
@@ -204,6 +259,20 @@ private fun buildCallCharOverrides(file: TiBasicFile): Map<Int, List<TiBasicChar
         )
         .mapValues { (_, overrides) -> overrides.sortedBy { it.lineNumber } }
 
+private fun buildDataHexPatternDocumentation(usage: TiBasicDataHexPatternUsage): String {
+    val lineNumber = PsiTreeUtil.getParentOfType(usage.documentationElement, TiBasicLine::class.java)?.lineNumber()
+    val sections = mutableListOf(
+        htmlSection("Usage", "DATA hex pattern"),
+    )
+    if (lineNumber != null) {
+        sections += htmlSection("Line", lineNumber.toString())
+    }
+    sections += htmlSectionRaw("Pattern", htmlCode(usage.originalPattern))
+    sections += htmlSectionRaw("Normalized pattern", htmlCode(usage.normalizedPattern))
+    sections += htmlSectionRaw("Preview", htmlCharPatternPreview(usage.normalizedPattern))
+    return htmlDocument("DATA hex pattern", sections)
+}
+
 private fun htmlDocument(title: String, sections: List<String>): String =
     buildString {
         append("<html><body><b>")
@@ -218,3 +287,24 @@ private fun htmlSection(title: String, value: String): String =
 
 private fun htmlSectionRaw(title: String, value: String): String =
     "<p><b>${StringUtil.escapeXmlEntities(title)}:</b> $value</p>"
+
+private fun htmlCode(value: String): String =
+    "<code>${StringUtil.escapeXmlEntities(value)}</code>"
+
+private fun htmlCharPatternPreview(normalizedPattern: String): String {
+    val bitmap = TiBasicCharPatternBitmap.fromHexPattern(normalizedPattern)
+    return buildString {
+        append("<table cellspacing='0' cellpadding='0' style='border-collapse:collapse;border:1px solid #666;'>")
+        repeat(TI_BASIC_CHAR_PATTERN_GRID_SIZE) { row ->
+            append("<tr>")
+            repeat(TI_BASIC_CHAR_PATTERN_GRID_SIZE) { col ->
+                val color = if (bitmap.bitAt(row, col)) "#000000" else "#FFFFFF"
+                append("<td style='width:10px;height:10px;background:")
+                append(color)
+                append(";border:1px solid #666;'></td>")
+            }
+            append("</tr>")
+        }
+        append("</table>")
+    }
+}

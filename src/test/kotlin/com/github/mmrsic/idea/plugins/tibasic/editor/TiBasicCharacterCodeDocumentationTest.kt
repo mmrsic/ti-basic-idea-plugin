@@ -56,6 +56,78 @@ class TiBasicCharacterCodeDocumentationTest : TiBasicTestBase() {
         assertNull(quickDocumentation("100 CALL CHAR(96,P<caret>$)"))
     }
 
+    fun `test quick documentation shows preview for DATA hex token`() {
+        val doc = quickDocumentation("10 DATA 30,FFFF<caret>FFFFFFFFFFFF")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("DATA hex pattern"))
+        assertTrue(documentation.contains("Pattern"))
+        assertTrue(documentation.contains("FFFFFFFFFFFFFFFF"))
+        assertTrue(documentation.contains("Normalized pattern"))
+        assertTrue(documentation.contains("<table"))
+    }
+
+    fun `test quick documentation shows preview for quoted DATA hex string`() {
+        val doc = quickDocumentation("10 DATA \"0<caret>F\"")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("DATA hex pattern"))
+        assertTrue(documentation.contains("<code>0F</code>"))
+        assertTrue(documentation.contains("0F00000000000000"))
+    }
+
+    fun `test quick documentation is unavailable for short numeric DATA item`() {
+        assertNull(quickDocumentation("10 DATA 3<caret>0,FFFFFFFFFFFFFFFF"))
+    }
+
+    fun `test quick documentation shows preview for short leading zero numeric DATA item`() {
+        val doc = quickDocumentation("10 DATA 01<caret>23")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("DATA hex pattern"))
+        assertTrue(documentation.contains("0123000000000000"))
+    }
+
+    fun `test quick documentation shows preview for 9 digit numeric DATA item`() {
+        val doc = quickDocumentation("10 DATA 12345678<caret>9")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("DATA hex pattern"))
+        assertTrue(documentation.contains("1234567890000000"))
+    }
+
+    fun `test quick documentation shows preview for 16 digit numeric DATA item`() {
+        val doc = quickDocumentation("10 DATA 12345678901234<caret>56")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("DATA hex pattern"))
+        assertTrue(documentation.contains("1234567890123456"))
+    }
+
+    fun `test quick documentation is unavailable for non hex DATA item`() {
+        assertNull(quickDocumentation("10 DATA ZZ<caret>ZZ"))
+    }
+
+    fun `test normalize DATA hex pattern rejects short digit only item`() {
+        assertNull(normalizeDataHexPattern("30"))
+    }
+
+    fun `test normalize DATA hex pattern rejects 8 digit item without leading zero`() {
+        assertNull(normalizeDataHexPattern("12345678"))
+    }
+
+    fun `test normalize DATA hex pattern accepts short leading zero digit only item`() {
+        assertEquals("0123000000000000", normalizeDataHexPattern("0123"))
+    }
+
+    fun `test normalize DATA hex pattern accepts 9 digit item`() {
+        assertEquals("1234567890000000", normalizeDataHexPattern("123456789"))
+    }
+
+    fun `test normalize DATA hex pattern accepts shorter alphanumeric item`() {
+        assertEquals("0F00000000000000", normalizeDataHexPattern("0F"))
+    }
+
     fun `test collect call char overrides ignores unresolvable entries`() {
         val file = configureFile(
             """

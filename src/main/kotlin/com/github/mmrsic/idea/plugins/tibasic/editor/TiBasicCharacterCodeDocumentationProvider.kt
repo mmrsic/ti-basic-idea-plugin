@@ -16,11 +16,11 @@ class TiBasicCharacterCodeDocumentationProvider : AbstractDocumentationProvider(
     ): PsiElement? {
         if (file !is TiBasicFile) return null
         val targetElement = contextElement ?: file.findElementAt(targetOffset) ?: return null
-        return resolveCharacterCodeUsage(targetElement)?.expression
+        return resolveDocumentationUsage(targetElement)?.documentationElement
     }
 
     override fun generateDoc(element: PsiElement?, originalElement: PsiElement?): String? {
-        val usage = resolveCharacterCodeUsage(originalElement ?: element) ?: return null
-        return buildCharacterCodeDocumentation(usage)
+        val usage = resolveDocumentationUsage(originalElement ?: element) ?: return null
+        return buildDocumentation(usage)
     }
 }

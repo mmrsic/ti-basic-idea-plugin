@@ -54,6 +54,12 @@ The documentation resolves numeric literals and constant numeric variables, show
 ASCII character if one exists, computes the TI-Basic character group for codes
 `32..159`, and lists file-local `CALL CHAR` overrides for the same code.
 
+The same provider also recognizes hexadecimal `DATA` items and renders a popup preview
+for the corresponding 8×8 character pattern. It accepts quoted and unquoted hex payloads
+without a prefix; digit-only items are treated as hex patterns when they start with `0`
+and are at most 16 characters long, or when they are 9 to 16 characters long. This keeps
+short ordinary decimal `DATA` values such as `30` excluded.
+
 ---
 
 ### `completion.contributor`
@@ -335,7 +341,8 @@ exactly one distinct string literal throughout the file). The pattern encodes 8 
 each (1 byte per row, MSB = left pixel): `1`-bit → black, `0`-bit → white. Patterns shorter than
 16 characters are zero-padded; longer patterns, non-hex content, or non-constant variables produce
 no icon. The implementation class is `TiBasicCharPatternIcon`, which renders the bitmap
-on-the-fly using `Graphics2D` (HiDPI-safe, no static image files needed).
+from a shared `TiBasicCharPatternBitmap` model that is also reused by the `Ctrl+Q` popup
+preview for hexadecimal `DATA` items.
 
 ---
 

@@ -244,6 +244,10 @@ The annotator inspects every file and highlights:
 - **Character-code quick documentation** — pressing `Ctrl+Q` on the character-code argument of `CALL CHAR`, `CALL HCHAR`,
   `CALL VCHAR`, or on the argument of `CHR$` shows the resolved code, its ASCII character (if any), its TI-Basic
   character group (`32..159` in groups of 8), and any matching `CALL CHAR` overrides in the current file
+- **DATA hex-pattern quick documentation** — pressing `Ctrl+Q` on a hexadecimal item in a `DATA` line shows the
+  normalized 16-digit pattern together with the same 8x8 black-and-white pictogram used for `CALL CHAR`; digit-only
+  items are treated as hex patterns when they begin with `0` and are up to 16 characters long, or when they are
+  9 to 16 characters long
 - **CALL CHAR gutter preview** — for lines containing `CALL CHAR(code,pattern$)` with a valid hex pattern of up to
   16 characters, a 16×16 px black-and-white pictogram appears in the gutter showing the defined 8×8 character
   (1-bit → black, 0-bit → white, with a dark-gray border); the pattern may be a string literal or a constant string
