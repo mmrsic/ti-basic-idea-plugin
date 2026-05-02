@@ -319,8 +319,10 @@ TI-99/4A screen width.
 | `key`      | `display.columns.settings.title`                       |
 | `bundle`   | `messages.TiBasicBundle`                               |
 
-Settings UI under **Settings › Editor › TI-Basic Display Column Guides** with a single checkbox to
-enable or disable the guides. The configurable persists `guidesEnabled` via
+Settings UI under **Settings › Editor › TI-Basic Display Column Guides** with a checkbox to
+enable or disable the guides and a numeric preview-distance field that controls how many
+characters before the next 28-column wrap boundary the guides become visible (default: 2).
+The configurable persists `guidesEnabled` and `guidePreviewDistance` via
 `TiBasicColumnHintSettings` and triggers a refresh of all open editors after apply.
 
 ---

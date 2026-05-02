@@ -71,10 +71,15 @@ internal class TiBasicDisplayColumnGuideController private constructor(private v
     }
 
     private fun guideColumns(): List<Int> {
-        if (!TiBasicColumnHintSettings.getInstance().guidesEnabled) {
+        val settings = TiBasicColumnHintSettings.getInstance()
+        if (!settings.guidesEnabled) {
             return emptyList()
         }
-        return displayColumnGuideColumns(longestLineLength(editor.document), TI99_4A_DISPLAY_COLUMNS)
+        return displayColumnGuideColumns(
+            longestLineLength = longestLineLength(editor.document),
+            columnWidth = TI99_4A_DISPLAY_COLUMNS,
+            previewDistance = settings.guidePreviewDistance,
+        )
     }
 
     companion object {
@@ -103,4 +108,3 @@ internal class TiBasicDisplayColumnGuideController private constructor(private v
         }
     }
 }
-

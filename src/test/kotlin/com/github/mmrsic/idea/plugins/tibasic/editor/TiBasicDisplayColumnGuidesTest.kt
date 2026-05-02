@@ -2,6 +2,8 @@ package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
 
+private const val REM_LINE_PREFIX = "100 REM "
+
 class TiBasicDisplayColumnGuidesTest : TiBasicTestBase() {
 
     fun `test no hints for line shorter than 28 chars`() {
@@ -32,33 +34,88 @@ class TiBasicDisplayColumnGuidesTest : TiBasicTestBase() {
         assertEquals(listOf(28, 56, 84), displayColumnBreakOffsets(0, 85, TI99_4A_DISPLAY_COLUMNS))
     }
 
-    fun `test no global guides for longest line shorter than 28 chars`() {
-        assertEmpty(displayColumnGuideColumns(10, TI99_4A_DISPLAY_COLUMNS))
+    fun `test no global guides when longest line stays outside default preview distance`() {
+        assertEmpty(
+            displayColumnGuideColumns(
+                longestLineLength = 25,
+                columnWidth = TI99_4A_DISPLAY_COLUMNS,
+                previewDistance = DEFAULT_DISPLAY_COLUMN_GUIDE_PREVIEW_DISTANCE,
+            ),
+        )
     }
 
-    fun `test no global guides for longest line of exactly 28 chars`() {
-        assertEmpty(displayColumnGuideColumns(28, TI99_4A_DISPLAY_COLUMNS))
+    fun `test one global guide when longest line enters default preview distance`() {
+        assertEquals(
+            listOf(28),
+            displayColumnGuideColumns(
+                longestLineLength = 26,
+                columnWidth = TI99_4A_DISPLAY_COLUMNS,
+                previewDistance = DEFAULT_DISPLAY_COLUMN_GUIDE_PREVIEW_DISTANCE,
+            ),
+        )
     }
 
-    fun `test one global guide for longest line of 29 chars`() {
-        assertEquals(listOf(28), displayColumnGuideColumns(29, TI99_4A_DISPLAY_COLUMNS))
+    fun `test exact display width still shows the matching global guide`() {
+        assertEquals(
+            listOf(28),
+            displayColumnGuideColumns(
+                longestLineLength = 28,
+                columnWidth = TI99_4A_DISPLAY_COLUMNS,
+                previewDistance = DEFAULT_DISPLAY_COLUMN_GUIDE_PREVIEW_DISTANCE,
+            ),
+        )
     }
 
-    fun `test one global guide for longest line of exactly 56 chars`() {
-        assertEquals(listOf(28), displayColumnGuideColumns(56, TI99_4A_DISPLAY_COLUMNS))
+    fun `test zero preview distance delays second guide until second boundary is reached`() {
+        assertEquals(
+            listOf(28),
+            displayColumnGuideColumns(
+                longestLineLength = 55,
+                columnWidth = TI99_4A_DISPLAY_COLUMNS,
+                previewDistance = 0,
+            ),
+        )
+    }
+
+    fun `test zero preview distance shows second guide at exact second boundary`() {
+        assertEquals(
+            listOf(28, 56),
+            displayColumnGuideColumns(
+                longestLineLength = 56,
+                columnWidth = TI99_4A_DISPLAY_COLUMNS,
+                previewDistance = 0,
+            ),
+        )
+    }
+
+    fun `test default preview distance shows second guide before second boundary`() {
+        assertEquals(
+            listOf(28, 56),
+            displayColumnGuideColumns(
+                longestLineLength = 54,
+                columnWidth = TI99_4A_DISPLAY_COLUMNS,
+                previewDistance = DEFAULT_DISPLAY_COLUMN_GUIDE_PREVIEW_DISTANCE,
+            ),
+        )
     }
 
     fun `test global guides follow longest line across whole file`() {
         val file = configureFile(
-            "100 PRINT \"SHORT\"\n" +
-                "110 PRINT \"123456789012345678901234567890123456789012345678901234567\"\n" +
+            remLine(20) + "\n" +
+                remLine(54) + "\n" +
                 "120 END",
         )
 
         assertEquals(
             listOf(28, 56),
-            displayColumnGuideColumns(longestLineLength(file.viewProvider.document!!), TI99_4A_DISPLAY_COLUMNS),
+            displayColumnGuideColumns(
+                longestLineLength = longestLineLength(file.viewProvider.document!!),
+                columnWidth = TI99_4A_DISPLAY_COLUMNS,
+                previewDistance = DEFAULT_DISPLAY_COLUMN_GUIDE_PREVIEW_DISTANCE,
+            ),
         )
     }
-}
 
+    private fun remLine(totalLineLength: Int): String =
+        REM_LINE_PREFIX + "A".repeat(totalLineLength - REM_LINE_PREFIX.length)
+}

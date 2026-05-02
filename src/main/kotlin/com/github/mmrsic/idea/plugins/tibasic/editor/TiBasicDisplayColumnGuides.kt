@@ -24,10 +24,11 @@ internal fun longestLineLength(document: Document): Int =
         }
         ?: 0
 
-internal fun displayColumnGuideColumns(longestLineLength: Int, columnWidth: Int): List<Int> {
+internal fun displayColumnGuideColumns(longestLineLength: Int, columnWidth: Int, previewDistance: Int): List<Int> {
+    val visibleGuideThreshold = longestLineLength + previewDistance.coerceAtLeast(MIN_DISPLAY_COLUMN_GUIDE_PREVIEW_DISTANCE)
     val result = mutableListOf<Int>()
     var column = columnWidth
-    while (column < longestLineLength) {
+    while (column <= visibleGuideThreshold) {
         result.add(column)
         column += columnWidth
     }
@@ -36,4 +37,3 @@ internal fun displayColumnGuideColumns(longestLineLength: Int, columnWidth: Int)
 
 internal fun isTiBasicEditor(editor: Editor): Boolean =
     FileDocumentManager.getInstance().getFile(editor.document)?.fileType == TiBasicFileType
-

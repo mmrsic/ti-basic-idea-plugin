@@ -269,7 +269,8 @@ The annotator inspects every file and highlights:
 - **TI-99/4A display column guides** — thin overlay guide lines are drawn across the whole visible file at every 28th
   character position needed by the longest line in the file, showing exactly where the TI-99/4A's 28-column text
   display would wrap to the next screen row without shifting the surrounding code layout; the guides can be enabled or
-  disabled in *Settings → Editor → TI-Basic Display Column Guides*
+  disabled in *Settings → Editor → TI-Basic Display Column Guides* and can start appearing a configurable number of
+  characters before the next wrap boundary (default: 2)
 - **Reformat Code** (Ctrl+Alt+L) — the standard IDEA "Reformat Code" action is mapped to **Format TI-BASIC** for
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file
