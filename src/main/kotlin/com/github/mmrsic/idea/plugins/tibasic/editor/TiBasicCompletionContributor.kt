@@ -7,6 +7,8 @@ import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicForStatement
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicNextStatement
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
 import com.intellij.codeInsight.completion.CompletionContributor
@@ -34,7 +36,10 @@ private const val SUBPROGRAM_TYPE_TEXT = "subprogram"
 private const val FUNCTION_TYPE_TEXT = "function"
 private const val KEYWORD_TYPE_TEXT = "keyword"
 private const val PAREN_CARET_OFFSET_FROM_TAIL = 1
+private const val NEXT_KEYWORD = "NEXT"
 private val functionLikeKeywords = setOf("TAB")
+private val nextKeywordPrefixRegex = Regex("""^N(?:E(?:XT?)?)?$""", RegexOption.IGNORE_CASE)
+private val nextVariablePrefixRegex = Regex("""^NEXT\s+([A-Za-z][A-Za-z0-9$]*)?$""", RegexOption.IGNORE_CASE)
 
 class TiBasicCompletionContributor : CompletionContributor() {
 
@@ -62,6 +67,11 @@ class TiBasicCompletionContributor : CompletionContributor() {
             val wordAtCursor = wordBeforeCaret(parameters)
             result.withPrefixMatcher(wordAtCursor).caseInsensitive()
                 .addElement(LookupElementBuilder.create("BASE").withTypeText("keyword").autoCompleteSingleMatch())
+            return
+        }
+        nextCompletionContext(parameters)?.let { nextContext ->
+            nextCompletions(file, nextContext)
+                .forEach(result.caseInsensitive()::addElement)
             return
         }
         if (shouldOfferAutoLineNumberCompletion(parameters.editor, file)) {
@@ -211,6 +221,42 @@ class TiBasicCompletionContributor : CompletionContributor() {
         )
     }
 
+    private fun nextCompletions(file: TiBasicFile, context: NextCompletionContext): List<LookupElement> {
+        val completions = buildList {
+            if (context is NextKeywordCompletionContext) {
+                add(keywordCompletion(NEXT_KEYWORD))
+            }
+            addAll(
+                openNextControlVariableNames(file, context.statementStartOffset)
+                    .map { variableName -> nextVariableCompletion(variableName, context) },
+            )
+        }.distinctBy(LookupElement::getLookupString)
+        return when (context) {
+            is NextKeywordCompletionContext ->
+                completions.filter { completion ->
+                    completion.lookupString.startsWith(context.keywordPrefix, ignoreCase = true)
+                }
+
+            is NextVariableCompletionContext ->
+                completions.filter { completion ->
+                    completion.lookupString.removePrefix("$NEXT_KEYWORD ")
+                        .startsWith(context.variablePrefix, ignoreCase = true)
+                }
+        }.mapIndexed { index, completion ->
+            PrioritizedLookupElement.withPriority(completion, (completions.size - index).toDouble())
+        }
+    }
+
+    private fun nextVariableCompletion(
+        variableName: String,
+        context: NextCompletionContext,
+    ): LookupElement =
+        LookupElementBuilder.create("$NEXT_KEYWORD $variableName")
+            .withLookupStrings(setOf(variableName))
+            .withTypeText(KEYWORD_TYPE_TEXT)
+            .withInsertHandler(nextCompletionInsertHandler(context.statementStartOffset))
+            .autoCompleteSingleMatch()
+
     private fun callableCompletion(lookupText: String, typeText: String, requiresParentheses: Boolean): LookupElement =
         LookupElementBuilder.create(lookupText)
             .let { builder ->
@@ -257,11 +303,93 @@ private fun LookupElementBuilder.autoCompleteSingleMatch(): LookupElement = with
     AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE,
 )
 
+private sealed interface NextCompletionContext {
+    val statementStartOffset: Int
+}
+
+private data class NextKeywordCompletionContext(
+    override val statementStartOffset: Int,
+    val keywordPrefix: String,
+) : NextCompletionContext
+
+private data class NextVariableCompletionContext(
+    override val statementStartOffset: Int,
+    val variablePrefix: String,
+) : NextCompletionContext
+
 private fun isCompletionIdentifierChar(char: Char): Boolean = char.isLetterOrDigit() || char == '$'
 
 private fun BuiltInFunctionSignature.requiresParentheses(): Boolean = argCount > 0
 private fun com.github.mmrsic.idea.plugins.tibasic.lang.CallSubprogramSignature.requiresParentheses(): Boolean =
     validArgCounts.any { it > 0 }
+
+private fun nextCompletionContext(parameters: CompletionParameters): NextCompletionContext? {
+    val document = parameters.editor.document
+    val offset = parameters.offset
+    val lineNumber = document.getLineNumber(offset)
+    val lineStartOffset = document.getLineStartOffset(lineNumber)
+    val linePrefix = currentLineContext(parameters.editor).text.take(offset - lineStartOffset)
+    val statementPrefix = statementPrefixBeforeCaret(linePrefix) ?: return null
+    val statementStartOffset = lineStartOffset + statementPrefix.startInLine
+    return when {
+        nextKeywordPrefixRegex.matches(statementPrefix.text) ->
+            NextKeywordCompletionContext(
+                statementStartOffset = statementStartOffset,
+                keywordPrefix = statementPrefix.text.uppercase(),
+            )
+
+        nextVariablePrefixRegex.matches(statementPrefix.text) ->
+            NextVariableCompletionContext(
+                statementStartOffset = statementStartOffset,
+                variablePrefix = statementPrefix.text.uppercase().substringAfter("$NEXT_KEYWORD ", ""),
+            )
+
+        else -> null
+    }
+}
+
+private data class StatementPrefix(
+    val text: String,
+    val startInLine: Int,
+)
+
+private fun statementPrefixBeforeCaret(linePrefix: String): StatementPrefix? {
+    var statementStartInLine = 0
+    while (statementStartInLine < linePrefix.length && linePrefix[statementStartInLine].isWhitespace()) {
+        statementStartInLine++
+    }
+    while (statementStartInLine < linePrefix.length && linePrefix[statementStartInLine].isDigit()) {
+        statementStartInLine++
+    }
+    while (statementStartInLine < linePrefix.length && linePrefix[statementStartInLine].isWhitespace()) {
+        statementStartInLine++
+    }
+    return linePrefix.substring(statementStartInLine)
+        .takeIf(String::isNotEmpty)
+        ?.let { statementText -> StatementPrefix(statementText, statementStartInLine) }
+}
+
+private fun openNextControlVariableNames(file: TiBasicFile, statementStartOffset: Int): List<String> {
+    val openControlVariables = ArrayDeque<String>()
+    file.lines()
+        .asSequence()
+        .filter { line -> line.textOffset < statementStartOffset }
+        .mapNotNull { line -> line.children.firstOrNull() }
+        .forEach { statement ->
+            when (statement) {
+                is TiBasicForStatement -> statement.controlVariableName()?.let(openControlVariables::addLast)
+                is TiBasicNextStatement -> statement.controlVariableName()?.let { variableName ->
+                    if (openControlVariables.lastOrNull() == variableName) {
+                        openControlVariables.removeLast()
+                    }
+                }
+            }
+        }
+    return openControlVariables
+        .toList()
+        .asReversed()
+        .distinct()
+}
 
 private val parenCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
     context.setAddCompletionChar(false)
@@ -304,4 +432,11 @@ private val autoLineNumberCompletionInsertHandler = InsertHandler<LookupElement>
         document.insertString(tailOffset, COMPLETION_SEPARATOR)
     }
     context.editor.caretModel.moveToOffset(tailOffset + COMPLETION_SEPARATOR.length)
+}
+
+private fun nextCompletionInsertHandler(statementStartOffset: Int) = InsertHandler<LookupElement> { context, item ->
+    context.setAddCompletionChar(false)
+    val completionText = item.lookupString
+    context.document.replaceString(statementStartOffset, context.tailOffset, completionText)
+    context.editor.caretModel.moveToOffset(statementStartOffset + completionText.length)
 }

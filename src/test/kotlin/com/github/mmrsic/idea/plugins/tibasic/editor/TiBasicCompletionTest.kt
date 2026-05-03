@@ -371,6 +371,131 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         assertNull("Single CALL subprogram completion should not show a lookup popup", myFixture.lookup)
     }
 
+    fun testCompletionSuggestsNextKeywordAndOpenLoopVariables() {
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 FOR I=1 TO 3
+            110 FOR J=1 TO 2
+            120 NEX<caret>
+            """.trimIndent(),
+        )
+        myFixture.completeBasic()
+
+        val appliedText = myFixture.editor.document.text
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertEquals(
+            listOf("NEXT", "NEXT J", "NEXT I"),
+            popupItems.filter { it == "NEXT" || it.startsWith("NEXT ") }.ifEmpty {
+                listOfNotNull(
+                    "NEXT".takeIf { appliedText.contains("120 NEXT") },
+                    "NEXT J".takeIf { appliedText.contains("120 NEXT J") },
+                    "NEXT I".takeIf { appliedText.contains("120 NEXT I") },
+                )
+            },
+        )
+    }
+
+    fun testCompletionAfterNextSpaceSuggestsOnlyOpenLoopVariables() {
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 FOR I=1 TO 3
+            110 FOR J=1 TO 2
+            120 NEXT <caret>
+            """.trimIndent(),
+        )
+        myFixture.completeBasic()
+
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertEquals(
+            listOf("NEXT J", "NEXT I"),
+            popupItems.filter { it.startsWith("NEXT ") },
+        )
+        assertFalse("Bare NEXT must not be suggested again after 'NEXT '", popupItems.contains("NEXT"))
+    }
+
+    fun testCompletionAfterNextSpaceInsertsSelectedLoopVariableWithoutDuplicatingNext() {
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 FOR I=1 TO 3
+            110 NEXT <caret>
+            """.trimIndent(),
+        )
+        myFixture.completeBasic()
+        myFixture.lookup?.let { lookup ->
+            lookup.currentItem = lookup.items.firstOrNull { it.lookupString == "NEXT I" }
+            myFixture.finishLookup('\n')
+        }
+
+        assertEquals(
+            """
+            100 FOR I=1 TO 3
+            110 NEXT I
+            """.trimIndent(),
+            myFixture.editor.document.text,
+        )
+        assertEquals("100 FOR I=1 TO 3\n110 NEXT I".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testCompletionFiltersNextLoopVariablesByTypedPrefix() {
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 FOR I=1 TO 3
+            110 FOR INDEX=1 TO 2
+            120 NEXT IN<caret>
+            """.trimIndent(),
+        )
+        myFixture.completeBasic()
+
+        val appliedText = myFixture.editor.document.text
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertEquals(
+            listOf("NEXT INDEX"),
+            popupItems.filter { it.startsWith("NEXT ") }.ifEmpty {
+                listOfNotNull("NEXT INDEX".takeIf { appliedText.contains("120 NEXT INDEX") })
+            },
+        )
+    }
+
+    fun testCompletionDoesNotSuggestClosedLoopVariableForNext() {
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 FOR I=1 TO 3
+            110 NEXT I
+            120 NEX<caret>
+            """.trimIndent(),
+        )
+        myFixture.completeBasic()
+
+        val appliedText = myFixture.editor.document.text
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertEquals(
+            listOf("NEXT"),
+            popupItems.filter { it == "NEXT" || it.startsWith("NEXT ") }.ifEmpty {
+                listOfNotNull("NEXT".takeIf { appliedText.contains("120 NEXT") })
+            },
+        )
+    }
+
+    fun testCompletionDoesNotRepeatNextVariableSuggestions() {
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 FOR I=1 TO 3
+            110 FOR I=1 TO 2
+            120 NEX<caret>
+            """.trimIndent(),
+        )
+        myFixture.completeBasic()
+
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertEquals(1, popupItems.count { it == "NEXT I" })
+    }
+
     fun testCompletionDoesNotSuggestGeneratedLineNumberInMiddleOfLine() {
         myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\nPR<caret>INT \"B\"")
         myFixture.completeBasic()
