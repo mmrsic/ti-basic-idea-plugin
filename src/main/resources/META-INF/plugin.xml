@@ -85,6 +85,10 @@
         />
         <codeInsight.lineMarkerProvider
                 language="TI-Basic"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallSoundLineMarkerProvider"
+        />
+        <codeInsight.lineMarkerProvider
+                language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicLineReferenceLineMarkerProvider"
         />
         <applicationService

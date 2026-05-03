@@ -64,7 +64,7 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 | `CALL CHAR(code,pattern$)`   | 1 numeric, 1 string                           | Define a custom character pattern                    |
 | `CALL KEY(unit,key,status)`  | 3 numerics                                    | Read keyboard input                                  |
 | `CALL JOYST(unit,x,y)`       | 3 numerics                                    | Read joystick input                                  |
-| `CALL SOUND(dur,freq,vol…)`  | 3, 5, 7, or 9 numerics (groups of 3 per tone) | Play one to three tones simultaneously               |
+| `CALL SOUND(dur,freq,vol…)`  | 3, 5, 7, or 9 numerics (`dur`, then `freq/vol` pairs) | Play one to four tones simultaneously         |
 
 ### Expressions
 
@@ -263,6 +263,9 @@ The annotator inspects every file and highlights:
 - **CALL SCREEN gutter preview** — for every `CALL SCREEN(colorCode)` line a solid 16×16 color square appears in the
   gutter showing the chosen background color (`colorCode` may be a literal or a constant numeric variable; a
   transparent checkerboard is shown when the color cannot be resolved)
+- **CALL SOUND gutter playback** — for every resolvable `CALL SOUND(dur,pitch1,vol1[,pitch2,vol2...])`, a play icon
+  appears in the gutter; clicking it plays a square-wave approximation of the mixed tones via the JVM audio stack on
+  Linux, macOS, and Windows
 - **Line-reference gutter indicator** — if other program lines refer to a line number (`GOTO`, `GOSUB`,
   `ON ... GOTO/GOSUB`, `IF ... THEN/ELSE`, `RESTORE`, `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE`), a gutter icon appears
   next to that target line; the tooltip summarizes the referring line numbers, and clicking the icon opens a

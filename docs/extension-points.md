@@ -401,6 +401,34 @@ Shared infrastructure:
 
 ---
 
+### `codeInsight.lineMarkerProvider` — CALL SOUND
+
+| Attribute             | Value                                               |
+|-----------------------|-----------------------------------------------------|
+| `language`            | `TI-Basic`                                          |
+| `implementationClass` | `tibasic.editor.TiBasicCallSoundLineMarkerProvider` |
+
+Displays a play icon in the gutter for every resolvable `CALL SOUND(dur,pitch1,vol1[,pitch2,vol2...])`
+line.
+
+The duration and every `pitch/vol` pair must resolve to integer constants, either as literals or as
+**constant numeric variables** (variables assigned exactly one distinct numeric literal throughout the
+file). The resolved values must describe a playable sound: `dur >= 1`, every `pitch >= 1`, and every
+`vol` in `0..30`. When these conditions are met, clicking the gutter icon dispatches square-wave playback through the
+shared `TiBasicSoundPlaybackService`.
+
+Shared infrastructure:
+
+- `callStatementForSubprogram(...)` centralizes the common `CALL_*` PSI lookup pattern shared by the
+  CHAR/COLOR/SCREEN/SOUND line-marker providers.
+- `resolveSoundPlayback(...)` reuses the same constant-expression resolution helpers that already
+  power the character and color editor features.
+- `TiBasicSoundPlaybackService` renders 16-bit mono PCM square waves and delegates output to the
+  `TiBasicAudioOutput` adapter. The default implementation uses the JVM `javax.sound.sampled` API so
+  the same plugin logic works across Linux, macOS, and Windows.
+
+---
+
 ### `codeInsight.lineMarkerProvider` — inbound line references
 
 | Attribute             | Value                                                   |

@@ -54,6 +54,14 @@ class TiBasicCallParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefini
         assertEquals(3, stmt.arguments().size)
     }
 
+    fun `test CALL SOUND with five arguments`() {
+        val file = parseCode("100 CALL SOUND(20,220,0,294,0)")
+        val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicCallStatement>()[0]
+        assertEquals("SOUND", stmt.subprogramName())
+        assertEquals(5, stmt.arguments().size)
+    }
+
     fun `test CALL CHAR with two arguments`() {
         val file = parseCode("100 CALL CHAR(96,\"FFFFFFFFFFFFFFFF\")")
         val stmt = file.children.filterIsInstance<TiBasicLine>()[0]
