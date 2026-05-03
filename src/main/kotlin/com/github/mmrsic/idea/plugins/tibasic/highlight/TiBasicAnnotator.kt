@@ -9,6 +9,10 @@ import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildType
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.ext.warning
+import com.github.mmrsic.idea.plugins.tibasic.editor.ARITHMETIC_OPERATOR_TYPES
+import com.github.mmrsic.idea.plugins.tibasic.editor.UNARY_EXPRESSION_OPERATOR_TYPES
+import com.github.mmrsic.idea.plugins.tibasic.editor.firstTopLevelBinaryOperatorIndex
+import com.github.mmrsic.idea.plugins.tibasic.editor.isFullyParenthesized
 import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_NAME_RUNTIME_ERROR
 import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_VALUE_RUNTIME_ERROR
 import com.github.mmrsic.idea.plugins.tibasic.lang.CallArgType
@@ -1592,49 +1596,6 @@ private fun TiBasicExpression.hasLeadingUnaryPlusOperand(): Boolean {
     return children.size > 1 && children.firstOrNull()?.elementType == TiBasicTokenTypes.PLUS_OP
 }
 
-private fun firstTopLevelBinaryOperatorIndex(children: List<ASTNode>, operatorTypes: Set<IElementType>): Int? {
-    var nestingDepth = 0
-    var expectsOperand = true
-    children.forEachIndexed { index, child ->
-        when (child.elementType) {
-            TiBasicTokenTypes.LPAREN -> nestingDepth++
-            TiBasicTokenTypes.RPAREN -> {
-                nestingDepth--
-                if (nestingDepth == 0) {
-                    expectsOperand = false
-                }
-            }
-
-            else -> if (nestingDepth == 0) {
-                when {
-                    child.isExpressionOperand() -> expectsOperand = false
-                    child.elementType in UNARY_EXPRESSION_OPERATOR_TYPES && expectsOperand -> Unit
-                    child.elementType in operatorTypes && !expectsOperand -> return index
-                }
-            }
-        }
-    }
-    return null
-}
-
-private fun isFullyParenthesized(children: List<ASTNode>): Boolean {
-    if (children.size < 2) return false
-    if (children.first().elementType != TiBasicTokenTypes.LPAREN || children.last().elementType != TiBasicTokenTypes.RPAREN) {
-        return false
-    }
-    var nestingDepth = 0
-    children.forEachIndexed { index, child ->
-        when (child.elementType) {
-            TiBasicTokenTypes.LPAREN -> nestingDepth++
-            TiBasicTokenTypes.RPAREN -> nestingDepth--
-        }
-        if (nestingDepth == 0 && index < children.lastIndex) {
-            return false
-        }
-    }
-    return nestingDepth == 0
-}
-
 private val FILE_NUMBER_RANGE = 1..255
 
 private val COMMANDS_UPPERCASE = TiBasicKeywords.getCommands().map { it.uppercase() }.toSet()
@@ -1666,19 +1627,6 @@ private val NUMERIC_MISMATCH_TYPES = setOf(
     TiBasicTokenTypes.MUL_OP,
     TiBasicTokenTypes.DIV_OP,
     TiBasicTokenTypes.POW_OP,
-)
-
-private val ARITHMETIC_OPERATOR_TYPES = setOf(
-    TiBasicTokenTypes.PLUS_OP,
-    TiBasicTokenTypes.MINUS_OP,
-    TiBasicTokenTypes.MUL_OP,
-    TiBasicTokenTypes.DIV_OP,
-    TiBasicTokenTypes.POW_OP,
-)
-
-private val UNARY_EXPRESSION_OPERATOR_TYPES = setOf(
-    TiBasicTokenTypes.PLUS_OP,
-    TiBasicTokenTypes.MINUS_OP,
 )
 
 private val BINARY_EXPRESSION_OPERATOR_TYPES = setOf(

@@ -50,13 +50,15 @@ Returns a `TiBasicSyntaxHighlighter` instance. The highlighter maps token types 
 
 Provides Quick Documentation (`Ctrl+Q`) for the character-code argument positions of
 `CALL CHAR`, `CALL HCHAR`, `CALL VCHAR`, and the argument of `CHR$`.
-The documentation resolves numeric literals and constant numeric variables, shows the
+The documentation resolves numeric literals, constant numeric variables, and simple
+statically resolvable numeric expressions, shows the
 ASCII character if one exists, computes the TI-Basic character group for codes
 `32..159`, and lists file-local `CALL CHAR` overrides for the same code.
 
 The same provider also handles all three argument positions of `CALL COLOR(set,fg,bg)`.
 For each argument it first shows the resolved constant value when one can be determined
-from a literal or constant numeric variable; otherwise it reports that the value is not
+from a literal, constant numeric variable, or other simple statically resolvable numeric
+expression; otherwise it reports that the value is not
 statically determinable. On `set`, it additionally explains the character-set role,
 shows the derived character-code range, and lists all ASCII characters within that
 range. On `fg` and `bg`, it shows the derived TI color name for the resolved value.
@@ -369,8 +371,9 @@ preview for hexadecimal `DATA` items.
 | `implementationClass` | `tibasic.editor.TiBasicCallColorLineMarkerProvider` |
 
 Displays a split 16×16 color square in the gutter for every `CALL COLOR(set,fg,bg)` line.
-`fg` and `bg` may be integer literals or **constant numeric variables** (variables assigned exactly
-one distinct numeric literal throughout the file). The left half shows the foreground TI color,
+`fg` and `bg` may be integer literals, **constant numeric variables** (variables assigned exactly
+one distinct numeric literal throughout the file), or other simple statically resolvable numeric
+expressions. The left half shows the foreground TI color,
 the right half the background TI color. If an argument cannot be resolved to a constant integer
 (non-constant variable, expression, or out-of-range value), the corresponding half is rendered as
 a checkerboard (transparent). Colors map via `TiColor.at(index)` (1-based,
@@ -387,9 +390,10 @@ with IntelliJ's theme system while keeping the fixed TI color palette.
 | `implementationClass` | `tibasic.editor.TiBasicCallScreenLineMarkerProvider` |
 
 Displays a solid 16×16 color square in the gutter for every `CALL SCREEN(colorCode)` line.
-`colorCode` may be an integer literal or a **constant numeric variable**. The square is filled with
-the single TI color the screen background is set to. If the argument cannot be resolved to a valid
-color index, the square is rendered as a checkerboard (Transparent). Colors map via `TiColor.at(index)`
+`colorCode` may be an integer literal, a **constant numeric variable**, or another simple
+statically resolvable numeric expression. The square is filled with the single TI color the screen
+background is set to. If the argument cannot be resolved to a valid color index, the square is
+rendered as a checkerboard (Transparent). Colors map via `TiColor.at(index)`
 (1-based, same as CALL COLOR). Rendering uses `TiBasicScreenColorIcon`.
 
 Shared infrastructure:
@@ -413,7 +417,8 @@ line.
 
 The duration and every `pitch/vol` pair must resolve to integer constants, either as literals or as
 **constant numeric variables** (variables assigned exactly one distinct numeric literal throughout the
-file). The resolved values must describe a playable sound: `dur >= 1`, every `pitch >= 1`, and every
+file), or as other simple statically resolvable numeric expressions. The resolved values must describe
+a playable sound: `dur >= 1`, every `pitch >= 1`, and every
 `vol` in `0..30`. When these conditions are met, clicking the gutter icon dispatches square-wave playback through the
 shared `TiBasicSoundPlaybackService`.
 
@@ -567,6 +572,32 @@ Provides a dockable bottom panel that lists all variables in the currently activ
 file in a sortable table (columns: Name, Type, Writes, Reads, Lines). Clicking any line
 number in the Writes, Reads, or Lines column navigates the editor to that line.
 The table refreshes automatically on every document edit and whenever the active file changes.
+
+---
+
+### `toolWindow` — TI Basic Character Definitions
+
+| Attribute      | Value                                                             |
+|----------------|-------------------------------------------------------------------|
+| `id`           | `TI Basic Character Definitions`                                  |
+| `anchor`       | `bottom`                                                          |
+| `icon`         | `/icons/ti99_4a_icon_small.svg`                                   |
+| `factoryClass` | `tibasic.toolwindow.TiBasicCharacterDefinitionsToolWindowFactory` |
+
+Provides a dockable bottom panel that lists all statically resolvable `CALL CHAR`
+definitions in the currently active TI-Basic file in a sortable table (columns: Code,
+ASCII, Pattern, Icon, Line). Each `CALL CHAR` statement appears as its own row, so repeated
+definitions of the same character code remain visible. The Icon column renders the
+normalized pattern via `TiBasicCharPatternIcon` and, when available, adds distinct
+`TiBasicColoredCharPatternIcon` variants derived from matching statically resolvable
+`CALL COLOR(set,fg,bg)` assignments for the same character set. The collectors include
+direct literal and simple constant-variable definitions, simple statically resolvable numeric
+code expressions, as well as values that can be traced
+statically through `READ`/`DATA` statements, `RESTORE`, and simple statically resolvable
+`FOR`/`NEXT` loops around such reads, including simple statically decidable
+`IF ... THEN [ELSE]` line jumps inside that control flow. Clicking the Line cell navigates
+to the corresponding program line. The table refreshes automatically on every document edit
+and whenever the active file changes.
 
 ---
 

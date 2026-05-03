@@ -44,8 +44,32 @@ class TiBasicCharacterCodeDocumentationTest : TiBasicTestBase() {
         assertTrue(documentation.contains("0F00000000000000"))
     }
 
-    fun `test quick documentation reports unresolved composite expression`() {
+    fun `test quick documentation shows overrides resolved from READ DATA`() {
+        val doc = quickDocumentation(
+            """
+            100 DATA 96,FF0F0010
+            110 READ CODE,PAT$
+            120 CALL CHAR(CODE,PAT$)
+            130 PRINT CHR$(9<caret>6)
+            """.trimIndent(),
+        )
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("Character code 96"))
+        assertTrue(documentation.contains("Line 120"))
+        assertTrue(documentation.contains("FF0F001000000000"))
+    }
+
+    fun `test quick documentation resolves composite expression with constant variable`() {
         val doc = quickDocumentation("100 LET I=1\n110 CALL VCHAR(1,1,3<caret>2+I)")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("CALL VCHAR character code"))
+        assertTrue(documentation.contains("Character code 33"))
+    }
+
+    fun `test quick documentation reports unresolved composite expression with non constant variable`() {
+        val doc = quickDocumentation("100 LET I=1\n110 LET I=2\n120 CALL VCHAR(1,1,3<caret>2+I)")
         assertNotNull(doc)
         val documentation = doc!!
         assertTrue(documentation.contains("CALL VCHAR character code"))
@@ -257,6 +281,7 @@ class TiBasicCharacterCodeDocumentationTest : TiBasicTestBase() {
                 TiBasicCharacterCodeOverride(100, "FF00000000000000"),
                 TiBasicCharacterCodeOverride(120, "0F00000000000000"),
                 TiBasicCharacterCodeOverride(140, "AA00000000000000"),
+                TiBasicCharacterCodeOverride(150, "AA00000000000000"),
             ),
             overrides[96],
         )

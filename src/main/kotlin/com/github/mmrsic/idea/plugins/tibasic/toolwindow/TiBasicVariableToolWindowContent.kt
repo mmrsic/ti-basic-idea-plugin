@@ -1,48 +1,29 @@
 package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
-import com.github.mmrsic.idea.plugins.tibasic.lang.fileTypeExtensions
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.intellij.codeInsight.highlighting.HighlightManager
 import com.intellij.openapi.editor.colors.EditorColors
-import com.intellij.openapi.editor.event.DocumentEvent
-import com.intellij.openapi.editor.event.DocumentListener
-import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.markup.RangeHighlighter
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.FileEditorManagerListener
-import com.intellij.openapi.fileEditor.FileEditorManagerListener.FILE_EDITOR_MANAGER
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiDocumentManager
-import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.JBTable
-import java.awt.BorderLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JLabel
-import javax.swing.JPanel
-import javax.swing.JToolBar
 import javax.swing.RowSorter
 import javax.swing.SortOrder
 import javax.swing.table.TableRowSorter
 
-class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(BorderLayout()), com.intellij.openapi.Disposable {
+class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindowContent(project) {
 
     private val tableModel = TiBasicVariableTableModel()
     private val lineNumberRenderer = TiBasicVariableLineNumberRenderer()
     private val table = JBTable(tableModel)
-    private val fileLabel = JLabel(" ")
-    private var currentFile: TiBasicFile? = null
     private val activeHighlighters = ArrayList<RangeHighlighter>()
 
     init {
         setupTable()
-        setupToolbar()
-        add(JBScrollPane(table), BorderLayout.CENTER)
-        installDocumentListener()
-        installFileEditorListener()
-        refresh()
+        initializeToolWindow(table)
     }
 
     private fun setupTable() {
@@ -65,18 +46,9 @@ class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(Bo
         }
     }
 
-    private fun setupToolbar() {
-        val toolbar = JToolBar().also { it.isFloatable = false }
-        toolbar.add(fileLabel)
-        add(toolbar, BorderLayout.NORTH)
-    }
-
-    private fun refresh() {
+    override fun refreshForFile(file: TiBasicFile?) {
         clearHighlights()
-        val psiFile = currentTiBasicFile()
-        currentFile = psiFile
-        fileLabel.text = if (psiFile != null) " ${psiFile.name}" else " (no TI-Basic file active)"
-        val entries = if (psiFile != null) TiBasicVariableCollector.collect(psiFile) else emptyList()
+        val entries = if (file != null) TiBasicVariableCollector.collect(file) else emptyList()
         tableModel.updateEntries(entries)
     }
 
@@ -116,43 +88,6 @@ class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(Bo
         activeHighlighters.clear()
     }
 
-    private fun currentTiBasicFile(): TiBasicFile? {
-        val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return null
-        val document = editor.document
-        return PsiDocumentManager.getInstance(project).getPsiFile(document) as? TiBasicFile
-    }
-
-    override fun dispose() = Unit
-
-    private fun installDocumentListener() {
-        val psiDocumentManager = PsiDocumentManager.getInstance(project)
-        EditorFactory.getInstance().eventMulticaster
-            .addDocumentListener(object : DocumentListener {
-                override fun documentChanged(event: DocumentEvent) {
-                    val currentVirtualFile = currentFile?.virtualFile ?: return
-                    val changedVirtualFile = FileDocumentManager.getInstance().getFile(event.document) ?: return
-                    if (changedVirtualFile != currentVirtualFile || changedVirtualFile.extension !in fileTypeExtensions) {
-                        return
-                    }
-                    psiDocumentManager.performWhenAllCommitted {
-                        if (!project.isDisposed && currentFile?.virtualFile == changedVirtualFile) {
-                            refresh()
-                        }
-                    }
-                }
-            }, this)
-    }
-
-    private fun installFileEditorListener() {
-        project.messageBus.connect(this).subscribe(
-            FILE_EDITOR_MANAGER,
-            object : FileEditorManagerListener {
-                override fun fileOpened(source: FileEditorManager, file: VirtualFile) = refresh()
-                override fun selectionChanged(event: com.intellij.openapi.fileEditor.FileEditorManagerEvent) = refresh()
-            },
-        )
-    }
-
     private inner class LineNumberClickHandler : MouseAdapter() {
         override fun mouseClicked(e: MouseEvent) {
             val row = table.rowAtPoint(e.point)
@@ -178,11 +113,5 @@ class TiBasicVariableToolWindowContent(private val project: Project) : JPanel(Bo
             val occurrence = occurrences.firstOrNull { it.lineNumber == lineNum } ?: return
             navigateToOffset(occurrence.offset)
         }
-    }
-
-    private fun navigateToOffset(offset: Int) {
-        val file = currentFile ?: return
-        val vFile = file.virtualFile ?: return
-        com.intellij.openapi.fileEditor.OpenFileDescriptor(project, vFile, offset).navigate(true)
     }
 }

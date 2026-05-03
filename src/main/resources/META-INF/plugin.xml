@@ -169,6 +169,13 @@
                 icon="icons/ti99_4a_icon_small.svg"
                 factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableToolWindowFactory"
         />
+        <!--suppress PluginXmlValidity -->
+        <toolWindow
+                id="TI Basic Character Definitions"
+                anchor="bottom"
+                icon="icons/ti99_4a_icon_small.svg"
+                factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicCharacterDefinitionsToolWindowFactory"
+        />
     </extensions>
     <actions>
         <action

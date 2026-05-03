@@ -53,18 +53,18 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 
 ### CALL subprograms
 
-| Subprogram                   | Signature                                     | Description                                          |
-|------------------------------|-----------------------------------------------|------------------------------------------------------|
-| `CALL CLEAR`                 | No arguments                                  | Clear the screen                                     |
-| `CALL SCREEN(color)`         | 1 numeric                                     | Set the screen background color                      |
-| `CALL COLOR(set,fg,bg)`      | 3 numerics                                    | Set foreground/background colors for a character set |
-| `CALL HCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)          | Print character horizontally (optionally n times)    |
-| `CALL VCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)          | Print character vertically (optionally n times)      |
-| `CALL GCHAR(row,col,var)`    | 2 numerics, 1 numeric variable or array entry | Read character at position into a variable           |
-| `CALL CHAR(code,pattern$)`   | 1 numeric, 1 string                           | Define a custom character pattern                    |
-| `CALL KEY(unit,key,status)`  | 3 numerics                                    | Read keyboard input                                  |
-| `CALL JOYST(unit,x,y)`       | 3 numerics                                    | Read joystick input                                  |
-| `CALL SOUND(dur,freq,vol…)`  | 3, 5, 7, or 9 numerics (`dur`, then `freq/vol` pairs) | Play one to four tones simultaneously         |
+| Subprogram                   | Signature                                             | Description                                          |
+|------------------------------|-------------------------------------------------------|------------------------------------------------------|
+| `CALL CLEAR`                 | No arguments                                          | Clear the screen                                     |
+| `CALL SCREEN(color)`         | 1 numeric                                             | Set the screen background color                      |
+| `CALL COLOR(set,fg,bg)`      | 3 numerics                                            | Set foreground/background colors for a character set |
+| `CALL HCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)                  | Print character horizontally (optionally n times)    |
+| `CALL VCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)                  | Print character vertically (optionally n times)      |
+| `CALL GCHAR(row,col,var)`    | 2 numerics, 1 numeric variable or array entry         | Read character at position into a variable           |
+| `CALL CHAR(code,pattern$)`   | 1 numeric, 1 string                                   | Define a custom character pattern                    |
+| `CALL KEY(unit,key,status)`  | 3 numerics                                            | Read keyboard input                                  |
+| `CALL JOYST(unit,x,y)`       | 3 numerics                                            | Read joystick input                                  |
+| `CALL SOUND(dur,freq,vol…)`  | 3, 5, 7, or 9 numerics (`dur`, then `freq/vol` pairs) | Play one to four tones simultaneously                |
 
 ### Expressions
 
@@ -243,7 +243,8 @@ The annotator inspects every file and highlights:
   between the parentheses
 - **Character-code quick documentation** — pressing `Ctrl+Q` on the character-code argument of `CALL CHAR`, `CALL HCHAR`,
   `CALL VCHAR`, or on the argument of `CHR$` shows the resolved code, its ASCII character (if any), its TI-Basic
-  character group (`32..159` in groups of 8), and any matching `CALL CHAR` overrides in the current file
+  character group (`32..159` in groups of 8), and any matching `CALL CHAR` overrides in the current file;
+  simple statically resolvable numeric expressions such as `32+I` are also supported
 - **CALL COLOR quick documentation** — pressing `Ctrl+Q` on an argument of `CALL COLOR(set,fg,bg)` first shows the
   resolved constant value (or a hint when the value is not statically determinable); on `set` it also shows the
   selected character-code range and all ASCII characters within that range, while on `fg` and `bg` it shows the
@@ -258,10 +259,12 @@ The annotator inspects every file and highlights:
   variable, and shorter patterns are padded with trailing zeroes
 - **CALL COLOR gutter preview** — for lines containing `CALL COLOR(set,fg,bg)` with resolvable numeric color
   arguments, a split color square appears in the gutter (left half = foreground, right half = background TI color;
-  literal values and constant numeric variables are resolved, transparent checkerboard shown for non-constant
+  literals, constant numeric variables, and simple statically resolvable numeric expressions are resolved;
+  transparent checkerboard shown for non-constant
   arguments)
 - **CALL SCREEN gutter preview** — for every `CALL SCREEN(colorCode)` line a solid 16×16 color square appears in the
-  gutter showing the chosen background color (`colorCode` may be a literal or a constant numeric variable; a
+  gutter showing the chosen background color (`colorCode` may be a literal, a constant numeric variable, or a simple
+  statically resolvable numeric expression; a
   transparent checkerboard is shown when the color cannot be resolved)
 - **CALL SOUND gutter playback** — for every resolvable `CALL SOUND(dur,pitch1,vol1[,pitch2,vol2...])`, a play icon
   appears in the gutter; clicking it plays a square-wave approximation of the mixed tones via the JVM audio stack on
@@ -286,6 +289,19 @@ The annotator inspects every file and highlights:
   document change; the **Const** column shows the effective constant value for scalar numeric and string variables —
   `0` or `""` for variables that are never written, or the shared literal value if all writes use the same numeric or
   string literal (e.g. `42` or `"HELLO"`)
+- **TI Basic Character Definitions tool window** — a dockable bottom panel listing all statically resolvable
+  `CALL CHAR` definitions in the active TI-Basic file in a sortable table with columns Code, ASCII, Pattern, Icon, and Line;
+  visually identical entries are collapsed, so a repeated pattern with the same derived foreground/background colors is
+  shown only once;
+  besides direct literals, simple constant variables, and simple statically resolvable numeric code expressions,
+  the table also includes definitions that can be traced
+  statically through `READ`/`DATA` statements (including `RESTORE`) and through simple statically resolvable
+  `FOR`/`NEXT` loops that repeatedly execute such `READ` + `CALL CHAR` sequences, including simple `IF ... THEN`
+  line jumps inside those loops when the branch condition is statically decidable;
+  the Icon column renders the defined character as a base black/white pictogram plus all distinct colorized variants
+  that can be derived statically from matching `CALL COLOR(set,fg,bg)` statements for the character's set;
+  clicking the Line cell navigates to that program line;
+  the table refreshes automatically on every document change
 - **Find Usages** (Alt+F7) — finds usages of TI-Basic variables, statement keywords, `CALL` subprogram names,
   built-in functions, and user-defined functions; for variables, the Usages panel distinguishes read accesses (blue)
   from write accesses (orange/red)
@@ -319,7 +335,7 @@ src/
 │   │   ├── lexer/           Line-based lexer and token types
 │   │   ├── parser/          PSI parser, node types, and parser definition
 │   │   ├── psi/             PSI elements and PSI-related extensions
-│   │   ├── toolwindow/      Variables tool window, variable collection, table model, and navigation
+│   │   ├── toolwindow/      Variables and character-definition tool windows, collectors, table models, and navigation
 │   │   └── util/            Shared PSI/document helpers
 │   └── resources/META-INF/plugin.xml           Plugin descriptor
 └── test/
@@ -331,7 +347,7 @@ src/
         ├── highlight/                          General and statement-specific annotator tests
         ├── lang/                               Icon and language-related tests
         ├── parser/                             General and statement-specific parser tests
-        └── toolwindow/                         Variables tool window and collector tests
+        └── toolwindow/                         Variables and character-definition tool window / collector tests
 ```
 
 ## Prerequisites

@@ -1,6 +1,8 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiColor
+import java.awt.Color
 import java.awt.image.BufferedImage
 
 class TiBasicCallCharLineMarkerTest : TiBasicTestBase() {
@@ -66,19 +68,19 @@ class TiBasicCallCharLineMarkerTest : TiBasicTestBase() {
     }
 
     fun `test gutter icon appears for CALL CHAR with constant string variable`() {
-        configureFile("100 LET P\$=\"FFFFFFFFFFFFFFFF\"\n200 CALL CHAR(96,P\$)")
+        configureFile("100 LET P$=\"FFFFFFFFFFFFFFFF\"\n200 CALL CHAR(96,P$)")
         val gutters = myFixture.findAllGutters()
         assertEquals("Gutter icon must appear when pattern variable has a single constant string value", 1, gutters.size)
     }
 
     fun `test gutter icon does not appear for CALL CHAR with non-constant string variable`() {
-        configureFile("100 LET P\$=\"FF\"\n200 LET P\$=\"0F\"\n300 CALL CHAR(96,P\$)")
+        configureFile("100 LET P$=\"FF\"\n200 LET P$=\"0F\"\n300 CALL CHAR(96,P$)")
         val gutters = myFixture.findAllGutters()
         assertTrue("No gutter icon must appear when pattern variable has multiple different values", gutters.isEmpty())
     }
 
     fun `test gutter icon appears for CALL CHAR with uninitialized string variable`() {
-        configureFile("100 CALL CHAR(96,PAT\$)")
+        configureFile("100 CALL CHAR(96,PAT$)")
         val gutters = myFixture.findAllGutters()
         assertEquals("Gutter icon must appear for uninitialized string variable (defaults to empty pattern)", 1, gutters.size)
     }
@@ -128,7 +130,7 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         val icon = TiBasicCharPatternIcon("FFFFFFFFFFFFFFFF")
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
-        val blackPixel = java.awt.Color.BLACK.rgb
+        val blackPixel = Color.BLACK.rgb
         for (y in 0 until icon.iconHeight) {
             for (x in 0 until icon.iconWidth) {
                 assertEquals("All pixels must be black for pattern FFFFFFFFFFFFFFFF at ($x,$y)", blackPixel, image.getRGB(x, y))
@@ -140,13 +142,12 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         val icon = TiBasicCharPatternIcon("0000000000000000")
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
-        val whitePixel = java.awt.Color.WHITE.rgb
+        val whitePixel = Color.WHITE.rgb
         // CELL_SIZE = 2: each character cell occupies a 2×2 pixel block.
         for (row in 0 until 8) {
             for (col in 0 until 8) {
-                val expectedPixel = whitePixel
                 // Verify top-left pixel of the 2×2 block
-                assertEquals("0-bit cell ($row,$col) must have white color", expectedPixel, image.getRGB(col * 2, row * 2))
+                assertEquals("0-bit cell ($row,$col) must have white color", whitePixel, image.getRGB(col * 2, row * 2))
             }
         }
     }
@@ -162,7 +163,7 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         val icon = TiBasicCharPatternIcon("FF00000000000000")
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
-        val blackPixel = java.awt.Color.BLACK.rgb
+        val blackPixel = Color.BLACK.rgb
         for (col in 0 until 8) {
             assertEquals("First row must be black for FF pattern at col $col", blackPixel, image.getRGB(col * 2, 0))
         }
@@ -176,7 +177,7 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         val imageEmpty = BufferedImage(iconEmpty.iconWidth, iconEmpty.iconHeight, BufferedImage.TYPE_INT_RGB)
         iconBottomRow.paintIcon(null, imageBottomRow.graphics, 0, 0)
         iconEmpty.paintIcon(null, imageEmpty.graphics, 0, 0)
-        val blackPixel = java.awt.Color.BLACK.rgb
+        val blackPixel = Color.BLACK.rgb
         // Last character row (row 7) of "00000000000000FF" must be black
         for (col in 0 until 8) {
             assertEquals("Bottom row must be black for 00000000000000FF at col $col", blackPixel, imageBottomRow.getRGB(col * 2, 7 * 2))
@@ -190,13 +191,30 @@ class TiBasicCharPatternIconTest : TiBasicTestBase() {
         val icon = TiBasicCharPatternIcon("FF00000000000000")
         val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
         icon.paintIcon(null, image.graphics, 0, 0)
-        val whitePixel = java.awt.Color.WHITE.rgb
+        val whitePixel = Color.WHITE.rgb
         // Rows 1-7 (character rows) must be checkerboard since the pattern is "FF" zero-padded
         for (row in 1 until 8) {
             for (col in 0 until 8) {
-                val expectedPixel = whitePixel
-                assertEquals("Padded row $row, col $col must be WHITE", expectedPixel, image.getRGB(col * 2, row * 2))
+                assertEquals("Padded row $row, col $col must be WHITE", whitePixel, image.getRGB(col * 2, row * 2))
             }
         }
+    }
+
+    fun `test colored icon paints set bits in foreground color`() {
+        val icon = TiBasicColoredCharPatternIcon("FF00000000000000", TiColor.DarkRed, TiColor.White)
+        val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
+
+        icon.paintIcon(null, image.graphics, 0, 0)
+
+        assertEquals(Color(TiColor.DarkRed.rgbValue).rgb, image.getRGB(1, 1))
+    }
+
+    fun `test colored icon paints unset bits in background color`() {
+        val icon = TiBasicColoredCharPatternIcon("FF00000000000000", TiColor.DarkRed, TiColor.LightBlue)
+        val image = BufferedImage(icon.iconWidth, icon.iconHeight, BufferedImage.TYPE_INT_RGB)
+
+        icon.paintIcon(null, image.graphics, 0, 0)
+
+        assertEquals(Color(TiColor.LightBlue.rgbValue).rgb, image.getRGB(1, 3))
     }
 }

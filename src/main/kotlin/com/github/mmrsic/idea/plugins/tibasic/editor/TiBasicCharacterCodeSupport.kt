@@ -14,11 +14,9 @@ import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollecto
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
 
-private const val CALL_CHAR_SUBPROGRAM = "CHAR"
+internal const val CALL_CHAR_SUBPROGRAM = "CHAR"
 private const val CALL_COLOR_SUBPROGRAM = "COLOR"
 private const val CALL_HCHAR_SUBPROGRAM = "HCHAR"
 private const val CALL_VCHAR_SUBPROGRAM = "VCHAR"
@@ -126,19 +124,9 @@ internal fun resolveCharacterCodeUsage(element: PsiElement?): TiBasicCharacterCo
 }
 
 internal fun resolveConstantNumericValue(expression: TiBasicExpression?, file: TiBasicFile?): Int? {
-    expression ?: return null
-    val children = expression.node.nonWhitespaceChildren
-    if (children.size != 1) return null
-    val child = children.first()
-    return when (child.elementType) {
-        TiBasicTokenTypes.NUMERIC_LITERAL -> child.text.toIntOrNull()
-        TiBasicNodeTypes.VARIABLE_ACCESS -> constantVariableValue(
-            variableName = child.firstChildNode?.text,
-            file = file,
-            acceptedTypes = setOf(TiBasicVariableType.NUMERIC),
-        )?.toIntOrNull()
-
-        else -> null
+    file ?: return null
+    return resolveNumericExpressionValue(expression) { variableAccess ->
+        constantNumericVariableValue(variableAccess.name, file)
     }
 }
 
@@ -203,9 +191,17 @@ internal fun callColorCharacterSetRange(set: Int): IntRange? =
     }
 
 internal fun collectCallCharOverrides(file: TiBasicFile): Map<Int, List<TiBasicCharacterCodeOverride>> =
-    CachedValuesManager.getCachedValue(file) {
-        CachedValueProvider.Result.create(buildCallCharOverrides(file), file)
-    }
+    collectCallCharDefinitions(file)
+        .groupBy(
+            keySelector = TiBasicCallCharDefinition::code,
+            valueTransform = { definition ->
+                TiBasicCharacterCodeOverride(
+                    lineNumber = definition.lineNumber,
+                    pattern = definition.pattern,
+                )
+            },
+        )
+        .mapValues { (_, overrides) -> overrides.sortedBy(TiBasicCharacterCodeOverride::lineNumber) }
 
 internal fun buildDocumentation(usage: TiBasicDocumentationUsage): String =
     when (usage) {
@@ -391,23 +387,12 @@ private fun constantVariableValue(
         ?.constValue
 }
 
-private fun buildCallCharOverrides(file: TiBasicFile): Map<Int, List<TiBasicCharacterCodeOverride>> =
-    file.callStatements()
-        .asSequence()
-        .filter { it.subprogramName() == CALL_CHAR_SUBPROGRAM }
-        .mapNotNull { callStatement ->
-            val code = resolveConstantNumericValue(callStatement.arguments().getOrNull(0), file) ?: return@mapNotNull null
-            val pattern = normalizeHexPattern(resolveConstantStringValue(callStatement.arguments().getOrNull(1), file))
-                ?: return@mapNotNull null
-            val lineNumber = PsiTreeUtil.getParentOfType(callStatement, TiBasicLine::class.java)?.lineNumber()
-                ?: return@mapNotNull null
-            code to TiBasicCharacterCodeOverride(lineNumber, pattern)
-        }
-        .groupBy(
-            keySelector = { it.first },
-            valueTransform = { it.second },
-        )
-        .mapValues { (_, overrides) -> overrides.sortedBy { it.lineNumber } }
+internal fun constantNumericVariableValue(variableName: String?, file: TiBasicFile?): Int? =
+    constantVariableValue(
+        variableName = variableName,
+        file = file,
+        acceptedTypes = setOf(TiBasicVariableType.NUMERIC),
+    )?.toIntOrNull()
 
 private fun buildHexPatternDocumentation(usage: TiBasicHexPatternUsage): String {
     val lineNumber = PsiTreeUtil.getParentOfType(usage.documentationElement, TiBasicLine::class.java)?.lineNumber()
