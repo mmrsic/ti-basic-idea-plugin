@@ -43,10 +43,20 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
             return Result.STOP
         }
         val lineContext = currentLineContext(editor)
+        val insideStringLiteral = isInsideStringLiteral(lineContext.text, lineContext.caretInLine)
+        if (insideStringLiteral &&
+            !hasClosingQuoteAfterCaret(lineContext.text, lineContext.caretInLine)
+        ) {
+            return insertPair(
+                editor = editor,
+                pair = DOUBLE_QUOTE.toString(),
+                placeCaretInsidePair = false,
+            )
+        }
         return insertPair(
             editor = editor,
             pair = DOUBLE_QUOTE_PAIR,
-            placeCaretInsidePair = !isInsideStringLiteral(lineContext.text, lineContext.caretInLine),
+            placeCaretInsidePair = !insideStringLiteral,
         )
     }
 
@@ -72,6 +82,9 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
         }
         val lineContext = currentLineContext(editor)
         val lineText = lineContext.text
+        if (isInsideStringLiteral(lineText, lineContext.caretInLine)) {
+            return true
+        }
         if (isRemLine(lineText)) {
             return true
         }
@@ -98,22 +111,44 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
         var insideStringLiteral = false
         var index = 0
         while (index < caretInLine) {
-            if (lineText[index] != DOUBLE_QUOTE) {
-                index++
-                continue
-            }
-            if (insideStringLiteral && isEscapedQuote(lineText, index)) {
-                index += DOUBLE_QUOTE_PAIR.length
-                continue
-            }
-            insideStringLiteral = !insideStringLiteral
-            index++
+            val updatedState = nextStringLiteralState(lineText, index, insideStringLiteral)
+            insideStringLiteral = updatedState.insideStringLiteral
+            index = updatedState.nextIndex
         }
         return insideStringLiteral
     }
+
+    private fun hasClosingQuoteAfterCaret(lineText: String, caretInLine: Int): Boolean {
+        var index = caretInLine
+        while (index < lineText.length) {
+            when {
+                lineText[index] != DOUBLE_QUOTE -> index++
+                isEscapedQuote(lineText, index) -> index += DOUBLE_QUOTE_PAIR.length
+                else -> return true
+            }
+        }
+        return false
+    }
+
+    private fun nextStringLiteralState(
+        lineText: String,
+        index: Int,
+        insideStringLiteral: Boolean,
+    ): StringLiteralState =
+        when {
+            lineText[index] != DOUBLE_QUOTE -> StringLiteralState(insideStringLiteral, index + 1)
+            insideStringLiteral && isEscapedQuote(lineText, index) ->
+                StringLiteralState(insideStringLiteral, index + DOUBLE_QUOTE_PAIR.length)
+            else -> StringLiteralState(!insideStringLiteral, index + 1)
+        }
 
     private fun isEscapedQuote(lineText: String, index: Int): Boolean =
         index + 1 < lineText.length &&
             lineText[index] == DOUBLE_QUOTE &&
             lineText[index + 1] == DOUBLE_QUOTE
+
+    private data class StringLiteralState(
+        val insideStringLiteral: Boolean,
+        val nextIndex: Int,
+    )
 }

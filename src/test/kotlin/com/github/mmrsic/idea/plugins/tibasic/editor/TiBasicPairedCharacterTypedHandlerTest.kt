@@ -96,6 +96,15 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
         myFixture.checkResult("100 rem d(5)")
     }
 
+    fun testTypingClosingParenSkipsExistingParenInsideStringLiteral() {
+        myFixture.configureByText("test.tibasic", "490 INPUT \"Noch einmal? (J/N<caret>)\"\"")
+
+        myFixture.type(')')
+
+        myFixture.checkResult("490 INPUT \"Noch einmal? (J/N)\"\"")
+        assertEquals("490 INPUT \"Noch einmal? (J/N)".length, myFixture.editor.caretModel.offset)
+    }
+
     fun testTypingOpeningQuoteCreatesMatchingClosingQuote() {
         myFixture.configureByText("test.tibasic", "100 PRINT <caret>")
 
@@ -121,6 +130,15 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
 
         myFixture.checkResult("100 PRINT \"A\"\"B\"")
         assertEquals("100 PRINT \"A\"\"".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testTypingQuoteInOpenStringClosesStringWithSingleQuote() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"A<caret>")
+
+        myFixture.type('"')
+
+        myFixture.checkResult("100 PRINT \"A\"")
+        assertEquals("100 PRINT \"A\"".length, myFixture.editor.caretModel.offset)
     }
 
     fun testBackspaceInEmptyStringDeletesBothQuotes() {
