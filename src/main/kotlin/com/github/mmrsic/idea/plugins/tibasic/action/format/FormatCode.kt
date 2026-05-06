@@ -275,8 +275,7 @@ private fun formattedDataLine(lineNumber: Int, statement: TiBasicDataStatement):
     val itemsText = dataItems.joinToString("") { token ->
         when (token.elementType) {
             TiBasicTokenTypes.COMMA -> ","
-            TiBasicTokenTypes.STRING_LITERAL -> token.text
-            else -> token.text.uppercase()
+            else -> token.text
         }
     }
     return "$lineNumber DATA $itemsText"

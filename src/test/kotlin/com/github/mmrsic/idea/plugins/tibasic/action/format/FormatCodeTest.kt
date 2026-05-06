@@ -324,14 +324,19 @@ class FormatCodeTest : TiBasicTestBase() {
         assertEquals("100 DATA 1,2,3", formattedText(file))
     }
 
-    fun testDataUnquotedItemUppercased() {
+    fun testDataUnquotedItemPreservesCase() {
         val file = configureFile("100 DATA hello")
-        assertEquals("100 DATA HELLO", formattedText(file))
+        assertEquals("100 DATA hello", formattedText(file))
     }
 
     fun testDataWithMixedItemsFormatted() {
         val file = configureFile("100 data  \"World\" , 42 , hello")
-        assertEquals("100 DATA \"World\",42,HELLO", formattedText(file))
+        assertEquals("100 DATA \"World\",42,hello", formattedText(file))
+    }
+
+    fun testDataWithUnquotedStringListPreservesItemCase() {
+        val file = configureFile("3410 DATA Merkur,Venus,Erde,Mars,Jupiter,Saturn,Uranus,Neptun,pluto,Sonne")
+        assertEquals("3410 DATA Merkur,Venus,Erde,Mars,Jupiter,Saturn,Uranus,Neptun,pluto,Sonne", formattedText(file))
     }
 
     fun testDataWithConsecutiveCommasPreserved() {
