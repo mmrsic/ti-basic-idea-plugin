@@ -1044,10 +1044,37 @@ class TiBasicAnnotator : Annotator {
             }
             return
         }
+        if (hasMalformedSubscriptSyntax(varAccess)) {
+            holder.error("Bad subscript definition", varAccess)
+            return
+        }
         val dimCount = varAccess.subscriptDimCount()
         if (dimCount == 0 || dimCount > 3) {
             holder.error("Bad subscript definition", varAccess)
         }
+    }
+
+    private fun hasMalformedSubscriptSyntax(varAccess: TiBasicVariableAccess): Boolean {
+        val children = varAccess.node.nonWhitespaceChildren
+        val openingParenIndex = children.indexOfFirst { it.elementType == TiBasicTokenTypes.LPAREN }
+        val closingParenIndex = children.indexOfLast { it.elementType == TiBasicTokenTypes.RPAREN }
+        if (openingParenIndex == -1 || closingParenIndex <= openingParenIndex) return true
+        if (children.drop(closingParenIndex + 1).isNotEmpty()) return true
+        val subscriptNodes = children.subList(openingParenIndex + 1, closingParenIndex)
+        if (subscriptNodes.isEmpty()) return false
+        var expectsExpression = true
+        subscriptNodes.forEach { child ->
+            if (expectsExpression) {
+                if (child.elementType != TiBasicNodeTypes.EXPRESSION) return true
+                val expression = child.psi as? TiBasicExpression ?: return true
+                if (expression.node.nonWhitespaceChildren.isEmpty()) return true
+                expectsExpression = false
+            } else {
+                if (child.elementType != TiBasicTokenTypes.COMMA) return true
+                expectsExpression = true
+            }
+        }
+        return expectsExpression
     }
 
     private fun annotateExpression(expr: TiBasicExpression, holder: AnnotationHolder) {

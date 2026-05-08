@@ -1032,6 +1032,17 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testNoErrorForImplicitLetWithNestedArraySubscriptExpression() {
+        configureFile("1100 C(D(1),2)=1")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForImplicitLetWithMalformedNestedArraySubscriptExpression() {
+        configureFile("1100 C(D(,2))=1")
+        val annotations = myFixture.doHighlighting()
+        assertTrue(annotations.any { it.description == "Bad subscript definition" })
+    }
+
     fun testErrorForStringExpressionAssignedToNumericVariable() {
         configureFile(
             "100 <error descr=\"String-number mismatch\">A = \"hello\"</error>",
