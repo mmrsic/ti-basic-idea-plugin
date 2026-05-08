@@ -24,6 +24,11 @@ class FormatCallCodeTest : TiBasicTestBase() {
         assertEquals("100 CALL HCHAR(1,2,42)", formattedText(file))
     }
 
+    fun `test CALL HCHAR with empty parentheses preserves parentheses`() {
+        val file = configureFile("1110 call HCHAR()")
+        assertEquals("1110 CALL HCHAR()", formattedText(file))
+    }
+
     fun `test CALL CHAR with string argument preserves string`() {
         val file = configureFile("100 CALL CHAR(96,\"FFFFFFFFFFFFFFFF\")")
         assertEquals("100 CALL CHAR(96,\"FFFFFFFFFFFFFFFF\")", formattedText(file))

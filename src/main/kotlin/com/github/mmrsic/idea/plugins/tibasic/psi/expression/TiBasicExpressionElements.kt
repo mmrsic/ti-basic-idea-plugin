@@ -26,6 +26,12 @@ class TiBasicCallStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun subprogramName(): String? =
         node.firstChildOfType(TiBasicTokenTypes.CALL_SUBPROGRAM_NAME)?.text?.uppercase()
 
+    fun hasArgumentParens(): Boolean =
+        node.firstChildOfType(TiBasicTokenTypes.LPAREN) != null
+
+    fun hasClosingArgumentParen(): Boolean =
+        node.firstChildOfType(TiBasicTokenTypes.RPAREN) != null
+
     fun arguments(): List<TiBasicExpression> =
         node.childrenOfType(TiBasicNodeTypes.EXPRESSION).map { it.psi as TiBasicExpression }
 }

@@ -297,11 +297,15 @@ private fun formattedRestoreLine(lineNumber: Int, statement: TiBasicRestoreState
 private fun formattedCallLine(lineNumber: Int, statement: TiBasicCallStatement): String {
     val name = statement.subprogramName() ?: return "$lineNumber CALL"
     val args = statement.arguments()
-    return if (args.isEmpty()) {
+    return if (args.isEmpty() && !statement.hasArgumentParens()) {
         "$lineNumber CALL $name"
     } else {
         val argsText = args.joinToString(",") { removeWhitespaceOutsideStrings(uppercaseOutsideStrings(it.text.trim())) }
-        "$lineNumber CALL $name($argsText)"
+        if (statement.hasClosingArgumentParen()) {
+            "$lineNumber CALL $name($argsText)"
+        } else {
+            "$lineNumber CALL $name($argsText"
+        }
     }
 }
 
