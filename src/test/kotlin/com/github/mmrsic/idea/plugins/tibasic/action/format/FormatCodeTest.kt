@@ -49,6 +49,23 @@ class FormatCodeTest : TiBasicTestBase() {
         assertEquals("100 PRINT \"hello world\"", formattedText(file))
     }
 
+    fun testSpecialStringCharacterCodeIsPreserved() {
+        val character = 151.toChar().toString()
+        val file = configureFile("100 print \"$character\"")
+        assertEquals("100 PRINT \"$character\"", formattedText(file))
+    }
+
+    fun testStringWithEscapedQuoteFromCharacterCodeIsPreserved() {
+        val file = configureFile("100 print \"\"\"\"")
+        assertEquals("100 PRINT \"\"\"\"", formattedText(file))
+    }
+
+    fun testStringWithRawControlCharacterIsPreserved() {
+        val controlCharacter = 1.toChar().toString()
+        val file = configureFile("100 print \"$controlCharacter\"")
+        assertEquals("100 PRINT \"$controlCharacter\"", formattedText(file))
+    }
+
     fun testMultipleLinesFormatted() {
         val file = configureFile("100 print \"hello\"\n200 PRINT \"world\"")
         assertEquals("100 PRINT \"hello\"\n200 PRINT \"world\"", formattedText(file))

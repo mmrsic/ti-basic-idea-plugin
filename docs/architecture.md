@@ -98,7 +98,17 @@ PSI tree              (tibasic.psi + subpackages)
     │       Intercepts typed `(`, `)` and `"` characters in TI-Basic files.
     │       It inserts matching closing delimiters for opening characters,
     │       skips over an existing closing parenthesis or quote when it should
-    │       be reused, and inserts doubled quotes inside existing strings.
+    │       be reused, inserts doubled quotes inside existing strings, and
+    │       recognizes TI character-code triggers inside string literals.
+    │       Numeric triggers use exactly three digits (for example `\065`
+    │       and `\255`) and cover the full code range `000..255`. For all
+    │       key combinations defined in `docs/img/TI-BASIC_key_unit_5.png`,
+    │       additional aliases are supported: CTRL combinations use forms
+    │       such as `\C@`, `\CX`, `\C.`, `\C;`, `\C=`, `\C9`, `\C/`,
+    │       `\^X`, `\C-X`, and `\CTRL-X`; FCTN combinations
+    │       use forms such as `\F7`, `\F-7`, and `\FCTN-7`. Replacements use
+    │       the same source-text representation that direct typing would
+    │       require inside strings, so code `034` becomes `""` in source.
     │       For all other non-digit characters, when the caret is at the end of
     │       a line that consists only of a valid line number, it inserts the
     │       required separating space before the typed character.

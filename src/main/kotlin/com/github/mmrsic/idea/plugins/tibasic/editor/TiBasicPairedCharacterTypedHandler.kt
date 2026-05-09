@@ -26,9 +26,18 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
             OPENING_PAREN -> insertPair(editor, "$OPENING_PAREN$CLOSING_PAREN", placeCaretInsidePair = true)
             CLOSING_PAREN -> skipExistingClosingParen(editor)
             DOUBLE_QUOTE -> handleDoubleQuote(editor)
-            else -> handleLineNumberSpacing(editor, c)
+            else -> handleStringCharacterOrLineNumberSpacing(editor, c)
         }
     }
+
+    private fun handleStringCharacterOrLineNumberSpacing(editor: Editor, typedChar: Char): Result =
+        handleStringCharacterTrigger(editor, typedChar).let { result ->
+            if (result != Result.CONTINUE) {
+                result
+            } else {
+                handleLineNumberSpacing(editor, typedChar)
+            }
+        }
 
     private fun handleLineNumberSpacing(editor: Editor, typedChar: Char): Result =
         if (shouldInsertSpaceAfterLineNumber(currentLineContext(editor), typedChar)) {
@@ -36,6 +45,19 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
         } else {
             Result.CONTINUE
         }
+
+    private fun handleStringCharacterTrigger(editor: Editor, typedChar: Char): Result {
+        val lineContext = currentLineContext(editor)
+        if (!isInsideStringLiteral(lineContext.text, lineContext.caretInLine)) {
+            return Result.CONTINUE
+        }
+        val match = matchStringCharacterTrigger(lineContext, typedChar) ?: return Result.CONTINUE
+        val offset = editor.caretModel.offset
+        val triggerStartOffset = offset - (lineContext.caretInLine - match.startInLine)
+        editor.document.replaceString(triggerStartOffset, offset, match.replacementText)
+        editor.caretModel.moveToOffset(triggerStartOffset + match.replacementText.length)
+        return Result.STOP
+    }
 
     private fun handleDoubleQuote(editor: Editor): Result {
         if (shouldSkipExistingClosingQuote(editor)) {

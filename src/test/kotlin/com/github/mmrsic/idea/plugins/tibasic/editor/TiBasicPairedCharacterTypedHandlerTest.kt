@@ -141,6 +141,154 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
         assertEquals("100 PRINT \"A\"".length, myFixture.editor.caretModel.offset)
     }
 
+    fun testTypingNumericStringCharacterTriggerReplacesSequenceWithCharacterCode() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\15<caret>\"")
+
+        myFixture.type('1')
+
+        myFixture.checkResult(printLineWithCharacterCode(151))
+    }
+
+    fun testTypingThreeDigitAsciiTriggerReplacesSequenceWithAsciiCharacter() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\06<caret>\"")
+
+        myFixture.type('5')
+
+        myFixture.checkResult("100 PRINT \"A\"")
+    }
+
+    fun testTypingThreeDigitQuoteTriggerInsertsEscapedQuoteInStringLiteral() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\03<caret>\"")
+
+        myFixture.type('4')
+
+        myFixture.checkResult("100 PRINT \"\"\"\"")
+    }
+
+    fun testTypingThreeDigitControlTriggerInsertsRawControlCharacter() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\00<caret>\"")
+
+        myFixture.type('1')
+
+        myFixture.checkResult(printLineWithCharacterCode(1))
+    }
+
+    fun testTypingControlAcronymAliasesCoverFullControlKeyTable() {
+        controlAliasMappings().forEach { (key, code) ->
+            myFixture.configureByText("test.tibasic", "100 PRINT \"\\C<caret>\"")
+
+            myFixture.type(key)
+
+            myFixture.checkResult(printLineWithCharacterCode(code))
+        }
+    }
+
+    fun testTypingControlAcronymAliasReplacesSequenceWithCharacterCode() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\C<caret>\"")
+
+        myFixture.type('W')
+
+        myFixture.checkResult(printLineWithCharacterCode(151))
+    }
+
+    fun testTypingCaretControlAliasReplacesSequenceWithCharacterCode() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\^<caret>\"")
+
+        myFixture.type('w')
+
+        myFixture.checkResult(printLineWithCharacterCode(151))
+    }
+
+    fun testTypingLongControlAliasReplacesSequenceWithCharacterCode() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\CTRL-<caret>\"")
+
+        myFixture.type('W')
+
+        myFixture.checkResult(printLineWithCharacterCode(151))
+    }
+
+    fun testTypingFunctionAcronymAliasReplacesSequenceWithCharacterCode() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\F<caret>\"")
+
+        myFixture.type('S')
+
+        myFixture.checkResult(printLineWithCharacterCode(8))
+    }
+
+    fun testTypingLongFunctionAliasReplacesSequenceWithCharacterCode() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\FCTN-<caret>\"")
+
+        myFixture.type('7')
+
+        myFixture.checkResult(printLineWithCharacterCode(1))
+    }
+
+    fun testTypingLongFunctionAliasesCoverRequestedCodesExceptEnter() {
+        functionAliasMappingsWithoutEnter().forEach { (key, code) ->
+            myFixture.configureByText("test.tibasic", "100 PRINT \"\\FCTN-<caret>\"")
+
+            myFixture.type(key)
+
+            myFixture.checkResult(printLineWithCharacterCode(code))
+        }
+    }
+
+    fun testTypingControlAtAliasReplacesSequenceWithCharacterCode128() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\CTRL-<caret>\"")
+
+        myFixture.type('@')
+
+        myFixture.checkResult(printLineWithCharacterCode(128))
+    }
+
+    fun testTypingControlVAliasReplacesSequenceWithCharacterCode150() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\C<caret>\"")
+
+        myFixture.type('V')
+
+        myFixture.checkResult(printLineWithCharacterCode(150))
+    }
+
+    fun testTypingControlWAliasReplacesSequenceWithCharacterCode151() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\C<caret>\"")
+
+        myFixture.type('W')
+
+        myFixture.checkResult(printLineWithCharacterCode(151))
+    }
+
+    fun testTypingControlSlashAliasReplacesSequenceWithCharacterCode187() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\C<caret>\"")
+
+        myFixture.type('/')
+
+        myFixture.checkResult(printLineWithCharacterCode(187))
+    }
+
+    fun testTypingUnsupportedControlAliasInsideStringKeepsLiteralText() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\CTRL-<caret>\"")
+
+        myFixture.type('?')
+
+        myFixture.checkResult("100 PRINT \"\\CTRL-?\"")
+    }
+
+    fun testTypingNumericStringCharacterTriggerOutsideStringKeepsLiteralText() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \\15<caret>")
+
+        myFixture.type('1')
+
+        myFixture.checkResult("100 PRINT \\151")
+    }
+
+    fun testTypingTwoDigitNumericPrefixInsideStringDoesNotReplaceEarly() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"\\0<caret>\"")
+
+        myFixture.type('6')
+
+        myFixture.checkResult("100 PRINT \"\\06\"")
+    }
+
     fun testBackspaceInEmptyStringDeletesBothQuotes() {
         myFixture.configureByText("test.tibasic", "100 A$=\"<caret>\"")
 
@@ -157,4 +305,40 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
 
         myFixture.checkResult("100 A$=X\"")
     }
+
+    private fun printLineWithCharacterCode(code: Int): String = buildString {
+        append("100 PRINT \"")
+        append(code.toChar())
+        append('"')
+    }
+
+    private fun controlAliasMappings(): List<Pair<Char, Int>> = buildList {
+        add('@' to 128)
+        ('A'..'Z').forEachIndexed { index, char ->
+            add(char to (129 + index))
+        }
+        add('.' to 155)
+        add(';' to 156)
+        add('=' to 157)
+        add('8' to 158)
+        add('9' to 159)
+        add('/' to 187)
+    }
+
+    private fun functionAliasMappingsWithoutEnter(): List<Pair<Char, Int>> = listOf(
+        '7' to 1,
+        '4' to 2,
+        '1' to 3,
+        '2' to 4,
+        '=' to 5,
+        '8' to 6,
+        '3' to 7,
+        'S' to 8,
+        'D' to 9,
+        'X' to 10,
+        'E' to 11,
+        '6' to 12,
+        '5' to 14,
+        '9' to 15,
+    )
 }

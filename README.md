@@ -15,6 +15,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
   (for example `100P` becomes `100 P`)
 - Automatic line-number insertion for **Shift+Enter**, **Duplicate at end**, and **Paste at end** supports a configurable delta and optional rounding to multiples of 10
 - Typing `(` or `"` inserts the matching closing delimiter; Backspace between an empty `""` pair removes both quotes
+- Inside string literals, typing a **3-digit** trigger like `\065` or `\255` inserts the corresponding raw character code (`000..255` supported); in addition, CTRL aliases such as `\C@`, `\CX`, `\C.`, `\C;`, `\C=`, `\C9`, and `\C/` as well as FCTN aliases such as `\F7` and `\FCTN-S` are supported
 
 ### Supported statements
 

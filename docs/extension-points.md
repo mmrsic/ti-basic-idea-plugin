@@ -108,9 +108,17 @@ and function names appear in separate groups in the popup.
 Intercepts typed `(`, `)` and `"` characters in TI-Basic files. It inserts matching
 closing delimiters for opening parentheses and quotes, skips over an existing closing
 `)` or `"` when that delimiter should be reused, and inserts doubled quotes inside an
-existing string literal. For all other non-digit characters, when the caret is at the
-end of a line that consists only of a valid line number, it inserts the required
-separating space before the typed character.
+existing string literal. Inside string literals it also recognizes 3-digit character-code
+triggers such as `\065` or `\255`, replacing them with the corresponding raw character
+code for the full range `000..255`. For every CTRL and FCTN key combination defined in
+`docs/img/TI-BASIC_key_unit_5.png` it additionally recognizes mnemonic aliases:
+CTRL combinations accept forms such as `\C@`, `\CX`, `\C.`, `\C;`, `\C=`, `\C9`,
+`\C/`, `\^X`, `\C-X`, and `\CTRL-X`, while
+FCTN combinations accept forms such as `\F7`, `\F-7`, and `\FCTN-7`. When the resulting
+character is a double quote, the handler inserts the doubled source representation `""`
+so the string literal remains valid. For all other non-digit characters, when the caret
+is at the end of a line that consists only of a valid line number, it inserts the
+required separating space before the typed character.
 
 ---
 
