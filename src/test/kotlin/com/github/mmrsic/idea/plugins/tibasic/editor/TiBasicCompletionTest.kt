@@ -496,6 +496,39 @@ class TiBasicCompletionTest : TiBasicTestBase() {
         assertEquals(1, popupItems.count { it == "NEXT I" })
     }
 
+    fun testCompletionAfterRestoreSpaceSuggestsOnlyDataStatementLineNumbers() {
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 DATA 1
+            200 PRINT "A"
+            300 DATA
+            400 RESTORE <caret>
+            """.trimIndent(),
+        )
+        myFixture.completeBasic()
+
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertTrue("DATA line number 100 must be suggested after RESTORE", popupItems.contains("100"))
+        assertTrue("DATA line number 300 must be suggested after RESTORE", popupItems.contains("300"))
+        assertFalse("Non-DATA line number 200 must not be suggested after RESTORE", popupItems.contains("200"))
+        assertFalse("Current RESTORE line number 400 must not be suggested after RESTORE", popupItems.contains("400"))
+    }
+
+    fun testCompletionAfterFileRestoreDoesNotSuggestDataStatementLineNumbers() {
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 DATA 1
+            200 RESTORE #<caret>
+            """.trimIndent(),
+        )
+        myFixture.completeBasic()
+
+        val popupItems = myFixture.lookupElementStrings ?: emptyList()
+        assertFalse("DATA line numbers must not be suggested for file RESTORE", popupItems.contains("100"))
+    }
+
     fun testCompletionDoesNotSuggestGeneratedLineNumberInMiddleOfLine() {
         myFixture.configureByText("test.tibasic", "100 PRINT \"A\"\nPR<caret>INT \"B\"")
         myFixture.completeBasic()

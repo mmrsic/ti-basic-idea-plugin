@@ -232,7 +232,8 @@ The annotator inspects every file and highlights:
   groups, a blank eligible last line or a matching typed line-number prefix shows the generated line number as the
   first suggestion, array variables are shown as `NAME()` and inserted with the cursor placed between the parentheses,
   the generated line number inserts with the required trailing space, and `NEXT` completion also offers all still-open
-  FOR loop variables as distinct `NEXT <var>` suggestions without duplicates
+  FOR loop variables as distinct `NEXT <var>` suggestions without duplicates; after `RESTORE `, completion offers all
+  line numbers that contain `DATA` statements
 - **CALL subprogram completion** — when the cursor is at the subprogram name position (directly after `CALL` or on an
   existing subprogram name token), autocomplete (Ctrl+Space) lists all 10 built-in subprogram names in a dedicated
   group; subprograms with arguments insert `()` and place the cursor between them, while `CLEAR` remains without

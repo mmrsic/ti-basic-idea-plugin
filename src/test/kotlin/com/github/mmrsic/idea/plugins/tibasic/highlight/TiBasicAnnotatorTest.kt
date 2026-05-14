@@ -1794,10 +1794,8 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
-    fun testDataWithNoItemsIsError() {
-        configureFile(
-            "100 <error descr=\"Incorrect statement\">DATA</error>",
-        )
+    fun testDataWithNoItemsNoError() {
+        configureFile("100 DATA")
         myFixture.checkHighlighting(true, false, true)
     }
 

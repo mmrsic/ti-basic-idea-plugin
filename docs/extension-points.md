@@ -94,8 +94,9 @@ defined in the current file, CALL subprogram names (from `TiBasicCallSubprograms
 the cursor is immediately after `CALL`, and built-in function names (from
 `TiBasicBuiltInFunctions`) in expression context. At the beginning of the current
 eligible unnumbered last line, it also suggests the same next auto-generated line
-number that Shift+Enter would insert there. Keywords, variables, subprogram names,
-and function names appear in separate groups in the popup.
+number that Shift+Enter would insert there. After `RESTORE `, it suggests all line
+numbers in the current file that contain `DATA` statements. Keywords, variables,
+subprogram names, and function names appear in separate groups in the popup.
 
 ---
 

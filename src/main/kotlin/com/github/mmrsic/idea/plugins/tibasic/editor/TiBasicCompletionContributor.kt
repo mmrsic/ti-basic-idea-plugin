@@ -7,6 +7,8 @@ import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
 import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicLanguage
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicForStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicNextStatement
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
@@ -30,6 +32,7 @@ private const val SELECT_WITH_OPEN_PAREN = '('
 private const val RPAREN = ')'
 private const val COMPLETION_SEPARATOR = " "
 private const val AUTO_LINE_NUMBER_TYPE_TEXT = "line number"
+private const val DATA_LINE_NUMBER_TYPE_TEXT = "DATA line"
 private const val VARIABLE_TYPE_TEXT = "variable"
 private const val ARRAY_TYPE_TEXT = "array"
 private const val SUBPROGRAM_TYPE_TEXT = "subprogram"
@@ -40,6 +43,7 @@ private const val NEXT_KEYWORD = "NEXT"
 private val functionLikeKeywords = setOf("TAB")
 private val nextKeywordPrefixRegex = Regex("""^N(?:E(?:XT?)?)?$""", RegexOption.IGNORE_CASE)
 private val nextVariablePrefixRegex = Regex("""^NEXT\s+([A-Za-z][A-Za-z0-9$]*)?$""", RegexOption.IGNORE_CASE)
+private val restoreLineNumberPrefixRegex = Regex("""^RESTORE\s+\d*$""", RegexOption.IGNORE_CASE)
 
 class TiBasicCompletionContributor : CompletionContributor() {
 
@@ -72,6 +76,11 @@ class TiBasicCompletionContributor : CompletionContributor() {
         nextCompletionContext(parameters)?.let { nextContext ->
             nextCompletions(file, nextContext)
                 .forEach(result.caseInsensitive()::addElement)
+            return
+        }
+        if (isRestoreLineNumberContext(parameters)) {
+            restoreLineNumberCompletions(file)
+                .forEach(completionResult::addElement)
             return
         }
         if (shouldOfferAutoLineNumberCompletion(parameters.editor, file)) {
@@ -389,6 +398,30 @@ private fun openNextControlVariableNames(file: TiBasicFile, statementStartOffset
         .asReversed()
         .distinct()
 }
+
+private fun isRestoreLineNumberContext(parameters: CompletionParameters): Boolean {
+    val document = parameters.editor.document
+    val offset = parameters.offset
+    val lineNumber = document.getLineNumber(offset)
+    val lineStartOffset = document.getLineStartOffset(lineNumber)
+    val linePrefix = currentLineContext(parameters.editor).text.take(offset - lineStartOffset)
+    val statementPrefix = statementPrefixBeforeCaret(linePrefix)?.text ?: return false
+    return restoreLineNumberPrefixRegex.matches(statementPrefix)
+}
+
+private fun restoreLineNumberCompletions(file: TiBasicFile): List<LookupElement> =
+    file.lines()
+        .filter { line ->
+            line.lineNumber() in VALID_LINE_NUMBER_RANGE &&
+                line.children.any { it is TiBasicDataStatement }
+        }
+        .map { it.lineNumber().toString() }
+        .distinct()
+        .map { lineNumber ->
+            LookupElementBuilder.create(lineNumber)
+                .withTypeText(DATA_LINE_NUMBER_TYPE_TEXT)
+                .autoCompleteSingleMatch()
+        }
 
 private val parenCompletionInsertHandler = InsertHandler<LookupElement> { context, _ ->
     context.setAddCompletionChar(false)

@@ -76,6 +76,8 @@ PSI tree              (tibasic.psi + subpackages)
     │       without showing the lookup popup. At the beginning of the current
     │       eligible unnumbered last line, completion also offers the same
     │       auto-generated line number that Shift+Enter would insert there.
+    │       After `RESTORE `, it also offers line numbers of all `DATA`
+    │       statements in the current file.
     │       Built-in functions, the TAB keyword-function, and CALL subprograms
     │       with arguments insert `()`, while generated line numbers insert a
     │       trailing space and place the caret after it.

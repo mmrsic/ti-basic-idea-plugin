@@ -1729,6 +1729,14 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, lines[0].children.filterIsInstance<TiBasicDataStatement>().size)
     }
 
+    fun testDataStatementWithoutItemsProducesSingleEmptyDataItem() {
+        val file = parseCode("100 DATA")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val dataStatement = lines[0].children.filterIsInstance<TiBasicDataStatement>().single()
+        assertEquals(listOf(""), dataStatement.dataItems())
+    }
+
     fun testDataStatementLowercaseIsRecognized() {
         val file = parseCode("100 data 42")
         val lines = file.children.filterIsInstance<TiBasicLine>()

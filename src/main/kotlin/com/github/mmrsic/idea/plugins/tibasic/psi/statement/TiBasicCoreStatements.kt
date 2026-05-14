@@ -118,6 +118,9 @@ class TiBasicDataStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun dataItems(): List<String> {
         val items = mutableListOf<String>()
         val children = node.nonWhitespaceChildren.drop(1)
+        if (children.isEmpty()) {
+            return listOf("")
+        }
         var expectingItem = true
         children.forEach { child ->
             when (child.elementType) {

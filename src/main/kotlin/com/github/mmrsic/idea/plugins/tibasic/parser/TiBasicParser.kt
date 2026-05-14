@@ -130,7 +130,7 @@ import com.intellij.psi.tree.IElementType
  *                             WHITE_SPACE? COLON WHITE_SPACE? fileInputVariableList
  * fileInputVariableList   ::= variableAccess (COMMA variableAccess)* COMMA?
  * readStatement           ::= READ_KEYWORD WHITE_SPACE? variablesList
- * dataStatement           ::= DATA_KEYWORD WHITE_SPACE? dataList
+ * dataStatement           ::= DATA_KEYWORD (WHITE_SPACE? dataList)?
  * dataList                ::= dataItem (COMMA dataItem)*
  * dataItem                ::= STRING_LITERAL | NUMERIC_LITERAL | PRINT_ARGUMENT | ε
  * restoreStatement        ::= RESTORE_KEYWORD (WHITE_SPACE NUMERIC_LITERAL)?

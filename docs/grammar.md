@@ -88,8 +88,8 @@ inputStatement          = INPUT     [ whitespace ] [ stringExpression whitespace
                              .REC recordNumber is optional; variable list may end with a trailing comma *)
 readStatement           = READ      [ whitespace ] variablesList ;
                           (* variable list is mandatory *)
-dataStatement           = DATA      [ whitespace ] dataList ;
-                          (* data list is mandatory; empty DATA is an error *)
+dataStatement           = DATA      [ whitespace [ dataList ] ] ;
+                          (* bare DATA is valid and behaves like DATA "" *)
 dataList                = dataItem { COMMA dataItem } ;
 dataItem                = STRING_LITERAL               (* quoted string; may contain comma, quote, leading/trailing spaces *)
                         | NUMERIC_LITERAL              (* number *)
@@ -384,7 +384,7 @@ These identifiers are recognized by the annotator and produce a specific error:
 436 DATA "has,comma","has ""quote"""  ✓ valid — quotes required when item contains comma or quote
 440 INPUT                       ✗ error — no variable list
 450 READ                        ✗ error — no variable list
-460 DATA                        ✗ error — no data list
+460 DATA                        ✓ valid — equivalent to DATA "" (single empty item)
 470 RESTORE                     ✓ valid — reset DATA pointer to beginning
 480 RESTORE 200                 ✓ valid — reset DATA pointer to line 200
 490 RESTORE A                   ✗ error — argument must be a numeric literal

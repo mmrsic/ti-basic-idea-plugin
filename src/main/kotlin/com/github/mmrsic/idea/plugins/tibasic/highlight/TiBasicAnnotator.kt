@@ -1,6 +1,10 @@
 package com.github.mmrsic.idea.plugins.tibasic.highlight
 
 import com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceQuickFix
+import com.github.mmrsic.idea.plugins.tibasic.editor.ARITHMETIC_OPERATOR_TYPES
+import com.github.mmrsic.idea.plugins.tibasic.editor.UNARY_EXPRESSION_OPERATOR_TYPES
+import com.github.mmrsic.idea.plugins.tibasic.editor.firstTopLevelBinaryOperatorIndex
+import com.github.mmrsic.idea.plugins.tibasic.editor.isFullyParenthesized
 import com.github.mmrsic.idea.plugins.tibasic.ext.allChildren
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenOfType
@@ -9,10 +13,6 @@ import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildType
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.ext.warning
-import com.github.mmrsic.idea.plugins.tibasic.editor.ARITHMETIC_OPERATOR_TYPES
-import com.github.mmrsic.idea.plugins.tibasic.editor.UNARY_EXPRESSION_OPERATOR_TYPES
-import com.github.mmrsic.idea.plugins.tibasic.editor.firstTopLevelBinaryOperatorIndex
-import com.github.mmrsic.idea.plugins.tibasic.editor.isFullyParenthesized
 import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_NAME_RUNTIME_ERROR
 import com.github.mmrsic.idea.plugins.tibasic.lang.BAD_VALUE_RUNTIME_ERROR
 import com.github.mmrsic.idea.plugins.tibasic.lang.CallArgType
@@ -33,7 +33,6 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicFunctionCall
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicTabFunction
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicCloseStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDefStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDeleteStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDimStatement
@@ -108,7 +107,6 @@ class TiBasicAnnotator : Annotator {
             is TiBasicRandomizeStatement -> annotateRandomizeStatement(element, holder)
             is TiBasicInputStatement -> annotateInputStatement(element, holder)
             is TiBasicReadStatement -> annotateReadStatement(element, holder)
-            is TiBasicDataStatement -> annotateDataStatement(element, holder)
             is TiBasicRestoreStatement -> annotateRestoreStatement(element, holder)
             is TiBasicCallStatement -> annotateCallStatement(element, holder)
             is TiBasicFunctionCall -> annotateFunctionCall(element, holder)
@@ -472,20 +470,6 @@ class TiBasicAnnotator : Annotator {
             if (varNode.firstChildType == TiBasicTokenTypes.INVALID_VARIABLE_NAME) {
                 holder.error("Bad variable name", varNode.textRange)
             }
-        }
-    }
-
-    private fun annotateDataStatement(statement: TiBasicDataStatement, holder: AnnotationHolder) {
-        val dataItemTypes = setOf(
-            TiBasicTokenTypes.STRING_LITERAL,
-            TiBasicTokenTypes.NUMERIC_LITERAL,
-            TiBasicTokenTypes.PRINT_ARGUMENT,
-            TiBasicTokenTypes.COMMA,
-        )
-        val hasDataContent = statement.node.nonWhitespaceChildren
-            .any { it.elementType in dataItemTypes }
-        if (!hasDataContent) {
-            holder.error("Incorrect statement", statement)
         }
     }
 
