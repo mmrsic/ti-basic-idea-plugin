@@ -10,6 +10,7 @@ import java.util.concurrent.Executor
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.LineUnavailableException
+import kotlin.math.absoluteValue
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -112,7 +113,7 @@ internal class TiBasicSoundPlaybackService(
 }
 
 internal fun renderSoundAudio(playback: TiBasicSoundPlayback): TiBasicPcmAudio {
-    val sampleCount = ((playback.duration.toDouble() * PCM_SAMPLE_RATE_HZ) / MILLISECONDS_PER_SECOND)
+    val sampleCount = ((playback.duration.toDouble().absoluteValue * PCM_SAMPLE_RATE_HZ) / MILLISECONDS_PER_SECOND)
         .roundToInt()
         .coerceAtLeast(1)
     val audioBytes = ByteArray(sampleCount * PCM_FRAME_SIZE_BYTES)
@@ -137,7 +138,7 @@ internal fun renderSoundAudio(playback: TiBasicSoundPlayback): TiBasicPcmAudio {
 
     repeat(sampleCount) { index ->
         val mixedSample = renderableTones.sumOf(RenderableToneChannel::currentSample) +
-            (renderableNoise?.currentSample() ?: 0)
+                (renderableNoise?.currentSample() ?: 0)
         val sample = if (audibleChannelCount == 0) {
             0
         } else {
@@ -209,7 +210,7 @@ private data class RenderableNoiseChannel(
             TiBasicNoiseType.WHITE -> (shiftRegister and 1) xor ((shiftRegister shr 1) and 1)
         }
         shiftRegister = ((shiftRegister shr 1) or (feedbackBit shl (NOISE_SHIFT_REGISTER_BITS - 1))) and
-            NOISE_SHIFT_REGISTER_MASK
+                NOISE_SHIFT_REGISTER_MASK
         if (shiftRegister == 0) {
             shiftRegister = INITIAL_NOISE_SHIFT_REGISTER
         }

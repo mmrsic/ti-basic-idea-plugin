@@ -2,6 +2,7 @@ package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
+import kotlin.math.abs
 
 internal const val CALL_SOUND_SUBPROGRAM = "SOUND"
 
@@ -74,10 +75,7 @@ internal fun resolveSoundPlayback(callStatement: TiBasicCallStatement, file: TiB
     if (callStatement.subprogramName() != CALL_SOUND_SUBPROGRAM) return null
     val arguments = callStatement.arguments()
     if (arguments.size !in VALID_SOUND_ARGUMENT_COUNTS) return null
-    val duration = resolveConstantNumericValue(
-        arguments.getOrNull(SOUND_DURATION_ARG_INDEX),
-        file,
-    ) ?: return null
+    val duration = resolveConstantNumericValue(arguments.getOrNull(SOUND_DURATION_ARG_INDEX), file) ?: return null
     val channelArguments = arguments
         .drop(SOUND_TONE_FIRST_ARG_INDEX)
         .chunked(SOUND_TONE_ARGUMENT_COUNT)
@@ -121,7 +119,7 @@ internal fun isPlayableSoundNoise(noise: TiBasicSoundNoise): Boolean =
             noise.volume in 0..MAX_SOUND_VOLUME
 
 internal fun isPlayableSoundPlayback(playback: TiBasicSoundPlayback): Boolean =
-    playback.duration >= MIN_SOUND_DURATION &&
+    abs(playback.duration) >= MIN_SOUND_DURATION &&
             (playback.tones.isNotEmpty() || playback.noise != null) &&
             playback.tones.all(::isPlayableSoundTone) &&
             (playback.noise == null || isPlayableSoundNoise(playback.noise))

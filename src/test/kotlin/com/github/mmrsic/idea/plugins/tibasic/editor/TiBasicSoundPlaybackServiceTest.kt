@@ -18,6 +18,11 @@ class TiBasicSoundPlaybackServiceTest : TiBasicTestBase() {
         assertEquals(8_820, audio.sampleData.size)
     }
 
+    fun `test render sound audio byte count matches absolute duration for negative values`() {
+        val audio = renderSoundAudio(TiBasicSoundPlayback(duration = -100, tones = listOf(TiBasicSoundTone(440, 0))))
+        assertEquals(8_820, audio.sampleData.size)
+    }
+
     fun `test render sound audio is silent for volume 30`() {
         val audio = renderSoundAudio(TiBasicSoundPlayback(100, listOf(TiBasicSoundTone(440, 30))))
         assertTrue("Volume 30 must render silence", audio.sampleData.all { it == 0.toByte() })

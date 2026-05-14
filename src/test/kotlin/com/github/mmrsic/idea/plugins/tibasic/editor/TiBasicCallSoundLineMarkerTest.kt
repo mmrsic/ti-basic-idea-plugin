@@ -11,6 +11,12 @@ class TiBasicCallSoundLineMarkerTest : TiBasicTestBase() {
         assertEquals("Exactly one gutter icon must appear for playable CALL SOUND", 1, gutters.size)
     }
 
+    fun `test gutter icon appears for CALL SOUND with negative duration`() {
+        configureFile("100 CALL SOUND(-99,440,2)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals("Exactly one gutter icon must appear for playable CALL SOUND", 1, gutters.size)
+    }
+
     fun `test gutter icon tooltip contains resolved tone values`() {
         configureFile("100 CALL SOUND(100,440,2)")
         val gutters = myFixture.findAllGutters()
