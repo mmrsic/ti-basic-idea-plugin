@@ -826,10 +826,6 @@ class TiBasicAnnotator : Annotator {
             holder.error("Incorrect statement", statement)
             return
         }
-        if (expression.hasLeadingUnaryPlusOperand()) {
-            holder.error(INCORRECT_STATEMENT_RUNTIME_ERROR, expression)
-            return
-        }
         val isStringVar = varAccessNode.firstChildType == TiBasicTokenTypes.STRING_VARIABLE
         val isStringExpr = isStringExpression(expression)
         if (isStringVar != isStringExpr) {
@@ -1630,11 +1626,6 @@ private data class ExpressionSyntaxResult(
     val nextIndex: Int,
     val invalidRange: TextRange? = null,
 )
-
-private fun TiBasicExpression.hasLeadingUnaryPlusOperand(): Boolean {
-    val children = node.nonWhitespaceChildren
-    return children.size > 1 && children.firstOrNull()?.elementType == TiBasicTokenTypes.PLUS_OP
-}
 
 private val FILE_NUMBER_RANGE = 1..255
 

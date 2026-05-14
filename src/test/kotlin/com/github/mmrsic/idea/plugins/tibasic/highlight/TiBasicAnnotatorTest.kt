@@ -1032,6 +1032,11 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testNoErrorForImplicitLetWithUnaryPlusAssignmentToAtVariable() {
+        configureFile("10 @1=+1")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testNoErrorForImplicitLetWithNestedArraySubscriptExpression() {
         configureFile("1100 C(D(1),2)=1")
         myFixture.checkHighlighting(true, false, false)
@@ -1113,17 +1118,13 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForImplicitLetWithUnaryPlusOperand() {
-        configureFile(
-            "160 XDIR=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">+5</error>",
-        )
+    fun testNoErrorForImplicitLetWithUnaryPlusOperand() {
+        configureFile("160 XDIR=+5")
         myFixture.checkHighlighting(true, false, false)
     }
 
-    fun testErrorForExplicitLetWithUnaryPlusOperand() {
-        configureFile(
-            "160 LET XDIR=<error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">+5</error>",
-        )
+    fun testNoErrorForExplicitLetWithUnaryPlusOperand() {
+        configureFile("160 LET XDIR=+5")
         myFixture.checkHighlighting(true, false, false)
     }
 

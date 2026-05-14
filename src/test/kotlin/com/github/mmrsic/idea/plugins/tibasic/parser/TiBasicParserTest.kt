@@ -1109,6 +1109,15 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertEquals(1, stmts.size)
     }
 
+    fun testImplicitLetWithUnaryPlusAssignmentToAtVariableProducesLetStatement() {
+        val file = parseCode("10 @1=+1")
+        val line = file.children.filterIsInstance<TiBasicLine>()[0]
+        val statement = line.children.filterIsInstance<TiBasicLetStatement>()[0]
+        assertEquals(1, line.children.filterIsInstance<TiBasicLetStatement>().size)
+        assertEquals(0, line.children.filterIsInstance<TiBasicUnknownStatement>().size)
+        assertEquals("+1", statement.children.filterIsInstance<TiBasicExpression>()[0].text)
+    }
+
     fun testImplicitLetWithNestedParensInSubscriptProducesLetStatement() {
         val file = parseCode("100 FELD$(1,FZ(F))=A$")
         val line = file.children.filterIsInstance<TiBasicLine>()[0]
