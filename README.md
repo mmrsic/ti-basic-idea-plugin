@@ -295,8 +295,8 @@ The annotator inspects every file and highlights:
   string literal (e.g. `42` or `"HELLO"`)
 - **TI Basic Character Definitions tool window** — a dockable bottom panel listing all statically resolvable
   `CALL CHAR` definitions in the active TI-Basic file in a sortable table with columns Code, ASCII, Pattern, Icon, and Line;
-  visually identical entries are collapsed, so a repeated pattern with the same derived foreground/background colors is
-  shown only once;
+  entries stay grouped by their actual character code even when multiple codes share the same pattern and the same derived
+  foreground/background colors;
   besides direct literals, simple constant variables, and simple statically resolvable numeric code expressions,
   the table also includes definitions that can be traced
   statically through `READ`/`DATA` statements (including `RESTORE`) and through simple statically resolvable

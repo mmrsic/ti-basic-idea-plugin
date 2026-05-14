@@ -32,8 +32,12 @@ fun PsiElement.lineNumberReferenceNodes(): List<ASTNode> = when (this) {
 
     is TiBasicLineNumberListStatement,
     is TiBasicGotoStatement,
-    is TiBasicGosubStatement,
-    is TiBasicRestoreStatement -> node.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
+    is TiBasicGosubStatement -> node.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
+
+    is TiBasicRestoreStatement -> recordNumberExpr()
+        ?.node
+        ?.childrenOfType(TiBasicTokenTypes.NUMERIC_LITERAL)
+        .orEmpty()
 
     else -> emptyList()
 }

@@ -557,6 +557,11 @@ class TiBasicParser : PsiParser, LightPsiParser {
         if (builder.tokenType == HASH) {
             parseRestoreFileBody(builder)
         } else {
+            if (isExpressionStart(builder)) {
+                val exprMarker = builder.mark()
+                parseNumericCmp(builder)
+                exprMarker.done(EXPRESSION)
+            }
             while (!isLineEnd(builder)) builder.advanceLexer()
         }
         stmtMarker.done(RESTORE_STATEMENT)

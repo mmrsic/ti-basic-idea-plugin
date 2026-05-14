@@ -97,7 +97,7 @@ class TiBasicCharacterDefinitionsToolWindowContentTest : TiBasicTestBase() {
         )
     }
 
-    fun `test repeated visual character definitions are shown only once`() {
+    fun `test repeated visual character definitions keep separate codes`() {
         val content = TiBasicCharacterDefinitionsToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
 
@@ -111,7 +111,13 @@ class TiBasicCharacterDefinitionsToolWindowContentTest : TiBasicTestBase() {
         )
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals(listOf(65 to "FF00000000000000"), displayedDefinitions(content))
+        assertEquals(
+            listOf(
+                65 to "FF00000000000000",
+                66 to "FF00000000000000",
+            ),
+            displayedDefinitions(content),
+        )
     }
 
     fun `test icon renderer creates one label per displayed icon`() {

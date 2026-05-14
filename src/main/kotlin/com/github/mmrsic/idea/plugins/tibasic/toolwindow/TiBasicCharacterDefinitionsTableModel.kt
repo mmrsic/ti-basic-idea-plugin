@@ -76,11 +76,6 @@ internal data class TiBasicCharacterDefinitionEntry(
     val icons: TiBasicCharacterIcons,
 )
 
-private data class TiBasicCharacterVisualSignature(
-    val pattern: String,
-    val colorVariants: Set<TiBasicCharacterColorVariant>,
-)
-
 internal fun buildCharacterDefinitionEntries(
     definitions: List<TiBasicCallCharDefinition>,
     colorAssignments: List<TiBasicCallColorAssignment>,
@@ -103,11 +98,5 @@ internal fun buildCharacterDefinitionEntries(
                         .distinctBy { variant -> variant.fg to variant.bg }
                         .toList(),
                 ),
-            )
-        }
-        .distinctBy { entry ->
-            TiBasicCharacterVisualSignature(
-                pattern = entry.pattern,
-                colorVariants = entry.icons.colorVariants.toSet(),
             )
         }

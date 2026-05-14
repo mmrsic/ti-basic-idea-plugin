@@ -1794,7 +1794,7 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
             .children.filterIsInstance<TiBasicRestoreStatement>()[0]
         assertFalse(stmt.isFileRestore())
         assertNull(stmt.fileNumberExpr())
-        assertNull(stmt.recordNumberExpr())
+        assertEquals("200", stmt.recordNumberExpr()?.text)
     }
 
     fun testPrintWithTabFunctionCreatesTabFunction() {
@@ -1990,4 +1990,3 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
 
     private fun parseCode(code: String): TiBasicFile = createPsiFile("test", code) as TiBasicFile
 }
-

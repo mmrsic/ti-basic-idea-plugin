@@ -58,10 +58,12 @@ class TiBasicRestoreStatement(node: ASTNode) : TiBasicRecordNumberStatement, AST
 
     override fun recKeywordNode(): ASTNode? = node.firstChildOfType(TiBasicTokenTypes.REC_KEYWORD)
 
-    override fun recordNumberExpr(): TiBasicExpression? {
-        if (recKeywordNode() == null) return null
-        return node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(1)?.psi as? TiBasicExpression
-    }
+    override fun recordNumberExpr(): TiBasicExpression? =
+        when {
+            recKeywordNode() != null -> node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(1)?.psi as? TiBasicExpression
+            isFileRestore() -> null
+            else -> node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(0)?.psi as? TiBasicExpression
+        }
 
     fun isFileRestore(): Boolean =
         node.firstChildOfType(TiBasicTokenTypes.HASH) != null
@@ -98,4 +100,3 @@ class TiBasicCloseStatement(node: ASTNode) : TiBasicFileNumberStatement, ASTWrap
 
     fun hasDeleteModifier(): Boolean = node.firstChildOfType(TiBasicTokenTypes.DELETE_KEYWORD) != null
 }
-

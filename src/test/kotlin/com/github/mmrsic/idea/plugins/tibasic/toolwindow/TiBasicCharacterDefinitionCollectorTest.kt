@@ -90,6 +90,42 @@ class TiBasicCharacterDefinitionCollectorTest : TiBasicTestBase() {
         assertEquals(listOf(120, 170, 140), definitions.map { it.lineNumber })
     }
 
+    fun `test collector resets READ DATA source to targeted RESTORE line`() {
+        val file = configureFile(
+            """
+            180 DATA AAAAAAAAAAAAAAAA,BBBBBBBBBBBBBBBB,CCCCCCCCCCCCCCCC
+            190 DATA DDDDDDDDDDDDDDDD,EEEEEEEEEEEEEEEE,FFFFFFFFFFFFFFFF
+            470 DATA 1111111111111111,2222222222222222,3333333333333333
+            480 DATA 4444444444444444,5555555555555555,6666666666666666
+            210 RESTORE 180
+            220 FOR I=97 TO 99
+            230 READ A$
+            240 CALL CHAR(I,A$)
+            250 NEXT I
+            490 RESTORE 470
+            500 FOR I=48 TO 50
+            510 READ A$
+            520 CALL CHAR(I,A$)
+            530 NEXT I
+            """.trimIndent(),
+        )
+
+        val definitions = collectCallCharDefinitions(file)
+
+        assertEquals(listOf(48, 49, 50, 97, 98, 99), definitions.map { it.code })
+        assertEquals(
+            listOf(
+                "1111111111111111",
+                "2222222222222222",
+                "3333333333333333",
+                "AAAAAAAAAAAAAAAA",
+                "BBBBBBBBBBBBBBBB",
+                "CCCCCCCCCCCCCCCC",
+            ),
+            definitions.map { it.pattern },
+        )
+    }
+
     fun `test collector repeats READ DATA character definitions across FOR NEXT iterations`() {
         val file = configureFile(
             """

@@ -526,15 +526,28 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun annotateLineNumber(contentNodes: List<ASTNode>, holder: AnnotationHolder, statement: PsiElement) {
-        if (contentNodes.size != 1 || contentNodes[0].elementType != TiBasicTokenTypes.NUMERIC_LITERAL) {
+        val lineNumberNode = extractSingleLineNumberNode(contentNodes)
+        if (lineNumberNode == null) {
             holder.error("Incorrect statement", statement)
             return
         }
-        val lineNumberNode = contentNodes[0]
         val lineNumber = lineNumberNode.text.toLongOrNull()?.toInt()
         val definedLineNumbers = statement.containingTiBasicFile
             ?.lines()?.map { it.lineNumber() }?.filter { it in VALID_LINE_NUMBER_RANGE }?.toSet()
         validateLineNumberExists(lineNumberNode, lineNumber, definedLineNumbers, holder)
+    }
+
+    private fun extractSingleLineNumberNode(contentNodes: List<ASTNode>): ASTNode? {
+        if (contentNodes.size != 1) return null
+        val node = contentNodes.single()
+        return when (node.elementType) {
+            TiBasicTokenTypes.NUMERIC_LITERAL -> node
+            TiBasicNodeTypes.EXPRESSION -> node
+                .nonWhitespaceChildren
+                .singleOrNull()
+                ?.takeIf { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
+            else -> null
+        }
     }
 
     private fun annotateForStatement(statement: TiBasicForStatement, holder: AnnotationHolder) {

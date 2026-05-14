@@ -208,8 +208,8 @@ element type is `NUMERIC_LITERAL` or `STRING_LITERAL`.
 ## Character definitions tool window (tibasic.toolwindow)
 
 The Character Definitions tool window lists all statically resolvable `CALL CHAR`
-definitions in the active TI-Basic file. Visually identical definitions are collapsed
-into one table row when they share the same normalized pattern and the same derived
+definitions in the active TI-Basic file. Definitions remain separate per character
+code, even when multiple codes share the same normalized pattern and the same derived
 foreground/background color variants.
 
 ### Shared static call traversal and collectors
