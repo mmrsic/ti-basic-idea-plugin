@@ -51,12 +51,53 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertEquals(listOf("A"), displayedVariableNames(content))
     }
 
+    fun `test array rows display dimensions and option base`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 OPTION BASE 1\n200 DIM A(10,10,10)\n300 LET A(1,1,1)=5")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("10,10,10", displayedValue(content, "A", "Array Declaration", DIMENSIONS_COLUMN))
+        assertEquals("1", displayedValue(content, "A", "Array Declaration", BASE_COLUMN))
+        assertEquals(listOf(200), displayedOccurrences(content, "A", "Array Declaration", DIM_LINE_COLUMN).map { it.lineNumber })
+        assertEquals("10,10,10", displayedValue(content, "A", "Numeric Array", DIMENSIONS_COLUMN))
+        assertEquals("1", displayedValue(content, "A", "Numeric Array", BASE_COLUMN))
+        assertTrue(displayedOccurrences(content, "A", "Numeric Array", DIM_LINE_COLUMN).isEmpty())
+    }
+
     private fun displayedVariableNames(content: TiBasicVariableToolWindowContent): List<String> {
-        val tableModelField = TiBasicVariableToolWindowContent::class.java.getDeclaredField("tableModel")
-        tableModelField.isAccessible = true
-        val tableModel = tableModelField.get(content) as TiBasicVariableTableModel
+        val tableModel = tableModel(content)
         return (0 until tableModel.rowCount).map { row ->
             tableModel.getValueAt(row, 0) as String
         }
+    }
+
+    private fun displayedValue(
+        content: TiBasicVariableToolWindowContent,
+        name: String,
+        type: String,
+        column: Int,
+    ): Any? {
+        val tableModel = tableModel(content)
+        val row = (0 until tableModel.rowCount).first { rowIndex ->
+            tableModel.getValueAt(rowIndex, 0) == name && tableModel.getValueAt(rowIndex, 1) == type
+        }
+        return tableModel.getValueAt(row, column)
+    }
+
+    private fun displayedOccurrences(
+        content: TiBasicVariableToolWindowContent,
+        name: String,
+        type: String,
+        column: Int,
+    ): List<TiBasicVariableOccurrence> =
+        (displayedValue(content, name, type, column) as? List<*>)
+            ?.filterIsInstance<TiBasicVariableOccurrence>()
+            ?: emptyList()
+
+    private fun tableModel(content: TiBasicVariableToolWindowContent): TiBasicVariableTableModel {
+        val tableModelField = TiBasicVariableToolWindowContent::class.java.getDeclaredField("tableModel")
+        tableModelField.isAccessible = true
+        return tableModelField.get(content) as TiBasicVariableTableModel
     }
 }

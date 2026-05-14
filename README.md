@@ -288,11 +288,15 @@ The annotator inspects every file and highlights:
 - **Reformat Code** (Ctrl+Alt+L) — the standard IDEA "Reformat Code" action is mapped to **Format TI-BASIC** for
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file
-  in a sortable table with columns Name, Type, Writes, Reads, and Const; the Writes and Reads columns show clickable
-  line numbers that navigate to the selected occurrence in the editor; the table refreshes automatically on every
-  document change; the **Const** column shows the effective constant value for scalar numeric and string variables —
-  `0` or `""` for variables that are never written, or the shared literal value if all writes use the same numeric or
-  string literal (e.g. `42` or `"HELLO"`)
+  in a sortable table with columns Name, Type, Dimensions, Base, DIM, Writes, Reads, and Const; the Dimensions and
+  Base columns show the effective array size and `OPTION BASE` value for array declarations and array usages,
+  including implicit arrays with the TI-Basic default dimension size `10`; the **DIM** column shows the DIM statement
+  line number for array declaration rows and is clickable like the other line-number columns; the Writes and Reads
+  columns show clickable line numbers that navigate to the selected occurrence in the editor; the table refreshes
+  automatically on every document change; the **Const**
+  column shows the effective constant value for scalar numeric and string variables — `0` or `""` for variables that
+  are never written, or the shared literal value if all writes use the same numeric or string literal (e.g. `42` or
+  `"HELLO"`)
 - **TI Basic Character Definitions tool window** — a dockable bottom panel listing all statically resolvable
   `CALL CHAR` definitions in the active TI-Basic file in a sortable table with columns Code, ASCII, Pattern, Icon, and Line;
   entries stay grouped by their actual character code even when multiple codes share the same pattern and the same derived

@@ -35,10 +35,14 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
                 ?.minOfOrNull { occ -> occ.lineNumber }
                 ?: Int.MAX_VALUE
         }
+        sorter.setComparator(DIM_LINE_COLUMN, lineNumberComparator)
         sorter.setComparator(WRITES_COLUMN, lineNumberComparator)
         sorter.setComparator(READS_COLUMN, lineNumberComparator)
         table.rowSorter = sorter
         sorter.sortKeys = listOf(RowSorter.SortKey(0, SortOrder.ASCENDING))
+        table.columnModel.getColumn(DIMENSIONS_COLUMN).preferredWidth = 90
+        table.columnModel.getColumn(BASE_COLUMN).preferredWidth = 45
+        table.columnModel.getColumn(DIM_LINE_COLUMN).preferredWidth = 45
         table.columnModel.getColumn(CONST_COLUMN).preferredWidth = 70
         table.addMouseListener(LineNumberClickHandler())
         table.selectionModel.addListSelectionListener { event ->
@@ -92,7 +96,7 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
         override fun mouseClicked(e: MouseEvent) {
             val row = table.rowAtPoint(e.point)
             val col = table.columnAtPoint(e.point)
-            if (row < 0 || col !in WRITES_COLUMN..READS_COLUMN) return
+            if (row < 0 || col !in DIM_LINE_COLUMN..READS_COLUMN) return
 
             val cellRect = table.getCellRect(row, col, false)
             val relX = e.x - cellRect.x

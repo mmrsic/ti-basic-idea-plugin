@@ -163,11 +163,24 @@ in the active TI-Basic file. It refreshes automatically after every committed do
 
 ### Data model
 
-| Class                       | Responsibility                                                                                                                                                                  |
-|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TiBasicVariableOccurrence` | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), `writtenConstant` (literal value if the write is a bare literal in a LET statement, else `null`) |
-| `TiBasicVariableEntry`      | Aggregated entry: `name`, `type`, `occurrences`; derived properties: `reads`, `writes`, `lineNumbers`, `constValue`                                                             |
-| `TiBasicVariableType`       | Enum: NUMERIC, STRING, NUMERIC_ARRAY, STRING_ARRAY, DIM_DECLARATION, USER_FUNCTION                                                                                              |
+| Class                       | Responsibility                                                                                                                                                                      |
+|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TiBasicVariableOccurrence` | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), `writtenConstant` (literal value if the write is a bare literal in a LET statement, else `null`)     |
+| `TiBasicVariableEntry`      | Aggregated entry: `name`, `type`, `occurrences`, optional `arrayDetails`; derived properties: `reads`, `writes`, `lineNumbers`, `dimensions`, `optionBase`, `dimLine`, `constValue` |
+| `TiBasicArrayDetails`       | Effective array metadata: declared or implicit dimension list plus the active `OPTION BASE` value                                                                                   |
+| `TiBasicVariableType`       | Enum: NUMERIC, STRING, NUMERIC_ARRAY, STRING_ARRAY, DIM_DECLARATION, USER_FUNCTION                                                                                                  |
+
+### Array metadata
+
+`TiBasicVariableCollector` resolves array metadata once per file and attaches it to
+both DIM declaration rows and array usage rows:
+
+- **Explicit DIM**: the displayed dimension list comes from the DIM subscript expressions.
+- **DIM line**: DIM declaration rows also expose the declaring line number.
+- **Implicit arrays**: each used dimension defaults to `10`, so `A(1,2,3)` displays
+  `10,10,10`.
+- **OPTION BASE**: uses the first valid `OPTION BASE` statement value (`0` or `1`);
+  if none is present, the default is `0`.
 
 ### Const-value detection
 
@@ -197,13 +210,16 @@ element type is `NUMERIC_LITERAL` or `STRING_LITERAL`.
 | `TiBasicExpression` inside `TiBasicCallStatement` | WRITE for the third `GCHAR` argument and the second/third `KEY`/`JOYST` arguments; READ otherwise   |
 | any other parent                                  | READ                                                                                                |
 
-| Index             | Name   | Content                                                                      |
-|-------------------|--------|------------------------------------------------------------------------------|
-| 0                 | Name   | Variable name                                                                |
-| 1                 | Type   | `TiBasicVariableType.displayName`                                            |
-| 2 (WRITES_COLUMN) | Writes | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
-| 3 (READS_COLUMN)  | Reads  | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
-| 4 (CONST_COLUMN)  | Const  | `String?` — constant value or empty                                          |
+| Index                   | Name       | Content                                                                      |
+|-------------------------|------------|------------------------------------------------------------------------------|
+| 0                       | Name       | Variable name                                                                |
+| 1                       | Type       | `TiBasicVariableType.displayName`                                            |
+| 2 (DIMENSIONS_COLUMN)   | Dimensions | `String?` — comma-separated array dimension sizes or empty                   |
+| 3 (BASE_COLUMN)         | Base       | `String?` — effective `OPTION BASE` (`0` or `1`) or empty                    |
+| 4 (DIM_LINE_COLUMN)     | DIM        | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badge  |
+| 5 (WRITES_COLUMN)       | Writes     | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
+| 6 (READS_COLUMN)        | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
+| 7 (CONST_COLUMN)        | Const      | `String?` — constant value or empty                                          |
 
 ## Character definitions tool window (tibasic.toolwindow)
 

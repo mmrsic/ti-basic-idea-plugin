@@ -48,8 +48,11 @@ class TiBasicVariableAccess(node: ASTNode) : ASTWrapperPsiElement(node), PsiName
     fun hasClosingSubscriptParen(): Boolean =
         node.firstChildOfType(TiBasicTokenTypes.RPAREN) != null
 
+    fun subscriptExpressions(): List<TiBasicExpression> =
+        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).map { it.psi as TiBasicExpression }
+
     fun subscriptDimCount(): Int =
-        node.childrenOfType(TiBasicNodeTypes.EXPRESSION).size
+        subscriptExpressions().size
 }
 
 class TiBasicFunctionCall(node: ASTNode) : ASTWrapperPsiElement(node) {

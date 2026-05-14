@@ -21,13 +21,17 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
+private const val DEFAULT_ARRAY_DIMENSION = 10
+private const val DEFAULT_OPTION_BASE = 0
+
 object TiBasicVariableCollector {
 
     fun collect(file: TiBasicFile): List<TiBasicVariableEntry> {
+        val arrayDetailsByName = collectArrayDetailsByName(file)
         val result = mutableListOf<TiBasicVariableEntry>()
-        result += collectDimDeclarations(file)
+        result += collectDimDeclarations(file, arrayDetailsByName)
         result += collectUserFunctions(file)
-        result += collectRegularVariables(file)
+        result += collectRegularVariables(file, arrayDetailsByName)
         return result.sortedWith(compareBy({ it.name }, { it.type.ordinal }))
     }
 
@@ -36,7 +40,10 @@ object TiBasicVariableCollector {
             CachedValueProvider.Result.create(collect(file), file)
         }
 
-    private fun collectDimDeclarations(file: TiBasicFile): List<TiBasicVariableEntry> =
+    private fun collectDimDeclarations(
+        file: TiBasicFile,
+        arrayDetailsByName: Map<String, TiBasicArrayDetails>,
+    ): List<TiBasicVariableEntry> =
         file.dimStatements().flatMap { dimStmt ->
             dimStmt.dimVariableAccesses().mapNotNull { varAccess ->
                 val name = varAccess.node.firstChildNode?.text?.uppercase() ?: return@mapNotNull null
@@ -45,6 +52,7 @@ object TiBasicVariableCollector {
                     name = name,
                     type = TiBasicVariableType.DIM_DECLARATION,
                     occurrences = listOf(TiBasicVariableOccurrence(line.lineNumber(), varAccess.textOffset, AccessType.NONE)),
+                    arrayDetails = arrayDetailsByName[name],
                 )
             }
         }
@@ -61,7 +69,10 @@ object TiBasicVariableCollector {
             )
         }
 
-    private fun collectRegularVariables(file: TiBasicFile): List<TiBasicVariableEntry> {
+    private fun collectRegularVariables(
+        file: TiBasicFile,
+        arrayDetailsByName: Map<String, TiBasicArrayDetails>,
+    ): List<TiBasicVariableEntry> {
         val dimAccesses = file.dimStatements().flatMap { it.dimVariableAccesses() }.toSet()
         val grouped = mutableMapOf<Pair<String, TiBasicVariableType>, MutableList<TiBasicVariableOccurrence>>()
 
@@ -87,8 +98,44 @@ object TiBasicVariableCollector {
         }
 
         return grouped.map { (key, occurrences) ->
-            TiBasicVariableEntry(key.first, key.second, occurrences.sortedBy { it.lineNumber })
+            TiBasicVariableEntry(
+                name = key.first,
+                type = key.second,
+                occurrences = occurrences.sortedBy { it.lineNumber },
+                arrayDetails = if (key.second in ARRAY_VARIABLE_TYPES) arrayDetailsByName[key.first] else null,
+            )
         }
+    }
+
+    private fun collectArrayDetailsByName(file: TiBasicFile): Map<String, TiBasicArrayDetails> {
+        val dimAccesses = file.dimStatements().flatMap { it.dimVariableAccesses() }.toSet()
+        val optionBase = file.optionBaseStatements()
+            .firstNotNullOfOrNull { it.optionBaseValue() }
+            ?: DEFAULT_OPTION_BASE
+        val explicitDetailsByName = dimAccesses
+            .mapNotNull { varAccess ->
+                val name = varAccess.node.firstChildNode?.text?.uppercase() ?: return@mapNotNull null
+                name to TiBasicArrayDetails(
+                    dimensions = varAccess.subscriptExpressions().map { it.text },
+                    optionBase = optionBase,
+                )
+            }
+            .toMap()
+        val implicitDetailsByName = file.variableAccesses()
+            .filter { it.hasSubscriptParens() }
+            .filterNot { it in dimAccesses }
+            .mapNotNull { varAccess ->
+                val name = varAccess.node.firstChildNode?.text?.uppercase() ?: return@mapNotNull null
+                if (name in explicitDetailsByName) return@mapNotNull null
+                val dimCount = varAccess.subscriptDimCount()
+                if (dimCount == 0) return@mapNotNull null
+                name to TiBasicArrayDetails(
+                    dimensions = List(dimCount) { DEFAULT_ARRAY_DIMENSION.toString() },
+                    optionBase = optionBase,
+                )
+            }
+            .toMap()
+        return explicitDetailsByName + implicitDetailsByName
     }
 
     internal fun determineAccessType(varAccess: TiBasicVariableAccess): AccessType =
@@ -148,3 +195,8 @@ object TiBasicVariableCollector {
         return null
     }
 }
+
+private val ARRAY_VARIABLE_TYPES: Set<TiBasicVariableType> = setOf(
+    TiBasicVariableType.NUMERIC_ARRAY,
+    TiBasicVariableType.STRING_ARRAY,
+)

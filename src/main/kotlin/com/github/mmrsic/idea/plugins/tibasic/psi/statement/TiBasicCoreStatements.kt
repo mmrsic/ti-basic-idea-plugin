@@ -22,6 +22,7 @@ private val DATA_ITEM_TYPES: Set<IElementType> = setOf(
     TiBasicTokenTypes.STRING_LITERAL,
     TiBasicTokenTypes.PRINT_ARGUMENT,
 )
+private val VALID_OPTION_BASE_VALUES: Set<Int> = setOf(0, 1)
 
 class TiBasicDefStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
     fun functionNameNode(): ASTNode? =
@@ -149,4 +150,11 @@ class TiBasicDimStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
         node.childrenOfType(TiBasicNodeTypes.VARIABLE_ACCESS).map { it.psi as TiBasicVariableAccess }
 }
 
-class TiBasicOptionBaseStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+class TiBasicOptionBaseStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun optionBaseValue(): Int? =
+        node.nonWhitespaceChildren
+            .firstOrNull { it.elementType != TiBasicTokenTypes.OPTION_BASE_KEYWORD }
+            ?.text
+            ?.toIntOrNull()
+            ?.takeIf { it in VALID_OPTION_BASE_VALUES }
+}

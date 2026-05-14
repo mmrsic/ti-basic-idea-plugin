@@ -577,9 +577,12 @@ Delegates to `TiBasicVariableCollector.determineAccessType` for the classificati
 | `factoryClass` | `tibasic.toolwindow.TiBasicVariableToolWindowFactory` |
 
 Provides a dockable bottom panel that lists all variables in the currently active TI-Basic
-file in a sortable table (columns: Name, Type, Writes, Reads, Lines). Clicking any line
-number in the Writes, Reads, or Lines column navigates the editor to that line.
-The table refreshes automatically on every document edit and whenever the active file changes.
+file in a sortable table (columns: Name, Type, Dimensions, Base, DIM, Writes, Reads,
+Const). The Dimensions and Base columns show effective array metadata for DIM
+declarations and implicit or explicit array usages. The DIM column shows the declaration
+line number for `Array Declaration` rows. Clicking any line number in the DIM, Writes,
+or Reads column navigates the editor to that line. The table refreshes automatically on
+every document edit and whenever the active file changes.
 
 ---
 

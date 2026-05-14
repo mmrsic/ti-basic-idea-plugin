@@ -120,6 +120,10 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         assertEquals(100, dimEntry.occurrences.single().lineNumber)
         assertEquals(0, dimEntry.reads)
         assertEquals(0, dimEntry.writes)
+        assertEquals("10", dimEntry.dimensions)
+        assertEquals("0", dimEntry.optionBase)
+        assertEquals("100", dimEntry.dimLine)
+        assertEquals(listOf(100), dimEntry.dimOccurrences.map { it.lineNumber })
     }
 
     fun `test DIM and usage create two separate entries`() {
@@ -129,6 +133,12 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val usageEntry = entries.single { it.type == TiBasicVariableType.NUMERIC_ARRAY }
         assertEquals("A", dimEntry.name)
         assertEquals("A", usageEntry.name)
+        assertEquals("100", dimEntry.dimLine)
+        assertEquals(listOf(100), dimEntry.dimOccurrences.map { it.lineNumber })
+        assertEquals("10", usageEntry.dimensions)
+        assertEquals("0", usageEntry.optionBase)
+        assertNull(usageEntry.dimLine)
+        assertTrue(usageEntry.dimOccurrences.isEmpty())
     }
 
     fun `test DEF creates USER_FUNCTION entry without access counts`() {
@@ -152,6 +162,31 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A$" && it.type == TiBasicVariableType.STRING_ARRAY }
         assertEquals(1, entry.writes)
+        assertEquals("10", entry.dimensions)
+        assertEquals("0", entry.optionBase)
+    }
+
+    fun `test explicit array dimension and OPTION BASE are shown on array entries`() {
+        val file = configureFile("100 OPTION BASE 1\n200 DIM A(10,10,10)\n300 LET A(1,1,1)=5")
+        val entries = TiBasicVariableCollector.collect(file)
+        val dimEntry = entries.single { it.name == "A" && it.type == TiBasicVariableType.DIM_DECLARATION }
+        val arrayEntry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC_ARRAY }
+        assertEquals("10,10,10", dimEntry.dimensions)
+        assertEquals("1", dimEntry.optionBase)
+        assertEquals("200", dimEntry.dimLine)
+        assertEquals(listOf(200), dimEntry.dimOccurrences.map { it.lineNumber })
+        assertEquals("10,10,10", arrayEntry.dimensions)
+        assertEquals("1", arrayEntry.optionBase)
+        assertNull(arrayEntry.dimLine)
+        assertTrue(arrayEntry.dimOccurrences.isEmpty())
+    }
+
+    fun `test implicit multidimensional array uses default dimensions and base`() {
+        val file = configureFile("100 LET A(1,2,3)=5")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC_ARRAY }
+        assertEquals("10,10,10", entry.dimensions)
+        assertEquals("0", entry.optionBase)
     }
 
     fun `test multiple occurrences on different lines are all recorded`() {
