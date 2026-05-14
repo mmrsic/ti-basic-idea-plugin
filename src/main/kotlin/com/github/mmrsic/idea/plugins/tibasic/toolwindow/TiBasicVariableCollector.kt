@@ -27,34 +27,16 @@ private const val DEFAULT_OPTION_BASE = 0
 object TiBasicVariableCollector {
 
     fun collect(file: TiBasicFile): List<TiBasicVariableEntry> {
-        val arrayDetailsByName = collectArrayDetailsByName(file)
+        val arrayMetadataByKey = collectArrayMetadataByKey(file)
         val result = mutableListOf<TiBasicVariableEntry>()
-        result += collectDimDeclarations(file, arrayDetailsByName)
         result += collectUserFunctions(file)
-        result += collectRegularVariables(file, arrayDetailsByName)
+        result += collectRegularVariables(file, arrayMetadataByKey)
         return result.sortedWith(compareBy({ it.name }, { it.type.ordinal }))
     }
 
     fun collectCached(file: TiBasicFile): List<TiBasicVariableEntry> =
         CachedValuesManager.getCachedValue(file) {
             CachedValueProvider.Result.create(collect(file), file)
-        }
-
-    private fun collectDimDeclarations(
-        file: TiBasicFile,
-        arrayDetailsByName: Map<String, TiBasicArrayDetails>,
-    ): List<TiBasicVariableEntry> =
-        file.dimStatements().flatMap { dimStmt ->
-            dimStmt.dimVariableAccesses().mapNotNull { varAccess ->
-                val name = varAccess.node.firstChildNode?.text?.uppercase() ?: return@mapNotNull null
-                val line = varAccess.containingTiBasicLine() ?: return@mapNotNull null
-                TiBasicVariableEntry(
-                    name = name,
-                    type = TiBasicVariableType.DIM_DECLARATION,
-                    occurrences = listOf(TiBasicVariableOccurrence(line.lineNumber(), varAccess.textOffset, AccessType.NONE)),
-                    arrayDetails = arrayDetailsByName[name],
-                )
-            }
         }
 
     private fun collectUserFunctions(file: TiBasicFile): List<TiBasicVariableEntry> =
@@ -71,10 +53,10 @@ object TiBasicVariableCollector {
 
     private fun collectRegularVariables(
         file: TiBasicFile,
-        arrayDetailsByName: Map<String, TiBasicArrayDetails>,
+        arrayMetadataByKey: Map<VariableEntryKey, TiBasicArrayMetadata>,
     ): List<TiBasicVariableEntry> {
         val dimAccesses = file.dimStatements().flatMap { it.dimVariableAccesses() }.toSet()
-        val grouped = mutableMapOf<Pair<String, TiBasicVariableType>, MutableList<TiBasicVariableOccurrence>>()
+        val grouped = mutableMapOf<VariableEntryKey, MutableList<TiBasicVariableOccurrence>>()
 
         for (varAccess in file.variableAccesses()) {
             if (varAccess in dimAccesses) continue
@@ -83,59 +65,86 @@ object TiBasicVariableCollector {
 
             val name = nameNode.text.uppercase()
             val isArray = varAccess.hasSubscriptParens()
-            val type = when {
-                nameNode.elementType == TiBasicTokenTypes.STRING_VARIABLE && isArray -> TiBasicVariableType.STRING_ARRAY
-                nameNode.elementType == TiBasicTokenTypes.STRING_VARIABLE -> TiBasicVariableType.STRING
-                isArray -> TiBasicVariableType.NUMERIC_ARRAY
-                else -> TiBasicVariableType.NUMERIC
-            }
+            val type = variableTypeOf(nameNode.elementType, isArray)
 
             val line = varAccess.containingTiBasicLine() ?: continue
             val accessType = determineAccessType(varAccess)
             val writtenConstant = if (accessType == AccessType.WRITE) extractLetConstant(varAccess) else null
             val occurrence = TiBasicVariableOccurrence(line.lineNumber(), nameNode.startOffset, accessType, writtenConstant)
-            grouped.getOrPut(Pair(name, type)) { mutableListOf() }.add(occurrence)
+            grouped.getOrPut(VariableEntryKey(name, type)) { mutableListOf() }.add(occurrence)
         }
 
-        return grouped.map { (key, occurrences) ->
-            TiBasicVariableEntry(
-                name = key.first,
-                type = key.second,
-                occurrences = occurrences.sortedBy { it.lineNumber },
-                arrayDetails = if (key.second in ARRAY_VARIABLE_TYPES) arrayDetailsByName[key.first] else null,
+        val entries = grouped.map { (key, occurrences) ->
+            createVariableEntry(
+                key = key,
+                occurrences = occurrences,
+                arrayMetadata = arrayMetadataByKey[key],
             )
         }
+        val declaredOnlyEntries = arrayMetadataByKey.keys
+            .filterNot(grouped::containsKey)
+            .mapNotNull { key ->
+                key.takeIf { it.type in ARRAY_VARIABLE_TYPES }?.let {
+                    createVariableEntry(
+                        key = key,
+                        occurrences = emptyList(),
+                        arrayMetadata = arrayMetadataByKey[key],
+                    )
+                }
+            }
+        return entries + declaredOnlyEntries
     }
 
-    private fun collectArrayDetailsByName(file: TiBasicFile): Map<String, TiBasicArrayDetails> {
+    private fun createVariableEntry(
+        key: VariableEntryKey,
+        occurrences: List<TiBasicVariableOccurrence>,
+        arrayMetadata: TiBasicArrayMetadata?,
+    ): TiBasicVariableEntry =
+        TiBasicVariableEntry(
+            name = key.name,
+            type = key.type,
+            occurrences = occurrences.sortedBy { it.lineNumber },
+            arrayDetails = arrayMetadata?.details,
+            dimOccurrences = arrayMetadata?.dimOccurrences.orEmpty(),
+        )
+
+    private fun collectArrayMetadataByKey(file: TiBasicFile): Map<VariableEntryKey, TiBasicArrayMetadata> {
         val dimAccesses = file.dimStatements().flatMap { it.dimVariableAccesses() }.toSet()
         val optionBase = file.optionBaseStatements()
             .firstNotNullOfOrNull { it.optionBaseValue() }
             ?: DEFAULT_OPTION_BASE
-        val explicitDetailsByName = dimAccesses
+        val explicitMetadataByKey = dimAccesses
             .mapNotNull { varAccess ->
-                val name = varAccess.node.firstChildNode?.text?.uppercase() ?: return@mapNotNull null
-                name to TiBasicArrayDetails(
-                    dimensions = varAccess.subscriptExpressions().map { it.text },
-                    optionBase = optionBase,
+                val key = variableEntryKey(varAccess) ?: return@mapNotNull null
+                val line = varAccess.containingTiBasicLine() ?: return@mapNotNull null
+                key to TiBasicArrayMetadata(
+                    details = TiBasicArrayDetails(
+                        dimensions = varAccess.subscriptExpressions().map { it.text },
+                        optionBase = optionBase,
+                    ),
+                    dimOccurrences = listOf(
+                        TiBasicVariableOccurrence(line.lineNumber(), varAccess.textOffset, AccessType.NONE),
+                    ),
                 )
             }
-            .toMap()
-        val implicitDetailsByName = file.variableAccesses()
+            .entriesByKey()
+        val implicitMetadataByKey = file.variableAccesses()
             .filter { it.hasSubscriptParens() }
             .filterNot { it in dimAccesses }
             .mapNotNull { varAccess ->
-                val name = varAccess.node.firstChildNode?.text?.uppercase() ?: return@mapNotNull null
-                if (name in explicitDetailsByName) return@mapNotNull null
+                val key = variableEntryKey(varAccess) ?: return@mapNotNull null
+                if (key in explicitMetadataByKey) return@mapNotNull null
                 val dimCount = varAccess.subscriptDimCount()
                 if (dimCount == 0) return@mapNotNull null
-                name to TiBasicArrayDetails(
-                    dimensions = List(dimCount) { DEFAULT_ARRAY_DIMENSION.toString() },
-                    optionBase = optionBase,
+                key to TiBasicArrayMetadata(
+                    details = TiBasicArrayDetails(
+                        dimensions = List(dimCount) { DEFAULT_ARRAY_DIMENSION.toString() },
+                        optionBase = optionBase,
+                    ),
                 )
             }
             .toMap()
-        return explicitDetailsByName + implicitDetailsByName
+        return explicitMetadataByKey + implicitMetadataByKey
     }
 
     internal fun determineAccessType(varAccess: TiBasicVariableAccess): AccessType =
@@ -194,9 +203,47 @@ object TiBasicVariableCollector {
         }
         return null
     }
+
+    private fun variableEntryKey(varAccess: TiBasicVariableAccess): VariableEntryKey? {
+        val nameNode = varAccess.node.firstChildNode ?: return null
+        return VariableEntryKey(
+            name = nameNode.text.uppercase(),
+            type = variableTypeOf(nameNode.elementType, isArray = true),
+        )
+    }
+
+    private fun variableTypeOf(
+        elementType: Any,
+        isArray: Boolean,
+    ): TiBasicVariableType =
+        when {
+            elementType == TiBasicTokenTypes.STRING_VARIABLE && isArray -> TiBasicVariableType.STRING_ARRAY
+            elementType == TiBasicTokenTypes.STRING_VARIABLE -> TiBasicVariableType.STRING
+            isArray -> TiBasicVariableType.NUMERIC_ARRAY
+            else -> TiBasicVariableType.NUMERIC
+        }
 }
 
 private val ARRAY_VARIABLE_TYPES: Set<TiBasicVariableType> = setOf(
     TiBasicVariableType.NUMERIC_ARRAY,
     TiBasicVariableType.STRING_ARRAY,
 )
+
+private data class VariableEntryKey(
+    val name: String,
+    val type: TiBasicVariableType,
+)
+
+private data class TiBasicArrayMetadata(
+    val details: TiBasicArrayDetails,
+    val dimOccurrences: List<TiBasicVariableOccurrence> = emptyList(),
+)
+
+private fun List<Pair<VariableEntryKey, TiBasicArrayMetadata>>.entriesByKey(): Map<VariableEntryKey, TiBasicArrayMetadata> =
+    groupBy({ it.first }, { it.second })
+        .mapValues { (_, metadata) ->
+            TiBasicArrayMetadata(
+                details = metadata.last().details,
+                dimOccurrences = metadata.flatMap { it.dimOccurrences }.sortedBy { it.lineNumber },
+            )
+        }

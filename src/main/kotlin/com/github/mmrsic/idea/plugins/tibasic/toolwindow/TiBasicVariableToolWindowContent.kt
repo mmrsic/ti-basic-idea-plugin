@@ -71,7 +71,7 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
         val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return
         val highlightManager = HighlightManager.getInstance(project)
         val nameLength = entry.name.length
-        for (occ in entry.occurrences) {
+        for (occ in entry.dimOccurrences + entry.occurrences) {
             val attributesKey = if (occ.accessType == AccessType.WRITE)
                 EditorColors.WRITE_SEARCH_RESULT_ATTRIBUTES
             else

@@ -5,6 +5,5 @@ enum class TiBasicVariableType(val displayName: String) {
     STRING("String"),
     NUMERIC_ARRAY("Numeric Array"),
     STRING_ARRAY("String Array"),
-    DIM_DECLARATION("Array Declaration"),
     USER_FUNCTION("User Function"),
 }

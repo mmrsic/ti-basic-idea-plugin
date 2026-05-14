@@ -289,9 +289,10 @@ The annotator inspects every file and highlights:
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file
   in a sortable table with columns Name, Type, Dimensions, Base, DIM, Writes, Reads, and Const; the Dimensions and
-  Base columns show the effective array size and `OPTION BASE` value for array declarations and array usages,
-  including implicit arrays with the TI-Basic default dimension size `10`; the **DIM** column shows the DIM statement
-  line number for array declaration rows and is clickable like the other line-number columns; the Writes and Reads
+  Base columns show the effective array size and `OPTION BASE` value directly on each numeric or string array row,
+  including explicit `DIM` declarations and implicit arrays with the TI-Basic default dimension size `10`; the
+  **DIM** column shows the clickable `DIM` statement line number on that same array row when the array was declared
+  explicitly; the Writes and Reads
   columns show clickable line numbers that navigate to the selected occurrence in the editor; the table refreshes
   automatically on every document change; the **Const**
   column shows the effective constant value for scalar numeric and string variables — `0` or `""` for variables that

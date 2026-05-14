@@ -80,7 +80,8 @@ src/test/kotlin/com/github/mmrsic/idea/plugins/tibasic/
 │   ├── TiBasicOpenCloseParserTest.kt
 │   └── TiBasicParserTest.kt
 └── toolwindow/
-    └── TiBasicVariableCollectorTest.kt
+    ├── TiBasicVariableCollectorTest.kt
+    └── TiBasicVariableToolWindowContentTest.kt
 ```
 
 Each test file is in the same package as the class(es) it tests. `TiBasicTestBase` stays

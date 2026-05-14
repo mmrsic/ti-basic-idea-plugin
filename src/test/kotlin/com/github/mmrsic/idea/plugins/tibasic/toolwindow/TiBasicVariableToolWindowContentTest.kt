@@ -57,12 +57,9 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         myFixture.configureByText("test.tibasic", "100 OPTION BASE 1\n200 DIM A(10,10,10)\n300 LET A(1,1,1)=5")
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals("10,10,10", displayedValue(content, "A", "Array Declaration", DIMENSIONS_COLUMN))
-        assertEquals("1", displayedValue(content, "A", "Array Declaration", BASE_COLUMN))
-        assertEquals(listOf(200), displayedOccurrences(content, "A", "Array Declaration", DIM_LINE_COLUMN).map { it.lineNumber })
         assertEquals("10,10,10", displayedValue(content, "A", "Numeric Array", DIMENSIONS_COLUMN))
         assertEquals("1", displayedValue(content, "A", "Numeric Array", BASE_COLUMN))
-        assertTrue(displayedOccurrences(content, "A", "Numeric Array", DIM_LINE_COLUMN).isEmpty())
+        assertEquals(listOf(200), displayedOccurrences(content, "A", "Numeric Array", DIM_LINE_COLUMN).map { it.lineNumber })
     }
 
     private fun displayedVariableNames(content: TiBasicVariableToolWindowContent): List<String> {

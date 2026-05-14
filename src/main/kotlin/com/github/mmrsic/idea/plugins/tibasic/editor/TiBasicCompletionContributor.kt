@@ -169,7 +169,6 @@ class TiBasicCompletionContributor : CompletionContributor() {
 
                     TiBasicVariableType.NUMERIC_ARRAY,
                     TiBasicVariableType.STRING_ARRAY,
-                    TiBasicVariableType.DIM_DECLARATION,
                         -> VariableCompletion(
                         variable.name + COMPLETION_PARENS,
                         ARRAY_TYPE_TEXT,
