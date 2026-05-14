@@ -133,11 +133,13 @@ PSI tree              (tibasic.psi + subpackages)
     ├──▶ LineMarkerProvider(s)      (tibasic.editor)
     │       Provide gutter icons for CALL CHAR, CALL COLOR, CALL SCREEN, CALL SOUND, and
     │       inbound line references.
-    │       The SOUND provider resolves a single `CALL SOUND(dur,pitch,vol)`
-    │       tone from literals, file-local constant numeric variables, or
-    │       other simple statically resolvable numeric expressions and
-    │       triggers square-wave playback through the shared JVM audio adapter,
-    │       which is intended to work on Linux, macOS, and Windows.
+    │       The SOUND provider resolves `CALL SOUND` arguments from literals,
+    │       file-local constant numeric variables, or other simple statically
+    │       resolvable numeric expressions and maps them to up to three tone
+    │       channels plus an optional SN76489-style noise channel before
+    │       triggering playback through the shared JVM audio adapter. The
+    │       fourth CALL SOUND selector follows the TI-Basic negative noise
+    │       values -1..-8 rather than the SN76489 register bits directly.
     │
     │       TiBasicLineReferenceLineMarkerProvider is triggered on the
     │       LINE_NUMBER leaf token of a TiBasicLine. It uses

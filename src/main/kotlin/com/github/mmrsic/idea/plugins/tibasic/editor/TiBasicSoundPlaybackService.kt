@@ -19,6 +19,14 @@ private const val PCM_CHANNEL_COUNT = 1
 private const val PCM_FRAME_SIZE_BYTES = 2
 private const val MILLISECONDS_PER_SECOND = 1_000
 private const val MAX_PCM_AMPLITUDE = 32_767
+private const val NOISE_SHIFT_REGISTER_BITS = 15
+private const val NOISE_SHIFT_REGISTER_MASK = (1 shl NOISE_SHIFT_REGISTER_BITS) - 1
+private const val INITIAL_NOISE_SHIFT_REGISTER = 1 shl (NOISE_SHIFT_REGISTER_BITS - 1)
+private const val LOW_NOISE_CLOCK_HZ = 1_748.0
+private const val MEDIUM_NOISE_CLOCK_HZ = 3_496.0
+private const val HIGH_NOISE_CLOCK_HZ = 6_991.0
+private const val TONE3_LINKED_NOISE_CLOCK_DIVISOR = 2.0
+private const val NOISE_TONE3_FALLBACK_CLOCK_HZ = HIGH_NOISE_CLOCK_HZ
 private const val SOUND_PLAYBACK_EXECUTOR_NAME = "TI-Basic SOUND playback"
 private const val SOUND_PLAYBACK_NOTIFICATION_GROUP = "TI-Basic"
 private const val SOUND_PLAYBACK_FAILURE_TITLE = "CALL SOUND playback failed"
@@ -86,7 +94,7 @@ internal class TiBasicSoundPlaybackService(
     }
 
     internal fun playSoundNow(playback: TiBasicSoundPlayback) {
-        audioOutput.play(renderSquareWaveAudio(playback))
+        audioOutput.play(renderSoundAudio(playback))
     }
 
     private fun reportPlaybackFailure(project: Project?, exception: Exception) {
@@ -103,42 +111,45 @@ internal class TiBasicSoundPlaybackService(
     }
 }
 
-internal fun renderSquareWaveAudio(playback: TiBasicSoundPlayback): TiBasicPcmAudio {
+internal fun renderSoundAudio(playback: TiBasicSoundPlayback): TiBasicPcmAudio {
     val sampleCount = ((playback.duration.toDouble() * PCM_SAMPLE_RATE_HZ) / MILLISECONDS_PER_SECOND)
         .roundToInt()
         .coerceAtLeast(1)
     val audioBytes = ByteArray(sampleCount * PCM_FRAME_SIZE_BYTES)
     val renderableTones = playback.tones
         .map { tone ->
-            RenderableSoundTone(
-                amplitude = (((MAX_SOUND_VOLUME - tone.volume).toDouble() / MAX_SOUND_VOLUME) * MAX_PCM_AMPLITUDE)
-                    .roundToInt(),
+            RenderableToneChannel(
+                amplitude = resolveAmplitude(tone.volume),
+                pitch = tone.pitch,
                 phaseIncrement = tone.pitch / PCM_SAMPLE_RATE_HZ.toDouble(),
             )
         }
-    val audibleToneCount = renderableTones.count { it.amplitude > 0 }
+    val renderableNoise = playback.noise?.let { noise ->
+        RenderableNoiseChannel(
+            amplitude = resolveAmplitude(noise.volume),
+            type = noise.type,
+            shiftRate = noise.shiftRate,
+            tone3Pitch = noise.tone3Pitch ?: playback.tones.getOrNull(SOUND_TONE3_CHANNEL_INDEX)?.pitch,
+        )
+    }
+    val audibleChannelCount = renderableTones.count { it.amplitude > 0 } + listOfNotNull(renderableNoise)
+        .count { it.amplitude > 0 }
 
     repeat(sampleCount) { index ->
-        val mixedSample = renderableTones.sumOf { tone ->
-            when {
-                tone.amplitude == 0 -> 0
-                tone.phase < 0.5 -> tone.amplitude
-                else -> -tone.amplitude
-            }
-        }
-        val sample = if (audibleToneCount == 0) {
+        val mixedSample = renderableTones.sumOf(RenderableToneChannel::currentSample) +
+            (renderableNoise?.currentSample() ?: 0)
+        val sample = if (audibleChannelCount == 0) {
             0
         } else {
-            round(mixedSample.toDouble() / audibleToneCount)
+            round(mixedSample.toDouble() / audibleChannelCount)
                 .toInt()
                 .coerceIn(-MAX_PCM_AMPLITUDE, MAX_PCM_AMPLITUDE)
         }
         val sampleOffset = index * PCM_FRAME_SIZE_BYTES
         audioBytes[sampleOffset] = (sample and 0xFF).toByte()
         audioBytes[sampleOffset + 1] = ((sample shr 8) and 0xFF).toByte()
-        renderableTones.forEach { tone ->
-            tone.phase = (tone.phase + tone.phaseIncrement) % 1.0
-        }
+        renderableTones.forEach(RenderableToneChannel::advance)
+        renderableNoise?.advance()
     }
 
     return TiBasicPcmAudio(
@@ -147,11 +158,74 @@ internal fun renderSquareWaveAudio(playback: TiBasicSoundPlayback): TiBasicPcmAu
     )
 }
 
-private data class RenderableSoundTone(
+private fun resolveAmplitude(volume: Int): Int =
+    (((MAX_SOUND_VOLUME - volume).toDouble() / MAX_SOUND_VOLUME) * MAX_PCM_AMPLITUDE)
+        .roundToInt()
+
+private data class RenderableToneChannel(
     val amplitude: Int,
+    val pitch: Int,
     val phaseIncrement: Double,
     var phase: Double = 0.0,
-)
+) {
+    fun currentSample(): Int =
+        when {
+            amplitude == 0 -> 0
+            phase < 0.5 -> amplitude
+            else -> -amplitude
+        }
+
+    fun advance() {
+        phase = (phase + phaseIncrement) % 1.0
+    }
+}
+
+private data class RenderableNoiseChannel(
+    val amplitude: Int,
+    val type: TiBasicNoiseType,
+    val shiftRate: TiBasicNoiseShiftRate,
+    val tone3Pitch: Int?,
+    var phase: Double = 0.0,
+    var shiftRegister: Int = INITIAL_NOISE_SHIFT_REGISTER,
+) {
+    fun currentSample(): Int =
+        when {
+            amplitude == 0 -> 0
+            (shiftRegister and 1) == 0 -> -amplitude
+            else -> amplitude
+        }
+
+    fun advance() {
+        phase += noiseClockFrequency(shiftRate, tone3Pitch) / PCM_SAMPLE_RATE_HZ
+        while (phase >= 1.0) {
+            phase -= 1.0
+            tick()
+        }
+    }
+
+    private fun tick() {
+        val feedbackBit = when (type) {
+            TiBasicNoiseType.PERIODIC -> shiftRegister and 1
+            TiBasicNoiseType.WHITE -> (shiftRegister and 1) xor ((shiftRegister shr 1) and 1)
+        }
+        shiftRegister = ((shiftRegister shr 1) or (feedbackBit shl (NOISE_SHIFT_REGISTER_BITS - 1))) and
+            NOISE_SHIFT_REGISTER_MASK
+        if (shiftRegister == 0) {
+            shiftRegister = INITIAL_NOISE_SHIFT_REGISTER
+        }
+    }
+}
+
+internal fun noiseClockFrequency(shiftRate: TiBasicNoiseShiftRate, tone3Pitch: Int?): Double =
+    when (shiftRate) {
+        TiBasicNoiseShiftRate.HIGH -> HIGH_NOISE_CLOCK_HZ
+        TiBasicNoiseShiftRate.MEDIUM -> MEDIUM_NOISE_CLOCK_HZ
+        TiBasicNoiseShiftRate.LOW -> LOW_NOISE_CLOCK_HZ
+        TiBasicNoiseShiftRate.TONE3 -> tone3Pitch
+            ?.toDouble()
+            ?.div(TONE3_LINKED_NOISE_CLOCK_DIVISOR)
+            ?: NOISE_TONE3_FALLBACK_CLOCK_HZ
+    }
 
 internal val tiBasicSoundPlaybackService = TiBasicSoundPlaybackService()
 

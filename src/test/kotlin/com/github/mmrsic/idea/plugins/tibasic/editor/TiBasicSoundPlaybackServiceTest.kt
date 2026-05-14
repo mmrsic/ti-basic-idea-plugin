@@ -5,30 +5,52 @@ import java.util.concurrent.Executor
 
 class TiBasicSoundPlaybackServiceTest : TiBasicTestBase() {
 
-    fun `test render square wave audio uses mono 16-bit pcm format`() {
-        val audio = renderSquareWaveAudio(TiBasicSoundPlayback(100, listOf(TiBasicSoundTone(440, 0))))
+    fun `test render sound audio uses mono 16-bit pcm format`() {
+        val audio = renderSoundAudio(TiBasicSoundPlayback(100, listOf(TiBasicSoundTone(440, 0))))
         assertEquals(44_100f.toInt(), audio.format.sampleRate.toInt())
         assertEquals(16, audio.format.sampleSizeInBits)
         assertEquals(1, audio.format.channels)
         assertTrue(audio.format.isBigEndian.not())
     }
 
-    fun `test render square wave audio byte count matches duration`() {
-        val audio = renderSquareWaveAudio(TiBasicSoundPlayback(100, listOf(TiBasicSoundTone(440, 0))))
+    fun `test render sound audio byte count matches duration`() {
+        val audio = renderSoundAudio(TiBasicSoundPlayback(100, listOf(TiBasicSoundTone(440, 0))))
         assertEquals(8_820, audio.sampleData.size)
     }
 
-    fun `test render square wave audio is silent for volume 30`() {
-        val audio = renderSquareWaveAudio(TiBasicSoundPlayback(100, listOf(TiBasicSoundTone(440, 30))))
+    fun `test render sound audio is silent for volume 30`() {
+        val audio = renderSoundAudio(TiBasicSoundPlayback(100, listOf(TiBasicSoundTone(440, 30))))
         assertTrue("Volume 30 must render silence", audio.sampleData.all { it == 0.toByte() })
     }
 
-    fun `test render square wave audio mixes multiple tones`() {
-        val audio = renderSquareWaveAudio(
+    fun `test render sound audio mixes multiple tones`() {
+        val audio = renderSoundAudio(
             TiBasicSoundPlayback(100, listOf(TiBasicSoundTone(220, 0), TiBasicSoundTone(294, 0))),
         )
         assertEquals(8_820, audio.sampleData.size)
         assertTrue("Mixed audio must not be silent", audio.sampleData.any { it != 0.toByte() })
+    }
+
+    fun `test render sound audio includes noise channel`() {
+        val audio = renderSoundAudio(
+            TiBasicSoundPlayback(
+                100,
+                listOf(TiBasicSoundTone(220, 30), TiBasicSoundTone(294, 30), TiBasicSoundTone(330, 30)),
+                TiBasicSoundNoise(-8, 0),
+            ),
+        )
+        assertEquals(8_820, audio.sampleData.size)
+        assertTrue("Noise channel must not render silence", audio.sampleData.any { it != 0.toByte() })
+    }
+
+    fun `test noise clock frequencies match TMS9919 divider rates`() {
+        assertEquals(6_991.0, noiseClockFrequency(TiBasicNoiseShiftRate.HIGH, null))
+        assertEquals(3_496.0, noiseClockFrequency(TiBasicNoiseShiftRate.MEDIUM, null))
+        assertEquals(1_748.0, noiseClockFrequency(TiBasicNoiseShiftRate.LOW, null))
+    }
+
+    fun `test tone3 noise rate uses tone3 pitch when available`() {
+        assertEquals(220.0, noiseClockFrequency(TiBasicNoiseShiftRate.TONE3, 440))
     }
 
     fun `test playback service writes rendered audio to output`() {
