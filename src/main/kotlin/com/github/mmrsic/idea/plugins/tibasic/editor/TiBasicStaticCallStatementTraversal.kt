@@ -69,9 +69,21 @@ private fun buildStaticallyTraceableCallStatements(file: TiBasicFile): List<TiBa
         val readDataVariableValues = mutableMapOf<String, String>()
         var nextDataItemIndex = 0
         val loopFrames = ArrayDeque<LoopFrame>()
+        val visitedStates = mutableSetOf<TraversalState>()
         var lineIndex = 0
 
         while (lineIndex < lines.size) {
+            if (!visitedStates.add(
+                    TraversalState(
+                        lineIndex = lineIndex,
+                        nextDataItemIndex = nextDataItemIndex,
+                        readDataVariableValues = readDataVariableValues.toMap(),
+                        loopFrames = loopFrames.map(LoopFrame::toState),
+                    ),
+                )
+            ) {
+                break
+            }
             val line = lines[lineIndex]
             val statement = line.statement()
             when (statement) {
@@ -173,6 +185,32 @@ private data class LoopFrame(
     var currentValue: Int,
     var remainingIterations: Int,
 )
+
+private data class TraversalState(
+    val lineIndex: Int,
+    val nextDataItemIndex: Int,
+    val readDataVariableValues: Map<String, String>,
+    val loopFrames: List<LoopFrameState>,
+)
+
+private data class LoopFrameState(
+    val variableName: String,
+    val nextLineIndex: Int,
+    val bodyStartLineIndex: Int,
+    val step: Int,
+    val currentValue: Int,
+    val remainingIterations: Int,
+)
+
+private fun LoopFrame.toState(): LoopFrameState =
+    LoopFrameState(
+        variableName = variableName,
+        nextLineIndex = nextLineIndex,
+        bodyStartLineIndex = bodyStartLineIndex,
+        step = step,
+        currentValue = currentValue,
+        remainingIterations = remainingIterations,
+    )
 
 private fun buildLoopTargets(lines: List<TiBasicLine>): LoopTargets {
     val forStack = ArrayDeque<Pair<Int, String?>>()

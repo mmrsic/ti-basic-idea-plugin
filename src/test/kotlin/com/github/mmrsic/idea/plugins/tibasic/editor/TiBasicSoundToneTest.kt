@@ -97,4 +97,21 @@ class TiBasicSoundToneTest : TiBasicTestBase() {
         val file = configureFile("100 INPUT P\n110 CALL SOUND(100,P,2)")
         assertNull(resolveSoundPlayback(file.callStatements().single(), file))
     }
+
+    fun `test static call traversal stops at repeated execution state`() {
+        val file = configureFile(
+            """
+            100 DATA 262,2,0,1
+            110 RESTORE 100
+            120 READ I,J
+            130 CALL SOUND(J*200,I,6)
+            140 IF J=2 THEN 110
+            """.trimIndent(),
+        )
+
+        val traceableCalls = collectStaticallyTraceableCallStatements(file)
+
+        assertEquals(listOf("CALL SOUND(J*200,I,6)"), traceableCalls.map { it.callStatement.text })
+        assertEquals(mapOf("I" to "262", "J" to "2"), traceableCalls.single().readDataVariableValues)
+    }
 }
