@@ -188,4 +188,9 @@ class TiBasicCallAnnotatorTest : TiBasicTestBase() {
         configureFile("1540 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL HCHAR(8,16,35()</error>")
         myFixture.checkHighlighting(true, false, true)
     }
+
+    fun `test CALL HCHAR with expression ending in plus gives INCORRECT STATEMENT error`() {
+        configureFile("2170 <error descr=\"Will cause run-time error 'INCORRECT STATEMENT'\">CALL HCHAR(21,17,BR-INT(BR/10)*10+)</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
 }

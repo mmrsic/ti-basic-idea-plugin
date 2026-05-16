@@ -1048,15 +1048,25 @@ class TiBasicAnnotator : Annotator {
     }
 
     private fun hasMalformedSubscriptSyntax(varAccess: TiBasicVariableAccess): Boolean {
-        val children = varAccess.node.nonWhitespaceChildren
+        if (!varAccess.hasSubscriptParens()) return false
+        return hasMalformedParenthesizedExpressionList(varAccess.node.nonWhitespaceChildren)
+    }
+
+    private fun hasMalformedCallSyntax(statement: TiBasicCallStatement): Boolean {
+        if (!statement.hasArgumentParens()) return false
+        return hasMalformedParenthesizedExpressionList(statement.node.nonWhitespaceChildren)
+    }
+
+    private fun hasMalformedParenthesizedExpressionList(children: List<ASTNode>): Boolean {
         val openingParenIndex = children.indexOfFirst { it.elementType == TiBasicTokenTypes.LPAREN }
+        if (openingParenIndex == -1) return false
         val closingParenIndex = children.indexOfLast { it.elementType == TiBasicTokenTypes.RPAREN }
-        if (openingParenIndex == -1 || closingParenIndex <= openingParenIndex) return true
+        if (closingParenIndex <= openingParenIndex) return true
         if (children.drop(closingParenIndex + 1).isNotEmpty()) return true
-        val subscriptNodes = children.subList(openingParenIndex + 1, closingParenIndex)
-        if (subscriptNodes.isEmpty()) return false
+        val expressionListNodes = children.subList(openingParenIndex + 1, closingParenIndex)
+        if (expressionListNodes.isEmpty()) return false
         var expectsExpression = true
-        subscriptNodes.forEach { child ->
+        expressionListNodes.forEach { child ->
             if (expectsExpression) {
                 if (child.elementType != TiBasicNodeTypes.EXPRESSION) return true
                 val expression = child.psi as? TiBasicExpression ?: return true
@@ -1219,14 +1229,9 @@ class TiBasicAnnotator : Annotator {
             holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
             return
         }
-        if (hasCloseParen) {
-            val trailingAfterCloseParen = statement.node
-                .childrenAfter(TiBasicTokenTypes.RPAREN)
-                .filter { it.elementType != TokenType.WHITE_SPACE }
-            if (trailingAfterCloseParen.isNotEmpty()) {
-                holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
-                return
-            }
+        if (hasMalformedCallSyntax(statement)) {
+            holder.error(subprogram.syntaxViolationError ?: INCORRECT_STATEMENT_RUNTIME_ERROR, statement)
+            return
         }
         val argNodes = statement.node.childrenOfType(TiBasicNodeTypes.EXPRESSION)
         val argCount = argNodes.size
