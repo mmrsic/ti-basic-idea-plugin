@@ -6,11 +6,16 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
 import com.intellij.openapi.editor.Editor
+import com.intellij.psi.tree.IElementType
 
 internal data class TextReplacement(val start: Int, val end: Int, val newText: String)
 internal data class LineContext(val text: String, val caretInLine: Int)
+internal data class LexedLineToken(val start: Int, val end: Int, val type: IElementType)
 
 private const val LINE_NUMBER_ROUNDING_STEP = 10
+private const val DECIMAL_SEPARATOR = '.'
+private val EXPONENT_MARKER_CHARS = setOf('E', 'e')
+private val EXPONENT_SIGN_CHARS = setOf('+', '-')
 
 internal fun applyTextReplacements(text: String, replacements: List<TextReplacement>): String {
     val result = StringBuilder(text)
@@ -38,11 +43,11 @@ internal fun shouldOfferAutoLineNumberCompletion(editor: Editor, file: TiBasicFi
     val lineContext = currentLineContext(editor)
     val generatedLineNumber = generatedAutoLineNumber(file).toString()
     return shouldAutoInsertLineNumber(editor, file) &&
-        if (lineContext.caretInLine == 0) {
-            !startsWithLineNumber(lineContext.text)
-        } else {
-            typedLineNumberPrefix(lineContext)?.let(generatedLineNumber::startsWith) == true
-        }
+            if (lineContext.caretInLine == 0) {
+                !startsWithLineNumber(lineContext.text)
+            } else {
+                typedLineNumberPrefix(lineContext)?.let(generatedLineNumber::startsWith) == true
+            }
 }
 
 internal fun List<TiBasicLine>.maxValidLineNumber(): Int =
@@ -86,26 +91,69 @@ internal fun currentLineContext(editor: Editor): LineContext {
 }
 
 internal fun shouldInsertSpaceAfterLineNumber(lineContext: LineContext, typedChar: Char): Boolean {
-    if (typedChar.isWhitespace() || typedChar.isDigit() || lineContext.caretInLine != lineContext.text.length) {
+    if (typedChar.isWhitespace() || lineContext.caretInLine != lineContext.text.length) {
         return false
     }
     val lineNumber = lineContext.text.toIntOrNull() ?: return false
     return lineNumber in VALID_LINE_NUMBER_RANGE &&
-        createsUnknownStatementWithInsertedSeparator(lineContext.text, typedChar)
+            !continuesLineNumber(typedChar)
 }
 
-private fun createsUnknownStatementWithInsertedSeparator(lineText: String, typedChar: Char): Boolean {
-    val simulatedLine = "$lineText $typedChar"
+internal fun shouldInsertSpaceBeforeTypedCharacterAfterNumber(
+    lineContext: LineContext,
+    typedChar: Char,
+    treatNumberAsLineNumber: Boolean,
+): Boolean {
+    if (typedChar.isWhitespace() || lineContext.caretInLine == 0) {
+        return false
+    }
+    val tokenBeforeCaret = lexedLineTokens(lineContext.text)
+        .lastOrNull { token -> token.end == lineContext.caretInLine }
+        ?: return false
+    if (tokenBeforeCaret.type != TiBasicTokenTypes.NUMERIC_LITERAL) {
+        return false
+    }
+    val numericLiteralText = lineContext.text.substring(tokenBeforeCaret.start, tokenBeforeCaret.end)
+    return if (treatNumberAsLineNumber) {
+        !continuesLineNumber(typedChar)
+    } else {
+        !continuesNumericLiteral(numericLiteralText, typedChar)
+    }
+}
+
+private fun lexedLineTokens(lineText: String): List<LexedLineToken> {
     val lexer = TiBasicLexer()
-    lexer.start(simulatedLine, 0, simulatedLine.length, 0)
+    lexer.start(lineText, 0, lineText.length, 0)
+    val tokens = mutableListOf<LexedLineToken>()
     while (lexer.tokenType != null) {
-        if (lexer.tokenType == TiBasicTokenTypes.UNKNOWN_STATEMENT_TEXT) {
-            return true
-        }
+        val tokenType = lexer.tokenType ?: break
+        tokens += LexedLineToken(
+            start = lexer.tokenStart,
+            end = lexer.tokenEnd,
+            type = tokenType,
+        )
         lexer.advance()
     }
-    return false
+    return tokens
 }
+
+private fun continuesLineNumber(typedChar: Char): Boolean = typedChar.isDigit()
+
+private fun continuesNumericLiteral(numericLiteralText: String, typedChar: Char): Boolean =
+    when {
+        typedChar.isDigit() -> true
+        typedChar == DECIMAL_SEPARATOR ->
+            DECIMAL_SEPARATOR !in numericLiteralText &&
+                    numericLiteralText.none(EXPONENT_MARKER_CHARS::contains)
+
+        typedChar in EXPONENT_MARKER_CHARS ->
+            numericLiteralText.none(EXPONENT_MARKER_CHARS::contains)
+
+        typedChar in EXPONENT_SIGN_CHARS ->
+            numericLiteralText.lastOrNull() in EXPONENT_MARKER_CHARS
+
+        else -> false
+    }
 
 private fun roundUpToNextStrictlyGreaterMultipleOfTen(number: Int): Int {
     val remainder = number % LINE_NUMBER_ROUNDING_STEP

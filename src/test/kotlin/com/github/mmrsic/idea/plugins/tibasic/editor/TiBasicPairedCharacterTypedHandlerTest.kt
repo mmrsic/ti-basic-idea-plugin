@@ -45,6 +45,90 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
         myFixture.checkResult("100 PR")
     }
 
+    fun testTypingLetterAfterNumericLiteralInStatementInsertsSpace() {
+        myFixture.configureByText("test.tibasic", "100 IF X=10<caret>")
+
+        myFixture.type('T')
+
+        myFixture.checkResult("100 IF X=10 T")
+        assertEquals("100 IF X=10 T".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testTypingExponentMarkerAfterNumericLiteralDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 LET X=1<caret>")
+
+        myFixture.type('E')
+
+        myFixture.checkResult("100 LET X=1E")
+    }
+
+    fun testTypingDecimalSeparatorAfterNumericLiteralDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 LET X=1<caret>")
+
+        myFixture.type('.')
+
+        myFixture.checkResult("100 LET X=1.")
+    }
+
+    fun testTypingOperatorAfterNumericLiteralInsertsSpace() {
+        myFixture.configureByText("test.tibasic", "100 LET X=10<caret>")
+
+        myFixture.type('+')
+
+        myFixture.checkResult("100 LET X=10 +")
+        assertEquals("100 LET X=10 +".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testTypingOperatorAfterLineNumberOnlyInsertsSingleSpace() {
+        myFixture.configureByText("test.tibasic", "100<caret>")
+
+        myFixture.type('+')
+
+        myFixture.checkResult("100 +")
+        assertEquals("100 +".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testTypingExponentMarkerAfterReferencedLineNumberInsertsSpace() {
+        myFixture.configureByText("test.tibasic", "560 IF K=74 THEN 570<caret>")
+
+        myFixture.type('E')
+
+        myFixture.checkResult("560 IF K=74 THEN 570 E")
+        assertEquals("560 IF K=74 THEN 570 E".length, myFixture.editor.caretModel.offset)
+    }
+
+    fun testTypingLetterAfterDigitInVariableNameDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 LET A1<caret>=2")
+
+        myFixture.type('B')
+
+        myFixture.checkResult("100 LET A1B=2")
+    }
+
+    fun testTypingLetterAfterDigitInsideStringLiteralDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 PRINT \"1<caret>\"")
+
+        myFixture.type('A')
+
+        myFixture.checkResult("100 PRINT \"1A\"")
+    }
+
+    fun testTypingLetterAfterDigitInDataLineDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 DATA 1<caret>")
+
+        myFixture.type('A')
+
+        myFixture.checkResult("100 DATA 1A")
+    }
+
+    fun testTypingLetterAfterDigitInRemLineDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 REM 1<caret>")
+
+        myFixture.type('A')
+
+        myFixture.checkResult("100 REM 1A")
+    }
+
     fun testTypingLetterAfterLineNumberOnlyInNonTiBasicFileDoesNotInsertSpace() {
         myFixture.configureByText("test.txt", "100<caret>")
 

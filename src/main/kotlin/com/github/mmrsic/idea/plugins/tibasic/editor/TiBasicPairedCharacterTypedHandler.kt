@@ -1,6 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
+import com.github.mmrsic.idea.plugins.tibasic.ext.isLineNumberReference
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
+import com.intellij.psi.util.PsiTreeUtil
 import com.github.mmrsic.idea.plugins.tibasic.util.countUnclosedParens
 import com.github.mmrsic.idea.plugins.tibasic.util.isRemLine
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
@@ -26,18 +29,39 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
             OPENING_PAREN -> insertPair(editor, "$OPENING_PAREN$CLOSING_PAREN", placeCaretInsidePair = true)
             CLOSING_PAREN -> skipExistingClosingParen(editor)
             DOUBLE_QUOTE -> handleDoubleQuote(editor)
-            else -> handleStringCharacterOrLineNumberSpacing(editor, c)
+            else -> handleStringCharacterOrLineNumberSpacing(editor, file, c)
         }
     }
 
-    private fun handleStringCharacterOrLineNumberSpacing(editor: Editor, typedChar: Char): Result =
+    private fun handleStringCharacterOrLineNumberSpacing(editor: Editor, file: PsiFile, typedChar: Char): Result =
         handleStringCharacterTrigger(editor, typedChar).let { result ->
             if (result != Result.CONTINUE) {
                 result
             } else {
-                handleLineNumberSpacing(editor, typedChar)
+                handleNumberSpacing(editor, file, typedChar).let { spacingResult ->
+                    if (spacingResult != Result.CONTINUE) {
+                        spacingResult
+                    } else {
+                        handleLineNumberSpacing(editor, typedChar)
+                    }
+                }
             }
         }
+
+    private fun handleNumberSpacing(editor: Editor, file: PsiFile, typedChar: Char): Result {
+        val lineContext = currentLineContext(editor)
+        if (isInsideStringLiteral(lineContext.text, lineContext.caretInLine) ||
+            isExcludedDigitLetterSpacingContext(file, editor) ||
+            !shouldInsertSpaceBeforeTypedCharacterAfterNumber(
+                lineContext = lineContext,
+                typedChar = typedChar,
+                treatNumberAsLineNumber = isLineNumberReferenceBeforeCaret(file, editor),
+            )
+        ) {
+            return Result.CONTINUE
+        }
+        return insertPair(editor, " $typedChar", placeCaretInsidePair = false)
+    }
 
     private fun handleLineNumberSpacing(editor: Editor, typedChar: Char): Result =
         if (shouldInsertSpaceAfterLineNumber(currentLineContext(editor), typedChar)) {
@@ -168,6 +192,21 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
         index + 1 < lineText.length &&
             lineText[index] == DOUBLE_QUOTE &&
             lineText[index + 1] == DOUBLE_QUOTE
+
+    private fun isExcludedDigitLetterSpacingContext(file: PsiFile, editor: Editor): Boolean {
+        val offset = editor.caretModel.offset
+        if (offset == 0) return false
+        val elementBeforeCaret = file.findElementAt(offset - 1) ?: return false
+        return elementBeforeCaret.node.elementType == com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.PRINT_ARGUMENT ||
+            elementBeforeCaret.node.elementType == com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.REM_TEXT ||
+            PsiTreeUtil.getParentOfType(elementBeforeCaret, TiBasicDataStatement::class.java, false) != null
+    }
+
+    private fun isLineNumberReferenceBeforeCaret(file: PsiFile, editor: Editor): Boolean {
+        val offset = editor.caretModel.offset
+        if (offset == 0) return false
+        return file.findElementAt(offset - 1)?.isLineNumberReference() == true
+    }
 
     private data class StringLiteralState(
         val insideStringLiteral: Boolean,

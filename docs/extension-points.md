@@ -117,9 +117,10 @@ CTRL combinations accept forms such as `\C@`, `\CX`, `\C.`, `\C;`, `\C=`, `\C9`,
 `\C/`, `\^X`, `\C-X`, and `\CTRL-X`, while
 FCTN combinations accept forms such as `\F7`, `\F-7`, and `\FCTN-7`. When the resulting
 character is a double quote, the handler inserts the doubled source representation `""`
-so the string literal remains valid. For all other non-digit characters, when the caret
-is at the end of a line that consists only of a valid line number, it inserts the
-required separating space before the typed character.
+so the string literal remains valid. For all other non-space characters, when the caret
+is after a valid line number or numeric literal and the interpreter would not treat the
+typed character as a continuation of that number, it inserts the required separating
+space before the typed character.
 
 ---
 
