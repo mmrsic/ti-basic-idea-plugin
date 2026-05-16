@@ -5,11 +5,33 @@ All notable changes to the TI-Basic IDEA Plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.0]
+
+### Added
+
+- **Character and color quick documentation**: `Ctrl+Q` now explains character-code positions in `CALL CHAR`, `CALL HCHAR`, `CALL VCHAR`, `CHR$`, and all arguments of `CALL COLOR`, including resolved values, ASCII mappings, TI color names, and character-set ranges
+- **Hex-pattern quick documentation**: `Ctrl+Q` now shows an 8x8 preview for `CALL CHAR` patterns, suitable hexadecimal `DATA` items, and matching string literals
+- **Editor auto-pairing**: typing `(` or `"` now inserts matching delimiters, and Backspace removes both quotes of an empty `""` pair
+- **Auto line-number workflows**: automatic TI-Basic line-number generation now also supports duplicating lines at the file end and pasting TI-Basic code at the file end, with configurable step size and optional rounding to multiples of 10
+- **Display column guides**: optional TI-99/4A 28-column wrap guides can now be shown in the editor without shifting the text layout
+- **Line-number navigation and inbound markers**: `Ctrl+B` / `Ctrl+Click` now jump from line-number references to their target lines, and gutter markers show which other lines refer to the current line
+- **CALL SOUND gutter playback**: resolvable `CALL SOUND(...)` statements now show a gutter action that plays a preview of the sound
+- **Character Definitions tool window**: a new bottom tool window lists statically resolvable `CALL CHAR` definitions with code, ASCII, pattern, icon, and source line
+- **Editor settings pages**: new TI-Basic settings pages were added for display column guides, automatic line numbers, and parenthesis auto-close behavior
+
+### Changed
+
+- **Code completion**: completion now inserts the only remaining match immediately, suggests generated line numbers on eligible new trailing lines, offers `DATA` target lines after `RESTORE `, and inserts parentheses automatically for built-in functions, `TAB`, and `CALL` subprograms that take arguments
+- **Variables tool window**: array rows now expose dimensions, effective `OPTION BASE`, DIM declaration lines, and constant scalar values in dedicated columns
+- **Reformat Code integration**: the standard IDEA **Reformat Code** action is now replaced at runtime for TI-Basic files so the usual shortcut routes to the TI-Basic formatter while other file types keep the platform behavior
+- **Display guides rendering**: guides are now painted as an overlay across the file based on the longest line instead of reserving horizontal layout space
+- **`DATA` parsing**: bare `DATA` is now treated as valid and behaves like `DATA ""`
 
 ### Fixed
 
 - `CALL GCHAR` now requires its third argument to be a numeric variable target; other expressions are highlighted as `INCORRECT STATEMENT`
+- `FOR` / `NEXT` imbalance detection now tracks the control variable more precisely and warns on the affected statements
+- `CALL COLOR`, `CALL SCREEN`, and `CALL SOUND` previews now resolve not only literals and constant variables, but also simple statically resolvable numeric expressions
 
 ## [1.2.0] - 2026-04-04
 

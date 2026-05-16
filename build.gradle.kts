@@ -32,14 +32,13 @@ intellijPlatform {
 
         changeNotes = """
             <ul>
-                <li><b>CALL CHAR gutter preview</b>: shows a preview of the custom character bitmap in the gutter</li>
-                <li><b>CALL COLOR gutter preview</b>: shows a color swatch for foreground/background colors in the gutter</li>
-                <li><b>Variables Tool Window</b>: lists all variables defined in the current TI-Basic file</li>
-                <li><b>Find Variable Usages</b>: find all usages of a variable across the file</li>
-                <li>IDEA standard formatter is now used for TI-Basic files</li>
-                <li>Fix: auto-completion of variable names now works inside CALL statements</li>
-                <li>Fix: incorrect statements like XDIR=! and FOR S=2 TO 16) are now highlighted as errors</li>
-                <li>Fix: missing or superfluous right parenthesis is now highlighted as an error</li>
+                <li><b>Quick Documentation</b>: <code>Ctrl+Q</code> now explains character and color arguments, including ASCII mappings, TI color names, character-set ranges, and 8x8 hex-pattern previews</li>
+                <li><b>Smarter editor assistance</b>: auto-pairing for parentheses and quotes, improved completion, configurable automatic line numbers, and optional TI-99/4A 28-column display guides</li>
+                <li><b>New navigation and gutter features</b>: line-number declaration navigation, inbound line-reference markers, and <code>CALL SOUND</code> gutter playback</li>
+                <li><b>New Character Definitions tool window</b>: browse statically resolvable <code>CALL CHAR</code> definitions with code, ASCII, pattern, icon, and source line</li>
+                <li><b>Variables tool window enhancements</b>: array dimensions, effective <code>OPTION BASE</code>, DIM declaration lines, and constant scalar values are now shown directly in the table</li>
+                <li><b>Reformat Code integration</b>: the standard IDEA <b>Reformat Code</b> action now routes TI-Basic files to the TI-Basic formatter while preserving default behavior for other file types</li>
+                <li><b>Semantic fixes</b>: improved validation for <code>CALL GCHAR</code>, more precise <code>FOR</code>/<code>NEXT</code> imbalance detection, and broader static resolution for color, screen, and sound previews</li>
             </ul>
         """.trimIndent()
     }
