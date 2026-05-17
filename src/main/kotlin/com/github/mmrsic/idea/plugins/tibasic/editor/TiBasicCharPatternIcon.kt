@@ -25,6 +25,31 @@ internal class TiBasicCharPatternBitmap private constructor(private val rowBytes
 private const val CHARACTER_CELL_SIZE = 2
 private const val CHARACTER_ICON_SIZE = CHARACTER_CELL_SIZE * TI_BASIC_CHAR_PATTERN_GRID_SIZE
 
+internal fun paintTiBasicCharPattern(
+    g: Graphics,
+    x: Int,
+    y: Int,
+    pixelSize: Int,
+    hexPattern: String,
+    fg: TiColor,
+    bg: TiColor,
+) {
+    val bitmap = TiBasicCharPatternBitmap.fromHexPattern(hexPattern)
+    for (row in 0 until TI_BASIC_CHAR_PATTERN_GRID_SIZE) {
+        for (col in 0 until TI_BASIC_CHAR_PATTERN_GRID_SIZE) {
+            val bitSet = bitmap.bitAt(row, col)
+            paintTiColorRect(
+                g = g,
+                x = x + col * pixelSize,
+                y = y + row * pixelSize,
+                width = pixelSize,
+                height = pixelSize,
+                color = if (bitSet) fg else bg,
+            )
+        }
+    }
+}
+
 class TiBasicCharPatternIcon(hexPattern: String) : Icon {
 
     private val delegate = TiBasicColoredCharPatternIcon(hexPattern, TiColor.Black, TiColor.White)
@@ -47,19 +72,6 @@ class TiBasicColoredCharPatternIcon(
     override fun getIconHeight(): Int = CHARACTER_ICON_SIZE
 
     override fun paintIcon(c: Component?, g: Graphics, x: Int, y: Int) {
-        val bitmap = TiBasicCharPatternBitmap.fromHexPattern(hexPattern)
-        for (row in 0 until TI_BASIC_CHAR_PATTERN_GRID_SIZE) {
-            for (col in 0 until TI_BASIC_CHAR_PATTERN_GRID_SIZE) {
-                val bitSet = bitmap.bitAt(row, col)
-                paintTiColorRect(
-                    g = g,
-                    x = x + col * CHARACTER_CELL_SIZE,
-                    y = y + row * CHARACTER_CELL_SIZE,
-                    width = CHARACTER_CELL_SIZE,
-                    height = CHARACTER_CELL_SIZE,
-                    color = if (bitSet) fg else bg,
-                )
-            }
-        }
+        paintTiBasicCharPattern(g, x, y, CHARACTER_CELL_SIZE, hexPattern, fg, bg)
     }
 }

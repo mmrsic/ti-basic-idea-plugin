@@ -24,6 +24,8 @@
             <li><b>Format TI-Basic Code</b> action: uppercases keywords, normalizes whitespace,
                 preserves string literals</li>
             <li><b>Resequence Line Numbers</b> action: renumbers all lines with configurable start and step</li>
+            <li><b>Selection screen preview</b> action: renders a 32x24 TI-Basic screen preview for selected
+                CALL HCHAR/VCHAR statements, taking selected CALL CHAR/COLOR/SCREEN/CLEAR context into account</li>
             <li>Full statement set: LET, DEF, PRINT (incl. file output), INPUT (incl. file), DISPLAY,
                 READ, DATA, RESTORE (incl. file), CALL, GOTO, GOSUB/RETURN, ON GOTO/GOSUB,
                 IF/THEN/ELSE, FOR/NEXT, DIM, OPTION BASE, RANDOMIZE, OPEN, CLOSE, REM, END, STOP, and more</li>
@@ -187,6 +189,12 @@
         <action
                 id="TiBasic.FormatCode"
                 class="com.github.mmrsic.idea.plugins.tibasic.action.format.FormatAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="CodeMenu" anchor="last"/>
+        </action>
+        <action
+                id="TiBasic.ShowScreenPreview"
+                class="com.github.mmrsic.idea.plugins.tibasic.action.preview.TiBasicScreenPreviewAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>

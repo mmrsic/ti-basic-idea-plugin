@@ -10,6 +10,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
 import com.intellij.extapi.psi.ASTWrapperPsiElement
 import com.intellij.lang.ASTNode
+import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.IElementType
 
 private val DEF_VARIABLE_TYPES: Set<IElementType> = setOf(
@@ -47,13 +48,26 @@ class TiBasicLine(node: ASTNode) : ASTWrapperPsiElement(node) {
             .firstChildNode.text.toLongOrNull()
             ?.takeIf { it <= Int.MAX_VALUE }?.toInt()
             ?: Int.MAX_VALUE
+
+    fun statement(): PsiElement? = children.firstOrNull()
+
+    fun dataStatement(): TiBasicDataStatement? =
+        children.filterIsInstance<TiBasicDataStatement>().firstOrNull()
 }
 
 class TiBasicLineNumberListStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicDeleteStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
-class TiBasicLetStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+class TiBasicLetStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun targetVariableAccess(): TiBasicVariableAccess? =
+        node.firstChildOfType(TiBasicNodeTypes.VARIABLE_ACCESS)?.psi as? TiBasicVariableAccess
+
+    fun assignedExpression(): TiBasicExpression? =
+        node.childrenAfter(TiBasicTokenTypes.EQ_OP)
+            .firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
+            ?.psi as? TiBasicExpression
+}
 
 class TiBasicRemStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 

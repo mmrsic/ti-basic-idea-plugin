@@ -20,6 +20,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 - Automatic line-number insertion for **Shift+Enter**, **Duplicate at end**, and **Paste at end** supports a configurable delta and optional rounding to multiples of 10
 - Typing `(` or `"` inserts the matching closing delimiter; Backspace between an empty `""` pair removes both quotes
 - Inside string literals, typing a **3-digit** trigger like `\065` or `\255` inserts the corresponding raw character code (`000..255` supported); in addition, CTRL aliases such as `\C@`, `\CX`, `\C.`, `\C;`, `\C=`, `\C9`, and `\C/` as well as FCTN aliases such as `\F7` and `\FCTN-S` are supported
+- **Preview TI-Basic Screen** action renders a **32x24** screen preview for the current selection when it contains `CALL HCHAR` or `CALL VCHAR`; selected `CALL CHAR`, `CALL COLOR`, `CALL SCREEN`, and `CALL CLEAR` statements are applied as preview context, and unresolved statements are reported as a partial preview
 
 ### Supported statements
 
@@ -285,7 +286,7 @@ The annotator inspects every file and highlights:
 - **Ctrl+B / Ctrl+Click for line-number references** — the referenced numeric literals in `GOTO`, `GOSUB`,
   `ON ... GOTO/GOSUB`, `IF ... THEN/ELSE`, `RESTORE`, `BREAK`, `UNBREAK`, `TRACE`, and `UNTRACE` navigate directly to
   the matching target line in the same file; unresolved or out-of-range targets stay non-navigable
-- **TI-99/4A display column guides** — thin overlay guide lines are drawn across the whole visible file at every 28th
+- **TI-99/4A display column guides** — thin overlay guidelines are drawn across the whole visible file at every 28th
   character position needed by the longest line in the file, showing exactly where the TI-99/4A's 28-column text
   display would wrap to the next screen row without shifting the surrounding code layout; the guides can be enabled or
   disabled in *Settings → Editor → TI-Basic Display Column Guides* and can start appearing a configurable number of

@@ -162,6 +162,25 @@ See [`architecture.md`](architecture.md) for the full list of checks.
 
 ---
 
+## Registered actions
+
+### `action` — `TiBasic.ShowScreenPreview`
+
+| Attribute | Value                                               |
+|-----------|-----------------------------------------------------|
+| `id`      | `TiBasic.ShowScreenPreview`                         |
+| `class`   | `tibasic.action.preview.TiBasicScreenPreviewAction` |
+
+Adds the **Preview TI-Basic Screen...** action to the editor popup menu and the
+Code menu. The action is available in TI-Basic files and is enabled only when the
+current selection intersects at least one `CALL HCHAR` or `CALL VCHAR` line. It opens
+an explicit dialog with a 32x24 screen preview built from the selected lines, taking
+selected `CALL CHAR`, `CALL COLOR`, `CALL SCREEN`, and `CALL CLEAR` statements into
+account. When some selected statements cannot be resolved statically, the dialog marks
+the result as a partial preview instead of failing silently.
+
+---
+
 ### `copyPastePreProcessor`
 
 | Attribute        | Value                                             |

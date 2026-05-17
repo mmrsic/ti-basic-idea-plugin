@@ -1,15 +1,11 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
-import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression
 import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess
-import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicForStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicIfStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicInputStatement
@@ -308,16 +304,13 @@ private fun applyLetStatement(
     statement: TiBasicLetStatement,
     readDataVariableValues: MutableMap<String, String>,
 ) {
-    val lhs = statement.node.firstChildOfType(TiBasicNodeTypes.VARIABLE_ACCESS)?.psi as? TiBasicVariableAccess ?: return
+    val lhs = statement.targetVariableAccess() ?: return
     val variableName = lhs.name ?: return
     if (lhs.hasSubscriptParens()) {
         readDataVariableValues.remove(variableName)
         return
     }
-    val rhs = statement.node
-        .childrenAfter(TiBasicTokenTypes.EQ_OP)
-        .firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
-        ?.psi as? TiBasicExpression
+    val rhs = statement.assignedExpression()
     val propagatedValue = rhs?.variableAccess()?.name?.let(readDataVariableValues::get)
     if (propagatedValue != null) {
         readDataVariableValues[variableName] = propagatedValue
@@ -335,12 +328,6 @@ private fun invalidateWrittenReadDataVariables(
         .mapNotNull(TiBasicVariableAccess::getName)
         .forEach(readDataVariableValues::remove)
 }
-
-private fun TiBasicLine.statement(): PsiElement? =
-    children.firstOrNull()
-
-private fun TiBasicLine.dataStatement(): TiBasicDataStatement? =
-    children.filterIsInstance<TiBasicDataStatement>().firstOrNull()
 
 private const val DEFAULT_FOR_STEP = 1
 
