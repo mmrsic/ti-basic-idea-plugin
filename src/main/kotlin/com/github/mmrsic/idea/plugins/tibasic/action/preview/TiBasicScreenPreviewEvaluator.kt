@@ -20,6 +20,7 @@ import com.intellij.psi.util.PsiTreeUtil
 
 private const val SCREEN_COLUMNS = 32
 private const val SCREEN_ROWS = 24
+private const val SCREEN_CELLS = SCREEN_COLUMNS * SCREEN_ROWS
 private const val SPACE_CHARACTER_CODE = 32
 private const val DEFAULT_REPEAT_COUNT = 1
 private val PREVIEWABLE_SUBPROGRAMS = setOf("HCHAR", "VCHAR", "CHAR", "COLOR", "SCREEN", "CLEAR")
@@ -49,6 +50,11 @@ data class TiBasicScreenPreviewCell(
     val displayText: String?
         get() = printableAsciiCharacter(code)
 }
+
+private data class TiBasicScreenPosition(
+    val row: Int,
+    val column: Int,
+)
 
 private data class TiBasicScreenColors(
     val fg: TiColor,
@@ -227,11 +233,36 @@ private fun applyScreenWrite(
         return
     }
     repeat(resolvedRepeatCount) { offset ->
-        val targetRow = if (horizontal) row else row + offset
-        val targetColumn = if (horizontal) column + offset else column
-        if (targetRow in 1..SCREEN_ROWS && targetColumn in 1..SCREEN_COLUMNS) {
-            context.screenState.codes[targetRow - 1][targetColumn - 1] = code
+        screenPosition(row, column, offset, horizontal)?.let { target ->
+            context.screenState.codes[target.row - 1][target.column - 1] = code
         }
+    }
+}
+
+private fun screenPosition(
+    row: Int,
+    column: Int,
+    offset: Int,
+    horizontal: Boolean,
+): TiBasicScreenPosition? {
+    if (row !in 1..SCREEN_ROWS || column !in 1..SCREEN_COLUMNS) {
+        return null
+    }
+    val wrappedIndex = if (horizontal) {
+        ((row - 1) * SCREEN_COLUMNS + (column - 1) + offset) % SCREEN_CELLS
+    } else {
+        ((column - 1) * SCREEN_ROWS + (row - 1) + offset) % SCREEN_CELLS
+    }
+    return if (horizontal) {
+        TiBasicScreenPosition(
+            row = wrappedIndex / SCREEN_COLUMNS + 1,
+            column = wrappedIndex % SCREEN_COLUMNS + 1,
+        )
+    } else {
+        TiBasicScreenPosition(
+            row = wrappedIndex % SCREEN_ROWS + 1,
+            column = wrappedIndex / SCREEN_ROWS + 1,
+        )
     }
 }
 

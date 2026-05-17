@@ -105,7 +105,8 @@ PSI tree              (tibasic.psi + subpackages)
     │       selection-local `LET` constants, updates global preview state from
     │       selected `CALL CHAR`, `CALL COLOR`, `CALL SCREEN`, and `CALL CLEAR`
     │       statements, and writes selected `CALL HCHAR`/`CALL VCHAR`
-    │       character codes into a clipped 32x24 grid. Statements whose values
+    │       character codes into a wrapping 32x24 grid that rolls over from the
+    │       last row/column back to the top-left corner. Statements whose values
     │       are not statically resolvable inside the selection are skipped and
     │       surfaced as a partial-preview warning in the dialog.
     │

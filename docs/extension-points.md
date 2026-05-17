@@ -176,7 +176,9 @@ Code menu. The action is available in TI-Basic files and is enabled only when th
 current selection intersects at least one `CALL HCHAR` or `CALL VCHAR` line. It opens
 an explicit dialog with a 32x24 screen preview built from the selected lines, taking
 selected `CALL CHAR`, `CALL COLOR`, `CALL SCREEN`, and `CALL CLEAR` statements into
-account. When some selected statements cannot be resolved statically, the dialog marks
+account. `CALL HCHAR` wraps at the right edge into the next row, `CALL VCHAR` wraps at
+the bottom edge into the next column, and both continue at the top-left corner after the
+last screen cell. When some selected statements cannot be resolved statically, the dialog marks
 the result as a partial preview instead of failing silently.
 
 ---

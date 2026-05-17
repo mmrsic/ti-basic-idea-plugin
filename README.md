@@ -21,7 +21,7 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 - Automatic line-number insertion for **Shift+Enter**, **Duplicate at end**, and **Paste at end** supports a configurable delta and optional rounding to multiples of 10
 - Typing `(` or `"` inserts the matching closing delimiter; Backspace between an empty `""` pair removes both quotes
 - Inside string literals, typing a **3-digit** trigger like `\065` or `\255` inserts the corresponding raw character code (`000..255` supported); in addition, CTRL aliases such as `\C@`, `\CX`, `\C.`, `\C;`, `\C=`, `\C9`, and `\C/` as well as FCTN aliases such as `\F7` and `\FCTN-S` are supported
-- **Preview TI-Basic Screen** action renders a **32x24** screen preview for the current selection when it contains `CALL HCHAR` or `CALL VCHAR`; selected `CALL CHAR`, `CALL COLOR`, `CALL SCREEN`, and `CALL CLEAR` statements are applied as preview context, and unresolved statements are reported as a partial preview
+- **Preview TI-Basic Screen** action renders a **32x24** screen preview for the current selection when it contains `CALL HCHAR` or `CALL VCHAR`; selected `CALL CHAR`, `CALL COLOR`, `CALL SCREEN`, and `CALL CLEAR` statements are applied as preview context, `CALL HCHAR`/`CALL VCHAR` wrap across screen rows/columns like the TI-99/4A does, and unresolved statements are reported as a partial preview
 
 ### Supported statements
 

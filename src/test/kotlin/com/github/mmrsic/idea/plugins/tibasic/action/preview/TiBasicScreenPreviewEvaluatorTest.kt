@@ -25,6 +25,46 @@ class TiBasicScreenPreviewEvaluatorTest : TiBasicTestBase() {
         assertEquals("B", preview.cellAt(4, 3).displayText)
     }
 
+    fun `test CALL HCHAR wraps to the next row at the right screen edge`() {
+        val file = configureFile("100 CALL HCHAR(2,31,65,4)")
+
+        val preview = evaluateSelectedScreenPreview(file.lines())
+
+        assertEquals("A", preview.cellAt(2, 31).displayText)
+        assertEquals("A", preview.cellAt(2, 32).displayText)
+        assertEquals("A", preview.cellAt(3, 1).displayText)
+        assertEquals("A", preview.cellAt(3, 2).displayText)
+    }
+
+    fun `test CALL HCHAR wraps from the last screen cell to the top left`() {
+        val file = configureFile("100 CALL HCHAR(24,32,65,2)")
+
+        val preview = evaluateSelectedScreenPreview(file.lines())
+
+        assertEquals("A", preview.cellAt(24, 32).displayText)
+        assertEquals("A", preview.cellAt(1, 1).displayText)
+    }
+
+    fun `test CALL VCHAR wraps to the next column at the bottom screen edge`() {
+        val file = configureFile("100 CALL VCHAR(23,2,66,4)")
+
+        val preview = evaluateSelectedScreenPreview(file.lines())
+
+        assertEquals("B", preview.cellAt(23, 2).displayText)
+        assertEquals("B", preview.cellAt(24, 2).displayText)
+        assertEquals("B", preview.cellAt(1, 3).displayText)
+        assertEquals("B", preview.cellAt(2, 3).displayText)
+    }
+
+    fun `test CALL VCHAR wraps from the last screen cell to the top left`() {
+        val file = configureFile("100 CALL VCHAR(24,32,66,2)")
+
+        val preview = evaluateSelectedScreenPreview(file.lines())
+
+        assertEquals("B", preview.cellAt(24, 32).displayText)
+        assertEquals("B", preview.cellAt(1, 1).displayText)
+    }
+
     fun `test selection local LET values are used for preview`() {
         val file = configureFile(
             """
@@ -108,12 +148,12 @@ class TiBasicScreenPreviewEvaluatorTest : TiBasicTestBase() {
         assertNull(preview.cellAt(1, 1).displayText)
     }
 
-    fun `test writes are clipped to 32x24 screen`() {
-        val file = configureFile("100 CALL HCHAR(24,31,65,4)")
+    fun `test repeat count zero leaves the screen unchanged`() {
+        val file = configureFile("100 CALL HCHAR(24,31,65,0)")
 
         val preview = evaluateSelectedScreenPreview(file.lines())
 
-        assertEquals("A", preview.cellAt(24, 31).displayText)
-        assertEquals("A", preview.cellAt(24, 32).displayText)
+        assertNull(preview.cellAt(24, 31).displayText)
+        assertNull(preview.cellAt(24, 32).displayText)
     }
 }
