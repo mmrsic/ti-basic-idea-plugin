@@ -39,6 +39,16 @@ class FormatCodeTest : TiBasicTestBase() {
         assertEquals("100 PRINT \"a\";\"b\"", formattedText(file))
     }
 
+    fun testWhitespaceAroundNumericLiteralOperatorsIsRemoved() {
+        val file = configureFile("100 LET X = 10 + 1")
+        assertEquals("100 LET X=10+1", formattedText(file))
+    }
+
+    fun testWhitespaceAroundNumericLiteralPrintSeparatorsIsRemoved() {
+        val file = configureFile("100 PRINT 1 , 2 ; 3")
+        assertEquals("100 PRINT 1,2;3", formattedText(file))
+    }
+
     fun testCommentLineRemainsUnchanged() {
         val file = configureFile("this is a comment line")
         assertEquals("this is a comment line", formattedText(file))

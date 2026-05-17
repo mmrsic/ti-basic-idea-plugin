@@ -75,17 +75,17 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
 
         myFixture.type('+')
 
-        myFixture.checkResult("100 LET X=10 +")
-        assertEquals("100 LET X=10 +".length, myFixture.editor.caretModel.offset)
+        myFixture.checkResult("100 LET X=10+")
+        assertEquals("100 LET X=10+".length, myFixture.editor.caretModel.offset)
     }
 
-    fun testTypingOperatorAfterLineNumberOnlyInsertsSingleSpace() {
+    fun testTypingOperatorAfterLineNumberOnlyDoesNotInsertSpace() {
         myFixture.configureByText("test.tibasic", "100<caret>")
 
         myFixture.type('+')
 
-        myFixture.checkResult("100 +")
-        assertEquals("100 +".length, myFixture.editor.caretModel.offset)
+        myFixture.checkResult("100+")
+        assertEquals("100+".length, myFixture.editor.caretModel.offset)
     }
 
     fun testTypingExponentMarkerAfterReferencedLineNumberInsertsSpace() {
@@ -119,6 +119,30 @@ class TiBasicPairedCharacterTypedHandlerTest : BasePlatformTestCase() {
         myFixture.type('A')
 
         myFixture.checkResult("100 DATA 1A")
+    }
+
+    fun testTypingCommaAfterNumericLiteralDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 PRINT 1<caret>")
+
+        myFixture.type(',')
+
+        myFixture.checkResult("100 PRINT 1,")
+    }
+
+    fun testTypingPrintSeparatorAfterNumericLiteralDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 PRINT 1<caret>")
+
+        myFixture.type(';')
+
+        myFixture.checkResult("100 PRINT 1;")
+    }
+
+    fun testTypingColonAfterNumericLiteralDoesNotInsertSpace() {
+        myFixture.configureByText("test.tibasic", "100 PRINT 1<caret>")
+
+        myFixture.type(':')
+
+        myFixture.checkResult("100 PRINT 1:")
     }
 
     fun testTypingLetterAfterDigitInRemLineDoesNotInsertSpace() {

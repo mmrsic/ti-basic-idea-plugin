@@ -96,7 +96,7 @@ internal fun shouldInsertSpaceAfterLineNumber(lineContext: LineContext, typedCha
     }
     val lineNumber = lineContext.text.toIntOrNull() ?: return false
     return lineNumber in VALID_LINE_NUMBER_RANGE &&
-            !continuesLineNumber(typedChar)
+            startsTokenRequiringLeadingSpace(typedChar)
 }
 
 internal fun shouldInsertSpaceBeforeTypedCharacterAfterNumber(
@@ -115,9 +115,10 @@ internal fun shouldInsertSpaceBeforeTypedCharacterAfterNumber(
     }
     val numericLiteralText = lineContext.text.substring(tokenBeforeCaret.start, tokenBeforeCaret.end)
     return if (treatNumberAsLineNumber) {
-        !continuesLineNumber(typedChar)
+        startsTokenRequiringLeadingSpace(typedChar)
     } else {
-        !continuesNumericLiteral(numericLiteralText, typedChar)
+        !continuesNumericLiteral(numericLiteralText, typedChar) &&
+                startsTokenRequiringLeadingSpace(typedChar)
     }
 }
 
@@ -137,7 +138,7 @@ private fun lexedLineTokens(lineText: String): List<LexedLineToken> {
     return tokens
 }
 
-private fun continuesLineNumber(typedChar: Char): Boolean = typedChar.isDigit()
+private fun startsTokenRequiringLeadingSpace(typedChar: Char): Boolean = typedChar.isLetter()
 
 private fun continuesNumericLiteral(numericLiteralText: String, typedChar: Char): Boolean =
     when {

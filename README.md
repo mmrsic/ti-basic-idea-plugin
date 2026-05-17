@@ -11,12 +11,13 @@ the BASIC dialects of the Texas Instruments TI-99/4 and TI-99/4A home computers.
 - Custom file icon for TI-Basic source files
 - Each source line must start with a **line number** in the range **1–32767**; lines without a number are flagged as
   errors
-- Typing any non-space character that the interpreter would not treat as a continuation of a bare line number
-  automatically inserts the required separating space (for example `100P` becomes `100 P` and `100+` becomes `100 +`)
-- Typing any non-space character directly after a numeric literal automatically inserts a separating space when the
-  interpreter would not treat that character as part of the number (for example `IF X=10T` becomes `IF X=10 T` and
-  `LET X=10+` becomes `LET X=10 +`); this is skipped inside string literals, `REM` text, and `DATA` lines, and does
-  not trigger while the typed character can still continue the number (for example `.`, `E`/`e`, or an exponent sign)
+- Typing a letter directly after a bare line number automatically inserts the required separating space so the result
+  matches the formatter (for example `100P` becomes `100 P`, while `100+` stays `100+`)
+- Typing a letter directly after a numeric literal automatically inserts a separating space when the formatter would
+  also keep one there (for example `IF X=10T` becomes `IF X=10 T`, while separators and operators such as `,`, `;`,
+  `:`, and `+` stay attached as in `PRINT 1,`, `PRINT 1;`, or `LET X=10+`); this is skipped inside string literals,
+  `REM` text, and `DATA` lines, and still does not trigger while the typed character can continue the number (for
+  example `.`, `E`/`e`, or an exponent sign)
 - Automatic line-number insertion for **Shift+Enter**, **Duplicate at end**, and **Paste at end** supports a configurable delta and optional rounding to multiples of 10
 - Typing `(` or `"` inserts the matching closing delimiter; Backspace between an empty `""` pair removes both quotes
 - Inside string literals, typing a **3-digit** trigger like `\065` or `\255` inserts the corresponding raw character code (`000..255` supported); in addition, CTRL aliases such as `\C@`, `\CX`, `\C.`, `\C;`, `\C=`, `\C9`, and `\C/` as well as FCTN aliases such as `\F7` and `\FCTN-S` are supported
