@@ -7,6 +7,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.PlatformTestUtil
 import java.awt.Dimension
+import javax.swing.JLabel
 import javax.swing.JTable
 
 class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
@@ -64,13 +65,44 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertEquals(listOf(200), displayedOccurrences(content, "A", "Numeric Array", DIM_LINE_COLUMN).map { it.lineNumber })
     }
 
+    fun `test scalar-only programs hide array-specific columns`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 LET A=1\n110 LET B$=\"X\"")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val tableModel = tableModel(content)
+        assertEquals(listOf("Name", "Type", "Writes", "Reads", "Range"), displayedColumnNames(tableModel))
+        assertFalse(tableModel.hasColumn(DIMENSIONS_COLUMN))
+        assertFalse(tableModel.hasColumn(BASE_COLUMN))
+        assertFalse(tableModel.hasColumn(DIM_LINE_COLUMN))
+    }
+
+    fun `test adding an array shows array-specific columns`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 LET A=1")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            myFixture.editor.document.setText("100 DIM A(10)\n110 LET A(1)=1")
+        }
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(
+            listOf("Name", "Type", "Dimensions", "Base", "DIM", "Writes", "Reads", "Range"),
+            displayedColumnNames(tableModel(content)),
+        )
+    }
+
     fun `test range column displays finite value list`() {
         val content = TiBasicVariableToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
         myFixture.configureByText("test.tibasic", "100 LET E$=\"HELLO\"\n110 LET F$=\"BYE\"\n120 LET G$=E$\n130 LET G$=F$")
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals("Range", tableModel(content).getColumnName(RANGE_COLUMN))
+        assertEquals("Range", columnName(tableModel(content), RANGE_COLUMN))
         assertEquals("\"HELLO\", \"BYE\"", displayedValue(content, "G$", "String", RANGE_COLUMN))
     }
 
@@ -85,8 +117,9 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
 
         val table = table(content)
         table.size = Dimension(220, 200)
-        table.columnModel.getColumn(RANGE_COLUMN).width = 60
-        table.columnModel.getColumn(RANGE_COLUMN).preferredWidth = 60
+        val rangeColumn = modelColumnIndex(tableModel(content), RANGE_COLUMN)
+        table.columnModel.getColumn(rangeColumn).width = 60
+        table.columnModel.getColumn(rangeColumn).preferredWidth = 60
         table.doLayout()
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
@@ -96,13 +129,35 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertTrue(table.getRowHeight(row) > table.getFontMetrics(table.font).height + table.rowMargin)
     }
 
+    fun `test variable table headers are left aligned`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 LET A=1")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val table = table(content)
+        val header = table.tableHeader
+        for (column in 0 until table.columnCount) {
+            val headerComponent = header.defaultRenderer.getTableCellRendererComponent(
+                table,
+                table.columnModel.getColumn(column).headerValue,
+                false,
+                false,
+                -1,
+                column,
+            )
+            val label = headerComponent as? JLabel ?: error("Expected JLabel header renderer for column $column")
+            assertEquals(JLabel.LEFT, label.horizontalAlignment)
+        }
+    }
+
     fun `test range column displays only unique values`() {
         val content = TiBasicVariableToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
         myFixture.configureByText("test.tibasic", "100 LET E$=\"HELLO\"\n110 LET E$=\"HELLO\"")
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals("Range", tableModel(content).getColumnName(RANGE_COLUMN))
+        assertEquals("Range", columnName(tableModel(content), RANGE_COLUMN))
         assertEquals("\"HELLO\"", displayedValue(content, "E$", "String", RANGE_COLUMN))
     }
 
@@ -121,9 +176,10 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
     ): Any? {
         val tableModel = tableModel(content)
         val row = (0 until tableModel.rowCount).first { rowIndex ->
-            tableModel.getValueAt(rowIndex, 0) == name && tableModel.getValueAt(rowIndex, 1) == type
+            tableModel.getValueAt(rowIndex, modelColumnIndex(tableModel, NAME_COLUMN)) == name &&
+                tableModel.getValueAt(rowIndex, modelColumnIndex(tableModel, TYPE_COLUMN)) == type
         }
-        return tableModel.getValueAt(row, column)
+        return tableModel.getValueAt(row, modelColumnIndex(tableModel, column))
     }
 
     private fun displayedOccurrences(
@@ -141,6 +197,19 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         tableModelField.isAccessible = true
         return tableModelField.get(content) as TiBasicVariableTableModel
     }
+
+    private fun displayedColumnNames(tableModel: TiBasicVariableTableModel): List<String> =
+        (0 until tableModel.columnCount).map(tableModel::getColumnName)
+
+    private fun columnName(
+        tableModel: TiBasicVariableTableModel,
+        columnId: Int,
+    ): String = tableModel.getColumnName(modelColumnIndex(tableModel, columnId))
+
+    private fun modelColumnIndex(
+        tableModel: TiBasicVariableTableModel,
+        columnId: Int,
+    ): Int = tableModel.modelColumnIndex(columnId) ?: error("Expected visible column $columnId")
 
     private fun table(content: TiBasicVariableToolWindowContent): JTable {
         val tableField = TiBasicVariableToolWindowContent::class.java.getDeclaredField("table")

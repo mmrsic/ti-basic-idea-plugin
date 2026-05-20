@@ -236,16 +236,21 @@ renders the finite list for the tool window column.
 | `TiBasicExpression` inside `TiBasicCallStatement` | WRITE for the third `GCHAR` argument and the second/third `KEY`/`JOYST` arguments; READ otherwise   |
 | any other parent                                  | READ                                                                                                |
 
-| Index                 | Name       | Content                                                                      |
-|-----------------------|------------|------------------------------------------------------------------------------|
-| 0                     | Name       | Variable name                                                                |
-| 1                     | Type       | `TiBasicVariableType.displayName`                                            |
-| 2 (DIMENSIONS_COLUMN) | Dimensions | `String?` — comma-separated array dimension sizes or empty                   |
-| 3 (BASE_COLUMN)       | Base       | `String?` — effective `OPTION BASE` (`0` or `1`) or empty                    |
-| 4 (DIM_LINE_COLUMN)   | DIM        | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badge  |
-| 5 (WRITES_COLUMN)     | Writes     | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
-| 6 (READS_COLUMN)      | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
-| 7 (RANGE_COLUMN)      | Range      | `String?` — finite value list rendered for display                           |
+| Index               | Name       | Content                                                                                                         |
+|---------------------|------------|-----------------------------------------------------------------------------------------------------------------|
+| 0                   | Name       | Variable name                                                                                                   |
+| 1                   | Type       | `TiBasicVariableType.displayName`                                                                               |
+| `NAME_COLUMN`       | Name       | Variable name                                                                                                   |
+| `TYPE_COLUMN`       | Type       | `TiBasicVariableType.displayName`                                                                               |
+| `DIMENSIONS_COLUMN` | Dimensions | `String?` — comma-separated array dimension sizes; visible only for files with arrays                           |
+| `BASE_COLUMN`       | Base       | `String?` — effective `OPTION BASE` (`0` or `1`); visible only for files with arrays                            |
+| `DIM_LINE_COLUMN`   | DIM        | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badge; visible only for files with arrays |
+| `WRITES_COLUMN`     | Writes     | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                    |
+| `READS_COLUMN`      | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                    |
+| `RANGE_COLUMN`      | Range      | `String?` — finite value list rendered for display                                                              |
+
+`TiBasicVariableTableModel` keeps the three array-specific columns out of the table whenever the
+current file has no arrays, then restores them as soon as at least one array entry exists.
 
 All columns use wrapping renderers, and `TiBasicVariableToolWindowContent` recomputes row
 heights automatically after data refreshes and column-width changes so long values remain fully

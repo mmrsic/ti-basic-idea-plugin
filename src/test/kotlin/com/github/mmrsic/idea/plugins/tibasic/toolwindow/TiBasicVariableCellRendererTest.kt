@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
+import javax.swing.JLabel
 import javax.swing.JTable
 
 class TiBasicVariableCellRendererTest : junit.framework.TestCase() {
@@ -41,7 +42,32 @@ class TiBasicVariableCellRendererTest : junit.framework.TestCase() {
         renderer.panel.setSize(30, Int.MAX_VALUE)
         renderer.panel.doLayout()
 
-        val lineLabels = renderer.panel.components.filterIsInstance<javax.swing.JLabel>().filter { it.text != "," }
+        val lineLabels = renderer.panel.components.filterIsInstance<JLabel>().filter { it.text != "," }
         assertTrue(lineLabels.any { it.y > 0 })
+    }
+
+    fun `test line number renderer keeps labels left aligned in wide column`() {
+        val renderer = TiBasicVariableLineNumberRenderer()
+        val table = JTable(1, 1)
+        table.columnModel.getColumn(0).width = 120
+
+        renderer.getTableCellRendererComponent(
+            table = table,
+            value = listOf(
+                TiBasicVariableOccurrence(100, 0, AccessType.WRITE),
+                TiBasicVariableOccurrence(200, 0, AccessType.WRITE),
+            ),
+            isSelected = false,
+            hasFocus = false,
+            row = 0,
+            column = 0,
+        )
+        renderer.panel.setSize(120, Int.MAX_VALUE)
+        renderer.panel.doLayout()
+
+        val firstLineLabel = renderer.panel.components
+            .filterIsInstance<JLabel>()
+            .first { it.text == "100" }
+        assertTrue(firstLineLabel.x <= 4)
     }
 }

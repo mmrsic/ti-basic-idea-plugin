@@ -30,6 +30,7 @@ class TiBasicVariableLineNumberRenderer : TableCellRenderer {
         val columnWidth = table.columnModel.getColumn(column).width
         val metrics = table.getFontMetrics(table.font)
         val maxContentWidth = (columnWidth - CELL_PADDING.left - CELL_PADDING.right).coerceAtLeast(metrics.charWidth('0'))
+        val nextGridXByRow = mutableMapOf(0 to 0)
         var currentLineWidth = 0
         var gridX = 0
         var gridY = 0
@@ -42,6 +43,7 @@ class TiBasicVariableLineNumberRenderer : TableCellRenderer {
                     gridY += 1
                     gridX = 0
                     currentLineWidth = 0
+                    nextGridXByRow.putIfAbsent(gridY, 0)
                 }
                 panel.add(
                     JLabel(separator).also {
@@ -50,6 +52,7 @@ class TiBasicVariableLineNumberRenderer : TableCellRenderer {
                     constraints(gridX, gridY),
                 )
                 gridX += 1
+                nextGridXByRow[gridY] = gridX
                 currentLineWidth += if (currentLineWidth == 0) separatorWidth else scaledSeparatorGap() + separatorWidth
             }
             val labelText = lineNum.toString()
@@ -58,6 +61,7 @@ class TiBasicVariableLineNumberRenderer : TableCellRenderer {
                 gridY += 1
                 gridX = 0
                 currentLineWidth = 0
+                nextGridXByRow.putIfAbsent(gridY, 0)
             }
             panel.add(
                 JLabel(labelText).also {
@@ -67,7 +71,15 @@ class TiBasicVariableLineNumberRenderer : TableCellRenderer {
                 constraints(gridX, gridY),
             )
             gridX += 1
+            nextGridXByRow[gridY] = gridX
             currentLineWidth += if (currentLineWidth == 0) labelWidth else scaledSeparatorGap() + labelWidth
+        }
+
+        nextGridXByRow.forEach { (rowIndex, nextGridX) ->
+            panel.add(
+                JPanel().also { it.isOpaque = false },
+                trailingSpacerConstraints(nextGridX, rowIndex),
+            )
         }
 
         return panel
@@ -82,6 +94,17 @@ class TiBasicVariableLineNumberRenderer : TableCellRenderer {
             it.gridy = gridY
             it.anchor = GridBagConstraints.WEST
             it.insets = CELL_PADDING
+        }
+
+    private fun trailingSpacerConstraints(
+        gridX: Int,
+        gridY: Int,
+    ): GridBagConstraints =
+        GridBagConstraints().also {
+            it.gridx = gridX
+            it.gridy = gridY
+            it.weightx = 1.0
+            it.fill = GridBagConstraints.HORIZONTAL
         }
 }
 

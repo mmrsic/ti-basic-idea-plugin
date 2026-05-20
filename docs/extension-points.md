@@ -602,8 +602,9 @@ Delegates to `TiBasicVariableCollector.determineAccessType` for the classificati
 | `factoryClass` | `tibasic.toolwindow.TiBasicVariableToolWindowFactory` |
 
 Provides a dockable bottom panel that lists all variables in the currently active TI-Basic
-file in a sortable table (columns: Name, Type, Dimensions, Base, DIM, Writes, Reads,
-Range). The Dimensions and Base columns show effective array metadata for DIM
+file in a sortable table (columns: Name, Type, Writes, Reads, Range, plus the conditional
+array columns Dimensions, Base, and DIM when the file defines at least one array). The
+Dimensions and Base columns show effective array metadata for DIM
 declarations directly on each numeric or string array row, including implicit or explicit
 array usages. The DIM column shows the declaration line number on that same array row when
 the array has an explicit `DIM`. Clicking any line number in the DIM, Writes,

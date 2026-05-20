@@ -14,6 +14,7 @@ import java.awt.event.MouseEvent
 import javax.swing.JLabel
 import javax.swing.RowSorter
 import javax.swing.SortOrder
+import javax.swing.table.TableCellRenderer
 import javax.swing.event.TableColumnModelEvent
 import javax.swing.event.TableColumnModelListener
 import javax.swing.table.TableRowSorter
@@ -25,6 +26,13 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
     private val wrappedTextRenderer = TiBasicWrappedTextCellRenderer()
     private val table = JBTable(tableModel)
     private val activeHighlighters = ArrayList<RangeHighlighter>()
+    private val sorter = TableRowSorter(tableModel)
+    private val lineNumberComparator = compareBy<Any?> {
+        (it as? List<*>)
+            ?.filterIsInstance<TiBasicVariableOccurrence>()
+            ?.minOfOrNull { occ -> occ.lineNumber }
+            ?: Int.MAX_VALUE
+    }
 
     init {
         setupTable()
@@ -34,22 +42,10 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
     private fun setupTable() {
         table.setDefaultRenderer(List::class.java, lineNumberRenderer)
         table.setDefaultRenderer(String::class.java, wrappedTextRenderer)
-        val sorter = TableRowSorter(tableModel)
-        val lineNumberComparator = compareBy<Any?> {
-            (it as? List<*>)
-                ?.filterIsInstance<TiBasicVariableOccurrence>()
-                ?.minOfOrNull { occ -> occ.lineNumber }
-                ?: Int.MAX_VALUE
-        }
-        sorter.setComparator(DIM_LINE_COLUMN, lineNumberComparator)
-        sorter.setComparator(WRITES_COLUMN, lineNumberComparator)
-        sorter.setComparator(READS_COLUMN, lineNumberComparator)
+        table.tableHeader.defaultRenderer = leftAlignedHeaderRenderer(table.tableHeader.defaultRenderer)
         table.rowSorter = sorter
         sorter.sortKeys = listOf(RowSorter.SortKey(0, SortOrder.ASCENDING))
-        table.columnModel.getColumn(DIMENSIONS_COLUMN).preferredWidth = 90
-        table.columnModel.getColumn(BASE_COLUMN).preferredWidth = 45
-        table.columnModel.getColumn(DIM_LINE_COLUMN).preferredWidth = 45
-        table.columnModel.getColumn(RANGE_COLUMN).preferredWidth = 140
+        configureVisibleColumns(lineNumberComparator)
         table.addMouseListener(LineNumberClickHandler())
         table.selectionModel.addListSelectionListener { event ->
             if (!event.valueIsAdjusting) updateHighlightsForSelection()
@@ -64,6 +60,7 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
         clearHighlights()
         val entries = if (file != null) TiBasicVariableCollector.collect(file) else emptyList()
         tableModel.updateEntries(entries)
+        configureVisibleColumns(lineNumberComparator)
         updateRowHeights()
     }
 
@@ -107,13 +104,15 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
         override fun mouseClicked(e: MouseEvent) {
             val row = table.rowAtPoint(e.point)
             val col = table.columnAtPoint(e.point)
-            if (row < 0 || col !in DIM_LINE_COLUMN..READS_COLUMN) return
+            if (row < 0) return
+            val modelColumn = table.convertColumnIndexToModel(col)
+            if (!tableModel.isLineNumberColumn(modelColumn)) return
 
             val cellRect = table.getCellRect(row, col, false)
             val relX = e.x - cellRect.x
 
             val modelRow = table.convertRowIndexToModel(row)
-            val occurrences = (tableModel.getValueAt(modelRow, col) as? List<*>)
+            val occurrences = (tableModel.getValueAt(modelRow, modelColumn) as? List<*>)
                 ?.filterIsInstance<TiBasicVariableOccurrence>() ?: return
 
             table.prepareRenderer(lineNumberRenderer, row, col)
@@ -165,4 +164,23 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
         override fun columnSelectionChanged(event: javax.swing.event.ListSelectionEvent) = Unit
         override fun columnMarginChanged(event: javax.swing.event.ChangeEvent) = updateRowHeights()
     }
+
+    private fun configureVisibleColumns(lineNumberComparator: Comparator<Any?>) {
+        sorter.modelStructureChanged()
+        tableModel.modelColumnIndex(DIM_LINE_COLUMN)?.let { sorter.setComparator(it, lineNumberComparator) }
+        tableModel.modelColumnIndex(WRITES_COLUMN)?.let { sorter.setComparator(it, lineNumberComparator) }
+        tableModel.modelColumnIndex(READS_COLUMN)?.let { sorter.setComparator(it, lineNumberComparator) }
+        tableModel.modelColumnIndex(DIMENSIONS_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 90 }
+        tableModel.modelColumnIndex(BASE_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 45 }
+        tableModel.modelColumnIndex(DIM_LINE_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 45 }
+        tableModel.modelColumnIndex(RANGE_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 140 }
+    }
+
+    private fun leftAlignedHeaderRenderer(delegate: TableCellRenderer): TableCellRenderer =
+        TableCellRenderer { table, value, isSelected, hasFocus, row, column ->
+            delegate.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+                .also { component ->
+                    (component as? JLabel)?.horizontalAlignment = JLabel.LEFT
+                }
+        }
 }
