@@ -154,8 +154,11 @@ PSI tree              (tibasic.psi + subpackages)
     │       file-local constant numeric variables, or other simple statically
     │       resolvable numeric expressions and maps them to up to three tone
     │       channels plus an optional SN76489-style noise channel before
-    │       triggering playback through the shared JVM audio adapter. The
-    │       fourth CALL SOUND selector follows the TI-Basic negative noise
+    │       triggering playback through the shared JVM audio adapter. Positive
+    │       durations always play to completion; negative durations are
+    │       interruptible and a new click replaces the currently playing
+    │       negative-duration sound without discarding already queued sounds.
+    │       The fourth CALL SOUND selector follows the TI-Basic negative noise
     │       values -1..-8 rather than the SN76489 register bits directly.
     │
     │       TiBasicLineReferenceLineMarkerProvider is triggered on the

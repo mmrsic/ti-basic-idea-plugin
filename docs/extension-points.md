@@ -449,9 +449,11 @@ line.
 The duration and every `pitch/vol` pair must resolve to integer constants, either as literals or as
 **constant numeric variables** (variables assigned exactly one distinct numeric literal throughout the
 file), or as other simple statically resolvable numeric expressions. The resolved values must describe
-a playable sound: `dur >= 1`, every `pitch >= 1`, and every
+a playable sound: `abs(dur) >= 1`, every `pitch >= 1`, and every
 `vol` in `0..30`. When these conditions are met, clicking the gutter icon dispatches square-wave playback through the
-shared `TiBasicSoundPlaybackService`.
+shared `TiBasicSoundPlaybackService`. Positive durations always play to completion and later clicks are queued FIFO;
+negative durations are interruptible and a new click replaces the currently playing negative-duration sound while
+preserving already queued follow-up sounds.
 
 Shared infrastructure:
 
@@ -459,9 +461,9 @@ Shared infrastructure:
   CHAR/COLOR/SCREEN/SOUND line-marker providers.
 - `resolveSoundPlayback(...)` reuses the same constant-expression resolution helpers that already
   power the character and color editor features.
-- `TiBasicSoundPlaybackService` renders 16-bit mono PCM square waves and delegates output to the
-  `TiBasicAudioOutput` adapter. The default implementation uses the JVM `javax.sound.sampled` API so
-  the same plugin logic works across Linux, macOS, and Windows.
+- `TiBasicSoundPlaybackService` renders 16-bit mono PCM square waves, manages the playback queue, and
+  delegates output to the `TiBasicAudioOutput` adapter. The default implementation uses the JVM
+  `javax.sound.sampled` API so the same plugin logic works across Linux, macOS, and Windows.
 
 ---
 

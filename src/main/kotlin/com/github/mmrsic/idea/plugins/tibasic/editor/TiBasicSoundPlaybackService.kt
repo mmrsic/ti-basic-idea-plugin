@@ -6,6 +6,7 @@ import com.intellij.notification.Notifications
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.*
 import java.util.concurrent.Executor
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
@@ -18,6 +19,7 @@ private const val PCM_SAMPLE_RATE_HZ = 44_100f
 private const val PCM_SAMPLE_SIZE_BITS = 16
 private const val PCM_CHANNEL_COUNT = 1
 private const val PCM_FRAME_SIZE_BYTES = 2
+private const val PCM_WRITE_CHUNK_SIZE_BYTES = 4_096
 private const val MILLISECONDS_PER_SECOND = 1_000
 private const val MAX_PCM_AMPLITUDE = 32_767
 private const val NOISE_SHIFT_REGISTER_BITS = 15
@@ -57,18 +59,29 @@ internal data class TiBasicPcmAudio(
 
 internal interface TiBasicAudioOutput {
     @Throws(LineUnavailableException::class, IllegalArgumentException::class)
-    fun play(audio: TiBasicPcmAudio)
+    fun play(
+        audio: TiBasicPcmAudio,
+        playbackInterrupter: TiBasicPlaybackInterrupter = uninterruptedSoundPlayback,
+    )
 }
 
 internal class TiBasicJavaSoundAudioOutput : TiBasicAudioOutput {
 
-    override fun play(audio: TiBasicPcmAudio) {
+    override fun play(audio: TiBasicPcmAudio, playbackInterrupter: TiBasicPlaybackInterrupter) {
         val line = AudioSystem.getSourceDataLine(audio.format)
         line.open(audio.format)
         line.start()
         try {
-            line.write(audio.sampleData, 0, audio.sampleData.size)
-            line.drain()
+            var offset = 0
+            while (offset < audio.sampleData.size && !playbackInterrupter.isInterrupted()) {
+                val chunkSize = minOf(PCM_WRITE_CHUNK_SIZE_BYTES, audio.sampleData.size - offset)
+                offset += line.write(audio.sampleData, offset, chunkSize)
+            }
+            if (offset >= audio.sampleData.size && !playbackInterrupter.isInterrupted()) {
+                line.drain()
+            } else {
+                line.flush()
+            }
         } finally {
             line.stop()
             line.close()
@@ -83,19 +96,65 @@ internal class TiBasicSoundPlaybackService(
         1,
     ),
 ) {
+    private val playbackMonitor = Any()
+    private val queuedPlaybacks = ArrayDeque<TiBasicSoundPlaybackRequest>()
+    private var playbackWorkerScheduled = false
+    private var activePlayback: ActiveSoundPlayback? = null
 
     fun playSound(project: Project?, playback: TiBasicSoundPlayback) {
-        executor.execute {
-            try {
-                playSoundNow(playback)
-            } catch (exception: Exception) {
-                reportPlaybackFailure(project, exception)
+        val request = TiBasicSoundPlaybackRequest(project, playback)
+        var startPlaybackWorker = false
+        synchronized(playbackMonitor) {
+            val runningPlayback = activePlayback
+            if (runningPlayback?.isInterruptible == true) {
+                runningPlayback.interrupt()
+                queuedPlaybacks.addFirst(request)
+            } else {
+                queuedPlaybacks.addLast(request)
             }
+            if (!playbackWorkerScheduled) {
+                playbackWorkerScheduled = true
+                startPlaybackWorker = true
+            }
+        }
+        if (startPlaybackWorker) {
+            executor.execute(::drainPlaybackQueue)
         }
     }
 
     internal fun playSoundNow(playback: TiBasicSoundPlayback) {
-        audioOutput.play(renderSoundAudio(playback))
+        playSoundNow(playback, uninterruptedSoundPlayback)
+    }
+
+    private fun playSoundNow(playback: TiBasicSoundPlayback, playbackInterrupter: TiBasicPlaybackInterrupter) {
+        audioOutput.play(renderSoundAudio(playback), playbackInterrupter)
+    }
+
+    private fun drainPlaybackQueue() {
+        while (true) {
+            val request = synchronized(playbackMonitor) {
+                val nextPlayback = queuedPlaybacks.pollFirst()
+                if (nextPlayback == null) {
+                    playbackWorkerScheduled = false
+                    activePlayback = null
+                    return
+                }
+                val runningPlayback = ActiveSoundPlayback(nextPlayback.playback)
+                activePlayback = runningPlayback
+                nextPlayback to runningPlayback
+            }
+            try {
+                playSoundNow(request.first.playback, request.second.interrupter)
+            } catch (exception: Exception) {
+                reportPlaybackFailure(request.first.project, exception)
+            } finally {
+                synchronized(playbackMonitor) {
+                    if (activePlayback === request.second) {
+                        activePlayback = null
+                    }
+                }
+            }
+        }
     }
 
     private fun reportPlaybackFailure(project: Project?, exception: Exception) {
@@ -111,6 +170,28 @@ internal class TiBasicSoundPlaybackService(
         )
     }
 }
+
+internal fun interface TiBasicPlaybackInterrupter {
+    fun isInterrupted(): Boolean
+}
+
+private data class TiBasicSoundPlaybackRequest(
+    val project: Project?,
+    val playback: TiBasicSoundPlayback,
+)
+
+private class ActiveSoundPlayback(playback: TiBasicSoundPlayback) {
+    private val interrupted = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    val interrupter = TiBasicPlaybackInterrupter { interrupted.get() }
+    val isInterruptible = playback.duration < 0
+
+    fun interrupt() {
+        interrupted.set(true)
+    }
+}
+
+private val uninterruptedSoundPlayback = TiBasicPlaybackInterrupter { false }
 
 internal fun renderSoundAudio(playback: TiBasicSoundPlayback): TiBasicPcmAudio {
     val sampleCount = ((playback.duration.toDouble().absoluteValue * PCM_SAMPLE_RATE_HZ) / MILLISECONDS_PER_SECOND)

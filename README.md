@@ -60,18 +60,18 @@ Lines whose keyword is not one of the above are flagged as unknown statements.
 
 ### CALL subprograms
 
-| Subprogram                   | Signature                                             | Description                                          |
-|------------------------------|-------------------------------------------------------|------------------------------------------------------|
-| `CALL CLEAR`                 | No arguments                                          | Clear the screen                                     |
-| `CALL SCREEN(color)`         | 1 numeric                                             | Set the screen background color                      |
-| `CALL COLOR(set,fg,bg)`      | 3 numerics                                            | Set foreground/background colors for a character set |
-| `CALL HCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)                  | Print character horizontally (optionally n times)    |
-| `CALL VCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)                  | Print character vertically (optionally n times)      |
-| `CALL GCHAR(row,col,var)`    | 2 numerics, 1 numeric variable or array entry         | Read character at position into a variable           |
-| `CALL CHAR(code,pattern$)`   | 1 numeric, 1 string                                   | Define a custom character pattern                    |
-| `CALL KEY(unit,key,status)`  | 3 numerics                                            | Read keyboard input                                  |
-| `CALL JOYST(unit,x,y)`       | 3 numerics                                            | Read joystick input                                  |
-| `CALL SOUND(dur,freq,vol…)`  | 3, 5, 7, or 9 numerics (`dur`, then `freq/vol` pairs) | Play up to three tones plus one noise channel        |
+| Subprogram                   | Signature                                             | Description                                                                    |
+|------------------------------|-------------------------------------------------------|--------------------------------------------------------------------------------|
+| `CALL CLEAR`                 | No arguments                                          | Clear the screen                                                               |
+| `CALL SCREEN(color)`         | 1 numeric                                             | Set the screen background color                                                |
+| `CALL COLOR(set,fg,bg)`      | 3 numerics                                            | Set foreground/background colors for a character set                           |
+| `CALL HCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)                  | Print character horizontally (optionally n times)                              |
+| `CALL VCHAR(row,col,ch[,n])` | 3 numerics; 4th optional (default 1)                  | Print character vertically (optionally n times)                                |
+| `CALL GCHAR(row,col,var)`    | 2 numerics, 1 numeric variable or array entry         | Read character at position into a variable                                     |
+| `CALL CHAR(code,pattern$)`   | 1 numeric, 1 string                                   | Define a custom character pattern                                              |
+| `CALL KEY(unit,key,status)`  | 3 numerics                                            | Read keyboard input                                                            |
+| `CALL JOYST(unit,x,y)`       | 3 numerics                                            | Read joystick input                                                            |
+| `CALL SOUND(dur,freq,vol…)`  | 3, 5, 7, or 9 numerics (`dur`, then `freq/vol` pairs) | Play up to three tones plus one noise channel; negative `dur` is interruptible |
 
 ### Expressions
 
@@ -277,9 +277,11 @@ The annotator inspects every file and highlights:
   transparent checkerboard is shown when the color cannot be resolved)
 - **CALL SOUND gutter playback** — for every resolvable `CALL SOUND(dur,pitch1,vol1[,pitch2,vol2...])`, a play icon
   appears in the gutter; clicking it plays a square-wave approximation of up to three tone channels plus the optional
-  SN76489-style noise channel via the JVM audio stack on Linux, macOS, and Windows. Negative TI-Basic noise selectors
-  `-1..-4` (periodic) and `-5..-8` (white) are accepted wherever a CALL SOUND frequency argument resolves statically,
-  with `-4` and `-8` following tone 3
+  SN76489-style noise channel via the JVM audio stack on Linux, macOS, and Windows. Positive durations always play to
+  completion and additional clicks are queued FIFO; negative durations are interruptible and are replaced immediately by
+  a newly clicked sound while already queued follow-up sounds remain queued. Negative TI-Basic noise selectors `-1..-4`
+  (periodic) and `-5..-8` (white) are accepted wherever a CALL SOUND frequency argument resolves statically, with `-4`
+  and `-8` following tone 3
 - **Line-reference gutter indicator** — if other program lines refer to a line number (`GOTO`, `GOSUB`,
   `ON ... GOTO/GOSUB`, `IF ... THEN/ELSE`, `RESTORE`, `BREAK`, `UNBREAK`, `TRACE`, `UNTRACE`), a gutter icon appears
   next to that target line; the tooltip summarizes the referring line numbers, and clicking the icon opens a
