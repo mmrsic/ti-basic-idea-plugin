@@ -62,6 +62,26 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertEquals(listOf(200), displayedOccurrences(content, "A", "Numeric Array", DIM_LINE_COLUMN).map { it.lineNumber })
     }
 
+    fun `test range column displays finite value list`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 LET E$=\"HELLO\"\n110 LET F$=\"BYE\"\n120 LET G$=E$\n130 LET G$=F$")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("Range", tableModel(content).getColumnName(RANGE_COLUMN))
+        assertEquals("\"HELLO\", \"BYE\"", displayedValue(content, "G$", "String", RANGE_COLUMN))
+    }
+
+    fun `test range column displays only unique values`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 LET E$=\"HELLO\"\n110 LET E$=\"HELLO\"")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("Range", tableModel(content).getColumnName(RANGE_COLUMN))
+        assertEquals("\"HELLO\"", displayedValue(content, "E$", "String", RANGE_COLUMN))
+    }
+
     private fun displayedVariableNames(content: TiBasicVariableToolWindowContent): List<String> {
         val tableModel = tableModel(content)
         return (0 until tableModel.rowCount).map { row ->

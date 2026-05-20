@@ -603,11 +603,13 @@ Delegates to `TiBasicVariableCollector.determineAccessType` for the classificati
 
 Provides a dockable bottom panel that lists all variables in the currently active TI-Basic
 file in a sortable table (columns: Name, Type, Dimensions, Base, DIM, Writes, Reads,
-Const). The Dimensions and Base columns show effective array metadata for DIM
+Range). The Dimensions and Base columns show effective array metadata for DIM
 declarations directly on each numeric or string array row, including implicit or explicit
 array usages. The DIM column shows the declaration line number on that same array row when
 the array has an explicit `DIM`. Clicking any line number in the DIM, Writes,
-or Reads column navigates the editor to that line. The table refreshes automatically on
+or Reads column navigates the editor to that line. The Range column shows singleton values
+like the previous constant display and otherwise renders finite comma-separated value lists
+inferred from simple literal and variable-alias assignments. The table refreshes automatically on
 every document edit and whenever the active file changes.
 
 ---

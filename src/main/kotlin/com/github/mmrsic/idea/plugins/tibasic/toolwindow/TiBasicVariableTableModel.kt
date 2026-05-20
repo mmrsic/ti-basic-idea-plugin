@@ -2,13 +2,13 @@ package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
 import javax.swing.table.AbstractTableModel
 
-private val COLUMN_NAMES = arrayOf("Name", "Type", "Dimensions", "Base", "DIM", "Writes", "Reads", "Const")
+private val COLUMN_NAMES = arrayOf("Name", "Type", "Dimensions", "Base", "DIM", "Writes", "Reads", "Range")
 const val DIMENSIONS_COLUMN = 2
 const val BASE_COLUMN = 3
 const val DIM_LINE_COLUMN = 4
 const val WRITES_COLUMN = 5
 const val READS_COLUMN = 6
-const val CONST_COLUMN = 7
+const val RANGE_COLUMN = 7
 
 class TiBasicVariableTableModel(private var entries: List<TiBasicVariableEntry> = emptyList()) : AbstractTableModel() {
 
@@ -38,7 +38,7 @@ class TiBasicVariableTableModel(private var entries: List<TiBasicVariableEntry> 
             DIM_LINE_COLUMN -> entry.dimOccurrences
             WRITES_COLUMN -> entry.occurrences.filter { it.accessType == AccessType.WRITE }
             READS_COLUMN -> entry.occurrences.filter { it.accessType == AccessType.READ }
-            CONST_COLUMN -> entry.constValue
+            RANGE_COLUMN -> entry.rangeDisplay
             else -> null
         }
     }

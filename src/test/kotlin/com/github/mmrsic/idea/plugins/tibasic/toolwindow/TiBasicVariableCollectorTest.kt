@@ -210,6 +210,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 PRINT A")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals(listOf("0"), entry.valueRange)
         assertEquals("0", entry.constValue)
     }
 
@@ -217,6 +218,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 PRINT A$")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A$" && it.type == TiBasicVariableType.STRING }
+        assertEquals(listOf("\"\""), entry.valueRange)
         assertEquals("\"\"", entry.constValue)
     }
 
@@ -224,6 +226,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET A=42")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals(listOf("42"), entry.valueRange)
         assertEquals("42", entry.constValue)
     }
 
@@ -231,6 +234,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET A$=\"HELLO\"")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A$" && it.type == TiBasicVariableType.STRING }
+        assertEquals(listOf("\"HELLO\""), entry.valueRange)
         assertEquals("\"HELLO\"", entry.constValue)
     }
 
@@ -238,6 +242,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET E$=\"HELLO\"\n110 LET G$=E$")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "G$" && it.type == TiBasicVariableType.STRING }
+        assertEquals(listOf("\"HELLO\""), entry.valueRange)
         assertEquals("\"HELLO\"", entry.constValue)
     }
 
@@ -245,13 +250,23 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET A=5\n200 LET A=5")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals(listOf("5"), entry.valueRange)
         assertEquals("5", entry.constValue)
     }
 
-    fun `test numeric variable written with different literals has null constValue`() {
+    fun `test numeric variable written with different literals has both values in range`() {
         val file = configureFile("100 LET A=5\n200 LET A=10")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals(listOf("5", "10"), entry.valueRange)
+        assertNull(entry.constValue)
+    }
+
+    fun `test string variable written from two constant aliases has both values in range`() {
+        val file = configureFile("100 LET E$=\"HELLO\"\n110 LET F$=\"BYE\"\n120 LET G$=E$\n130 LET G$=F$")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "G$" && it.type == TiBasicVariableType.STRING }
+        assertEquals(listOf("\"HELLO\"", "\"BYE\""), entry.valueRange)
         assertNull(entry.constValue)
     }
 
@@ -259,6 +274,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET A=5*2")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertNull(entry.valueRange)
         assertNull(entry.constValue)
     }
 
@@ -266,6 +282,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET E$=\"HELLO\"\n110 LET E$=\"BYE\"\n120 LET G$=E$")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "G$" && it.type == TiBasicVariableType.STRING }
+        assertEquals(listOf("\"HELLO\"", "\"BYE\""), entry.valueRange)
         assertNull(entry.constValue)
     }
 
@@ -273,6 +290,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 INPUT A")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertNull(entry.valueRange)
         assertNull(entry.constValue)
     }
 
@@ -280,6 +298,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 FOR I=1 TO 10\n200 NEXT I")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
+        assertNull(entry.valueRange)
         assertNull(entry.constValue)
     }
 
@@ -287,6 +306,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET A(1)=5")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC_ARRAY }
+        assertNull(entry.valueRange)
         assertNull(entry.constValue)
     }
 
@@ -294,6 +314,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 DIM A(10)")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC_ARRAY }
+        assertNull(entry.valueRange)
         assertNull(entry.constValue)
     }
 
@@ -301,6 +322,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 DEF F(X)=X*2")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "F" && it.type == TiBasicVariableType.USER_FUNCTION }
+        assertNull(entry.valueRange)
         assertNull(entry.constValue)
     }
 }

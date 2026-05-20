@@ -43,7 +43,7 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
         table.columnModel.getColumn(DIMENSIONS_COLUMN).preferredWidth = 90
         table.columnModel.getColumn(BASE_COLUMN).preferredWidth = 45
         table.columnModel.getColumn(DIM_LINE_COLUMN).preferredWidth = 45
-        table.columnModel.getColumn(CONST_COLUMN).preferredWidth = 70
+        table.columnModel.getColumn(RANGE_COLUMN).preferredWidth = 140
         table.addMouseListener(LineNumberClickHandler())
         table.selectionModel.addListSelectionListener { event ->
             if (!event.valueIsAdjusting) updateHighlightsForSelection()

@@ -183,12 +183,12 @@ in the active TI-Basic file. It refreshes automatically after every committed do
 
 ### Data model
 
-| Class                       | Responsibility                                                                                                                                                                                                 |
-|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TiBasicVariableOccurrence` | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), optional `writtenValue` (`Constant` or `VariableReference` for simple `LET` writes, else `null`)                                |
-| `TiBasicVariableEntry`      | Aggregated entry: `name`, `type`, `occurrences`, optional `arrayDetails`, optional `dimOccurrences`; derived properties: `reads`, `writes`, `lineNumbers`, `dimensions`, `optionBase`, `dimLine`, `constValue` |
-| `TiBasicArrayDetails`       | Effective array metadata: declared or implicit dimension list plus the active `OPTION BASE` value                                                                                                              |
-| `TiBasicVariableType`       | Enum: NUMERIC, STRING, NUMERIC_ARRAY, STRING_ARRAY, USER_FUNCTION                                                                                                                                              |
+| Class                       | Responsibility                                                                                                                                                                                                                               |
+|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TiBasicVariableOccurrence` | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), optional `writtenValue` (`Constant` or `VariableReference` for simple `LET` writes, else `null`)                                                              |
+| `TiBasicVariableEntry`      | Aggregated entry: `name`, `type`, `occurrences`, optional `arrayDetails`, optional `dimOccurrences`; derived properties: `reads`, `writes`, `lineNumbers`, `dimensions`, `optionBase`, `dimLine`, `valueRange`, `rangeDisplay`, `constValue` |
+| `TiBasicArrayDetails`       | Effective array metadata: declared or implicit dimension list plus the active `OPTION BASE` value                                                                                                                                            |
+| `TiBasicVariableType`       | Enum: NUMERIC, STRING, NUMERIC_ARRAY, STRING_ARRAY, USER_FUNCTION                                                                                                                                                                            |
 
 ### Array metadata
 
@@ -202,16 +202,19 @@ the single row for each array:
 - **OPTION BASE**: uses the first valid `OPTION BASE` statement value (`0` or `1`);
   if none is present, the default is `0`.
 
-### Const-value detection
+### Range-value detection
 
-`TiBasicVariableCollector` resolves `TiBasicVariableEntry.constValue` once per collected entry:
+`TiBasicVariableCollector` resolves `TiBasicVariableEntry.valueRange` once per collected entry:
 
-- Only `NUMERIC` and `STRING` scalar types can have a `constValue` (arrays and user functions → `null`).
-- **Never written** (`writes == 0`): `constValue = "0"` (NUMERIC) or `"\"\""` (STRING).
-- **All writes resolve to the same constant**: `constValue = <that literal text>`.
-- **Simple alias writes** such as `G$=E$` inherit the referenced scalar variable's `constValue`, with cycle protection.
-- **Any write is non-constant** (INPUT/READ/FOR/CALL, a compound expression, or a reference to a non-constant variable): `constValue = null`.
-- **Writes use different literals**: `constValue = null`.
+- Only `NUMERIC` and `STRING` scalar types can have a finite `valueRange` (arrays and user functions → `null`).
+- **Never written** (`writes == 0`): `valueRange = ["0"]` (NUMERIC) or `["\"\""]` (STRING).
+- **Direct literal writes** contribute that literal to the range.
+- **Simple alias writes** such as `G$=E$` inherit the referenced scalar variable's full finite range, with cycle protection.
+- **Multiple writes** union their finite values in first-seen order and remove duplicates.
+- **Any write is non-resolvable** (INPUT/READ/FOR/CALL, a compound expression, or a reference to a variable with unknown range): `valueRange = null`.
+
+`constValue` remains available as the singleton case of `valueRange`, and `rangeDisplay`
+renders the finite list for the tool window column.
 
 `TiBasicVariableCollector.extractWrittenValue` checks that the RHS `EXPRESSION` node of a
 `TiBasicLetStatement` has exactly one non-whitespace child and records either:
@@ -242,7 +245,7 @@ the single row for each array:
 | 4 (DIM_LINE_COLUMN)   | DIM        | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badge  |
 | 5 (WRITES_COLUMN)     | Writes     | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
 | 6 (READS_COLUMN)      | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
-| 7 (CONST_COLUMN)      | Const      | `String?` — constant value or empty                                          |
+| 7 (RANGE_COLUMN)      | Range      | `String?` — finite value list rendered for display                           |
 
 ## Character definitions tool window (tibasic.toolwindow)
 

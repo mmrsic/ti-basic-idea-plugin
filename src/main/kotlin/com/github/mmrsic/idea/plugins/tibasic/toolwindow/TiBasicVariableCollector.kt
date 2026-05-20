@@ -31,7 +31,7 @@ object TiBasicVariableCollector {
         val result = mutableListOf<TiBasicVariableEntry>()
         result += collectUserFunctions(file)
         result += collectRegularVariables(file, arrayMetadataByKey)
-        return resolveConstValues(result)
+        return resolveValueRanges(result)
             .sortedWith(compareBy({ it.name }, { it.type.ordinal }))
     }
 
@@ -183,50 +183,49 @@ object TiBasicVariableCollector {
             else -> AccessType.READ
         }
 
-    private fun resolveConstValues(entries: List<TiBasicVariableEntry>): List<TiBasicVariableEntry> {
+    private fun resolveValueRanges(entries: List<TiBasicVariableEntry>): List<TiBasicVariableEntry> {
         val entryByKey = entries.associateBy { VariableEntryKey(it.name, it.type) }
-        val resolvedValues = mutableMapOf<VariableEntryKey, String?>()
+        val resolvedRanges = mutableMapOf<VariableEntryKey, List<String>?>()
         return entries.map { entry ->
             val key = VariableEntryKey(entry.name, entry.type)
             entry.copy(
-                resolvedConstValue = resolvedValues.getOrPut(key) {
-                    resolveConstValue(key, entryByKey, resolvedValues, emptySet())
-                },
+                    resolvedValueRange = resolvedRanges.getOrPut(key) {
+                        resolveValueRange(key, entryByKey, resolvedRanges, emptySet())
+                    },
             )
         }
     }
 
-    private fun resolveConstValue(
+    private fun resolveValueRange(
         key: VariableEntryKey,
         entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
-        resolvedValues: MutableMap<VariableEntryKey, String?>,
+        resolvedRanges: MutableMap<VariableEntryKey, List<String>?>,
         visitedKeys: Set<VariableEntryKey>,
-    ): String? {
+    ): List<String>? {
         if (key in visitedKeys) return null
         val entry = entryByKey[key] ?: return null
         if (entry.type !in SCALAR_VARIABLE_TYPES) return null
-        if (entry.writes == 0) return defaultConstValue(entry.type)
-        val constants = entry.occurrences
-            .filter { it.accessType == AccessType.WRITE }
-            .map { occurrence ->
-                when (val writtenValue = occurrence.writtenValue) {
-                    is TiBasicWrittenValue.Constant -> writtenValue.value
+        if (entry.writes == 0) return defaultValueRange(entry.type)
+        val possibleValues = mutableListOf<String>()
+        for (occurrence in entry.occurrences.filter { it.accessType == AccessType.WRITE }) {
+            val writtenRange = when (val writtenValue = occurrence.writtenValue) {
+                    is TiBasicWrittenValue.Constant -> listOf(writtenValue.value)
                     is TiBasicWrittenValue.VariableReference -> {
                         val referencedKey = VariableEntryKey(writtenValue.name, writtenValue.type)
-                        resolvedValues[referencedKey]
-                            ?: resolveConstValue(referencedKey, entryByKey, resolvedValues, visitedKeys + key)
-                                ?.also { resolvedValues[referencedKey] = it }
+                        resolvedRanges[referencedKey]
+                            ?: resolveValueRange(referencedKey, entryByKey, resolvedRanges, visitedKeys + key)
+                                ?.also { resolvedRanges[referencedKey] = it }
                     }
 
                     null -> null
-                }
             }
-        val first = constants.firstOrNull() ?: return null
-        return if (constants.all { it == first }) first else null
+            possibleValues += writtenRange ?: return null
+        }
+        return possibleValues.distinct()
     }
 
-    private fun defaultConstValue(type: TiBasicVariableType): String =
-        if (type == TiBasicVariableType.NUMERIC) DEFAULT_NUMERIC_CONST_VALUE else DEFAULT_STRING_CONST_VALUE
+    private fun defaultValueRange(type: TiBasicVariableType): List<String> =
+        listOf(if (type == TiBasicVariableType.NUMERIC) DEFAULT_NUMERIC_CONST_VALUE else DEFAULT_STRING_CONST_VALUE)
 
     private fun extractWrittenValue(varAccess: TiBasicVariableAccess): TiBasicWrittenValue? {
         val letStmt = varAccess.parent as? TiBasicLetStatement ?: return null
