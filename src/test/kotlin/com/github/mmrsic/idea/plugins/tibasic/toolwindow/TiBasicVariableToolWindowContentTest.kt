@@ -6,6 +6,8 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.PlatformTestUtil
+import java.awt.Dimension
+import javax.swing.JTable
 
 class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
 
@@ -72,6 +74,28 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertEquals("\"HELLO\", \"BYE\"", displayedValue(content, "G$", "String", RANGE_COLUMN))
     }
 
+    fun `test rows grow automatically when wrapped cells need more height`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText(
+            "test.tibasic",
+            "100 LET E$=\"307C6EF8FE7C7C30\"\n110 LET F$=\"0C3E761F7F3E3E0C\"\n120 LET G$=E$\n130 LET G$=F$",
+        )
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val table = table(content)
+        table.size = Dimension(220, 200)
+        table.columnModel.getColumn(RANGE_COLUMN).width = 60
+        table.columnModel.getColumn(RANGE_COLUMN).preferredWidth = 60
+        table.doLayout()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val row = (0 until table.rowCount).first { rowIndex ->
+            table.getValueAt(rowIndex, 0) == "G$" && table.getValueAt(rowIndex, 1) == "String"
+        }
+        assertTrue(table.getRowHeight(row) > table.getFontMetrics(table.font).height + table.rowMargin)
+    }
+
     fun `test range column displays only unique values`() {
         val content = TiBasicVariableToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
@@ -116,5 +140,11 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         val tableModelField = TiBasicVariableToolWindowContent::class.java.getDeclaredField("tableModel")
         tableModelField.isAccessible = true
         return tableModelField.get(content) as TiBasicVariableTableModel
+    }
+
+    private fun table(content: TiBasicVariableToolWindowContent): JTable {
+        val tableField = TiBasicVariableToolWindowContent::class.java.getDeclaredField("table")
+        tableField.isAccessible = true
+        return tableField.get(content) as JTable
     }
 }

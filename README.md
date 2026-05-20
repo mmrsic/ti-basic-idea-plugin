@@ -302,7 +302,8 @@ The annotator inspects every file and highlights:
   including explicit `DIM` declarations and implicit arrays with the TI-Basic default dimension size `10`; the
   **DIM** column shows the clickable `DIM` statement line number on that same array row when the array was declared
   explicitly; the Writes and Reads
-  columns show clickable line numbers that navigate to the selected occurrence in the editor; the table refreshes
+  columns show clickable line numbers that navigate to the selected occurrence in the editor; all table columns wrap
+  automatically as the tool window is resized; the table refreshes
   automatically on every document change; the **Range**
   column shows the effective finite value range for scalar numeric and string variables — singleton ranges behave like
   the previous constant display (`0`, `""`, `42`, `"HELLO"`), while multi-value ranges are shown as comma-separated

@@ -610,7 +610,8 @@ the array has an explicit `DIM`. Clicking any line number in the DIM, Writes,
 or Reads column navigates the editor to that line. The Range column shows singleton values
 like the previous constant display and otherwise renders finite comma-separated value lists
 inferred from simple literal and variable-alias assignments. The table refreshes automatically on
-every document edit and whenever the active file changes.
+every document edit and whenever the active file changes, and all columns wrap automatically with
+row heights adjusted to the available width.
 
 ---
 

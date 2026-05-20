@@ -7,17 +7,22 @@ import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.ui.table.JBTable
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JLabel
 import javax.swing.RowSorter
 import javax.swing.SortOrder
+import javax.swing.event.TableColumnModelEvent
+import javax.swing.event.TableColumnModelListener
 import javax.swing.table.TableRowSorter
 
 class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindowContent(project) {
 
     private val tableModel = TiBasicVariableTableModel()
     private val lineNumberRenderer = TiBasicVariableLineNumberRenderer()
+    private val wrappedTextRenderer = TiBasicWrappedTextCellRenderer()
     private val table = JBTable(tableModel)
     private val activeHighlighters = ArrayList<RangeHighlighter>()
 
@@ -28,6 +33,7 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
 
     private fun setupTable() {
         table.setDefaultRenderer(List::class.java, lineNumberRenderer)
+        table.setDefaultRenderer(String::class.java, wrappedTextRenderer)
         val sorter = TableRowSorter(tableModel)
         val lineNumberComparator = compareBy<Any?> {
             (it as? List<*>)
@@ -48,12 +54,17 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
         table.selectionModel.addListSelectionListener { event ->
             if (!event.valueIsAdjusting) updateHighlightsForSelection()
         }
+        table.columnModel.addColumnModelListener(RowHeightUpdateListener())
+        table.addComponentListener(object : ComponentAdapter() {
+            override fun componentResized(event: ComponentEvent) = updateRowHeights()
+        })
     }
 
     override fun refreshForFile(file: TiBasicFile?) {
         clearHighlights()
         val entries = if (file != null) TiBasicVariableCollector.collect(file) else emptyList()
         tableModel.updateEntries(entries)
+        updateRowHeights()
     }
 
     private fun updateHighlightsForSelection() {
@@ -110,12 +121,48 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
             lineNumberRenderer.panel.doLayout()
 
             val clickedLabel = lineNumberRenderer.panel.components
-                .firstOrNull { c -> c is JLabel && c.x <= relX && relX < c.x + c.width } as? JLabel
+                .firstOrNull { c -> c is JLabel && c.bounds.contains(relX, e.y - cellRect.y) } as? JLabel
                 ?: return
             val lineNum = clickedLabel.text.toIntOrNull() ?: return
 
             val occurrence = occurrences.firstOrNull { it.lineNumber == lineNum } ?: return
             navigateToOffset(occurrence.offset)
         }
+    }
+
+    private fun updateRowHeights() {
+        for (row in 0 until table.rowCount) {
+            val preferredHeight = (0 until table.columnCount)
+                .maxOfOrNull { column -> preferredCellHeight(row, column) }
+                ?: table.rowHeight
+            if (table.getRowHeight(row) != preferredHeight) {
+                table.setRowHeight(row, preferredHeight)
+            }
+        }
+    }
+
+    private fun preferredCellHeight(
+        row: Int,
+        column: Int,
+    ): Int {
+        val renderer = table.getCellRenderer(row, column)
+        val component = renderer.getTableCellRendererComponent(
+            table,
+            table.getValueAt(row, column),
+            false,
+            false,
+            row,
+            column,
+        )
+        component.setSize(table.columnModel.getColumn(column).width, Int.MAX_VALUE)
+        return component.preferredSize.height
+    }
+
+    private inner class RowHeightUpdateListener : TableColumnModelListener {
+        override fun columnAdded(event: TableColumnModelEvent) = Unit
+        override fun columnRemoved(event: TableColumnModelEvent) = Unit
+        override fun columnMoved(event: TableColumnModelEvent) = Unit
+        override fun columnSelectionChanged(event: javax.swing.event.ListSelectionEvent) = Unit
+        override fun columnMarginChanged(event: javax.swing.event.ChangeEvent) = updateRowHeights()
     }
 }

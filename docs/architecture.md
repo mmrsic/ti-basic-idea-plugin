@@ -247,6 +247,10 @@ renders the finite list for the tool window column.
 | 6 (READS_COLUMN)      | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges |
 | 7 (RANGE_COLUMN)      | Range      | `String?` — finite value list rendered for display                           |
 
+All columns use wrapping renderers, and `TiBasicVariableToolWindowContent` recomputes row
+heights automatically after data refreshes and column-width changes so long values remain fully
+visible in the current viewport width.
+
 ## Character definitions tool window (tibasic.toolwindow)
 
 The Character Definitions tool window lists all statically resolvable `CALL CHAR`
