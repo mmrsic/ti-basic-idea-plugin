@@ -234,6 +234,13 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         assertEquals("\"HELLO\"", entry.constValue)
     }
 
+    fun `test string variable written from constant string variable has that constValue`() {
+        val file = configureFile("100 LET E$=\"HELLO\"\n110 LET G$=E$")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "G$" && it.type == TiBasicVariableType.STRING }
+        assertEquals("\"HELLO\"", entry.constValue)
+    }
+
     fun `test numeric variable written with same literal twice has that constValue`() {
         val file = configureFile("100 LET A=5\n200 LET A=5")
         val entries = TiBasicVariableCollector.collect(file)
@@ -252,6 +259,13 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET A=5*2")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
+        assertNull(entry.constValue)
+    }
+
+    fun `test string variable written from non constant string variable has null constValue`() {
+        val file = configureFile("100 LET E$=\"HELLO\"\n110 LET E$=\"BYE\"\n120 LET G$=E$")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "G$" && it.type == TiBasicVariableType.STRING }
         assertNull(entry.constValue)
     }
 

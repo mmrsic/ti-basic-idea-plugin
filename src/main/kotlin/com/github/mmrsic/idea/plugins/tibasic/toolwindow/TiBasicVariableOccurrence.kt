@@ -6,5 +6,16 @@ data class TiBasicVariableOccurrence(
     val lineNumber: Int,
     val offset: Int,
     val accessType: AccessType,
-    val writtenConstant: String? = null,
+    val writtenValue: TiBasicWrittenValue? = null,
 )
+
+sealed interface TiBasicWrittenValue {
+    data class Constant(
+        val value: String,
+    ) : TiBasicWrittenValue
+
+    data class VariableReference(
+        val name: String,
+        val type: TiBasicVariableType,
+    ) : TiBasicWrittenValue
+}

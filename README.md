@@ -305,8 +305,8 @@ The annotator inspects every file and highlights:
   columns show clickable line numbers that navigate to the selected occurrence in the editor; the table refreshes
   automatically on every document change; the **Const**
   column shows the effective constant value for scalar numeric and string variables — `0` or `""` for variables that
-  are never written, or the shared literal value if all writes use the same numeric or string literal (e.g. `42` or
-  `"HELLO"`)
+  are never written, or the shared literal value if all writes use the same numeric or string literal directly or via
+  another constant scalar variable (e.g. `42`, `"HELLO"`, or `G$=E$` when `E$` is constant)
 - **TI Basic Character Definitions tool window** — a dockable bottom panel listing all statically resolvable
   `CALL CHAR` definitions in the active TI-Basic file in a sortable table with columns Code, ASCII, Pattern, Icon, and Line;
   entries stay grouped by their actual character code even when multiple codes share the same pattern and the same derived

@@ -31,7 +31,8 @@ object TiBasicVariableCollector {
         val result = mutableListOf<TiBasicVariableEntry>()
         result += collectUserFunctions(file)
         result += collectRegularVariables(file, arrayMetadataByKey)
-        return result.sortedWith(compareBy({ it.name }, { it.type.ordinal }))
+        return resolveConstValues(result)
+            .sortedWith(compareBy({ it.name }, { it.type.ordinal }))
     }
 
     fun collectCached(file: TiBasicFile): List<TiBasicVariableEntry> =
@@ -69,8 +70,8 @@ object TiBasicVariableCollector {
 
             val line = varAccess.containingTiBasicLine() ?: continue
             val accessType = determineAccessType(varAccess)
-            val writtenConstant = if (accessType == AccessType.WRITE) extractLetConstant(varAccess) else null
-            val occurrence = TiBasicVariableOccurrence(line.lineNumber(), nameNode.startOffset, accessType, writtenConstant)
+            val writtenValue = if (accessType == AccessType.WRITE) extractWrittenValue(varAccess) else null
+            val occurrence = TiBasicVariableOccurrence(line.lineNumber(), nameNode.startOffset, accessType, writtenValue)
             grouped.getOrPut(VariableEntryKey(name, type)) { mutableListOf() }.add(occurrence)
         }
 
@@ -182,15 +183,70 @@ object TiBasicVariableCollector {
             else -> AccessType.READ
         }
 
-    private fun extractLetConstant(varAccess: TiBasicVariableAccess): String? {
+    private fun resolveConstValues(entries: List<TiBasicVariableEntry>): List<TiBasicVariableEntry> {
+        val entryByKey = entries.associateBy { VariableEntryKey(it.name, it.type) }
+        val resolvedValues = mutableMapOf<VariableEntryKey, String?>()
+        return entries.map { entry ->
+            val key = VariableEntryKey(entry.name, entry.type)
+            entry.copy(
+                resolvedConstValue = resolvedValues.getOrPut(key) {
+                    resolveConstValue(key, entryByKey, resolvedValues, emptySet())
+                },
+            )
+        }
+    }
+
+    private fun resolveConstValue(
+        key: VariableEntryKey,
+        entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
+        resolvedValues: MutableMap<VariableEntryKey, String?>,
+        visitedKeys: Set<VariableEntryKey>,
+    ): String? {
+        if (key in visitedKeys) return null
+        val entry = entryByKey[key] ?: return null
+        if (entry.type !in SCALAR_VARIABLE_TYPES) return null
+        if (entry.writes == 0) return defaultConstValue(entry.type)
+        val constants = entry.occurrences
+            .filter { it.accessType == AccessType.WRITE }
+            .map { occurrence ->
+                when (val writtenValue = occurrence.writtenValue) {
+                    is TiBasicWrittenValue.Constant -> writtenValue.value
+                    is TiBasicWrittenValue.VariableReference -> {
+                        val referencedKey = VariableEntryKey(writtenValue.name, writtenValue.type)
+                        resolvedValues[referencedKey]
+                            ?: resolveConstValue(referencedKey, entryByKey, resolvedValues, visitedKeys + key)
+                                ?.also { resolvedValues[referencedKey] = it }
+                    }
+
+                    null -> null
+                }
+            }
+        val first = constants.firstOrNull() ?: return null
+        return if (constants.all { it == first }) first else null
+    }
+
+    private fun defaultConstValue(type: TiBasicVariableType): String =
+        if (type == TiBasicVariableType.NUMERIC) DEFAULT_NUMERIC_CONST_VALUE else DEFAULT_STRING_CONST_VALUE
+
+    private fun extractWrittenValue(varAccess: TiBasicVariableAccess): TiBasicWrittenValue? {
         val letStmt = varAccess.parent as? TiBasicLetStatement ?: return null
         val rhs = letStmt.node
             .childrenAfter(TiBasicTokenTypes.EQ_OP)
             .firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION } ?: return null
         val kids = rhs.nonWhitespaceChildren
         if (kids.size != 1) return null
-        return when (kids[0].elementType) {
-            TiBasicTokenTypes.NUMERIC_LITERAL, TiBasicTokenTypes.STRING_LITERAL -> kids[0].text
+        val child = kids[0]
+        return when (child.elementType) {
+            TiBasicTokenTypes.NUMERIC_LITERAL, TiBasicTokenTypes.STRING_LITERAL -> TiBasicWrittenValue.Constant(child.text)
+            TiBasicNodeTypes.VARIABLE_ACCESS -> {
+                val referencedVariable = child.psi as? TiBasicVariableAccess ?: return null
+                val nameNode = referencedVariable.node.firstChildNode ?: return null
+                TiBasicWrittenValue.VariableReference(
+                    name = nameNode.text.uppercase(),
+                    type = variableTypeOf(nameNode.elementType, referencedVariable.hasSubscriptParens()),
+                )
+            }
+
             else -> null
         }
     }
@@ -228,6 +284,12 @@ private val ARRAY_VARIABLE_TYPES: Set<TiBasicVariableType> = setOf(
     TiBasicVariableType.NUMERIC_ARRAY,
     TiBasicVariableType.STRING_ARRAY,
 )
+private val SCALAR_VARIABLE_TYPES: Set<TiBasicVariableType> = setOf(
+    TiBasicVariableType.NUMERIC,
+    TiBasicVariableType.STRING,
+)
+private const val DEFAULT_NUMERIC_CONST_VALUE = "0"
+private const val DEFAULT_STRING_CONST_VALUE = "\"\""
 
 private data class VariableEntryKey(
     val name: String,

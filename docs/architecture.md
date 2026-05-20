@@ -185,7 +185,7 @@ in the active TI-Basic file. It refreshes automatically after every committed do
 
 | Class                       | Responsibility                                                                                                                                                                                                 |
 |-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TiBasicVariableOccurrence` | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), `writtenConstant` (literal value if the write is a bare literal in a LET statement, else `null`)                                |
+| `TiBasicVariableOccurrence` | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), optional `writtenValue` (`Constant` or `VariableReference` for simple `LET` writes, else `null`)                                |
 | `TiBasicVariableEntry`      | Aggregated entry: `name`, `type`, `occurrences`, optional `arrayDetails`, optional `dimOccurrences`; derived properties: `reads`, `writes`, `lineNumbers`, `dimensions`, `optionBase`, `dimLine`, `constValue` |
 | `TiBasicArrayDetails`       | Effective array metadata: declared or implicit dimension list plus the active `OPTION BASE` value                                                                                                              |
 | `TiBasicVariableType`       | Enum: NUMERIC, STRING, NUMERIC_ARRAY, STRING_ARRAY, USER_FUNCTION                                                                                                                                              |
@@ -204,17 +204,20 @@ the single row for each array:
 
 ### Const-value detection
 
-`TiBasicVariableEntry.constValue` is computed from the occurrences at data-access time:
+`TiBasicVariableCollector` resolves `TiBasicVariableEntry.constValue` once per collected entry:
 
 - Only `NUMERIC` and `STRING` scalar types can have a `constValue` (arrays and user functions → `null`).
 - **Never written** (`writes == 0`): `constValue = "0"` (NUMERIC) or `"\"\""` (STRING).
-- **All writes use the same literal**: `constValue = <that literal text>`.
-- **Any write is non-literal** (INPUT/READ/FOR/CALL, or a compound expression): `constValue = null`.
+- **All writes resolve to the same constant**: `constValue = <that literal text>`.
+- **Simple alias writes** such as `G$=E$` inherit the referenced scalar variable's `constValue`, with cycle protection.
+- **Any write is non-constant** (INPUT/READ/FOR/CALL, a compound expression, or a reference to a non-constant variable): `constValue = null`.
 - **Writes use different literals**: `constValue = null`.
 
-Literal detection in `TiBasicVariableCollector.extractLetConstant`: checks that the RHS
-`EXPRESSION` node of the `TiBasicLetStatement` has exactly one non-whitespace child whose
-element type is `NUMERIC_LITERAL` or `STRING_LITERAL`.
+`TiBasicVariableCollector.extractWrittenValue` checks that the RHS `EXPRESSION` node of a
+`TiBasicLetStatement` has exactly one non-whitespace child and records either:
+
+- a `Constant` when that child is a `NUMERIC_LITERAL` or `STRING_LITERAL`
+- a `VariableReference` when that child is a scalar `VARIABLE_ACCESS`
 
 ### Access type classification
 

@@ -13,6 +13,7 @@ data class TiBasicVariableEntry(
     val occurrences: List<TiBasicVariableOccurrence>,
     val arrayDetails: TiBasicArrayDetails? = null,
     val dimOccurrences: List<TiBasicVariableOccurrence> = emptyList(),
+    private val resolvedConstValue: String? = null,
 ) {
     val reads: Int get() = occurrences.count { it.accessType == AccessType.READ }
     val writes: Int get() = occurrences.count { it.accessType == AccessType.WRITE }
@@ -21,12 +22,5 @@ data class TiBasicVariableEntry(
     val optionBase: String? get() = arrayDetails?.optionBase?.toString()
     val dimLine: String? get() = dimOccurrences.map { it.lineNumber }.distinct().singleOrNull()?.toString()
 
-    val constValue: String?
-        get() {
-            if (type !in setOf(TiBasicVariableType.NUMERIC, TiBasicVariableType.STRING)) return null
-            if (writes == 0) return if (type == TiBasicVariableType.NUMERIC) "0" else "\"\""
-            val constants = occurrences.filter { it.accessType == AccessType.WRITE }.map { it.writtenConstant }
-            val first = constants[0] ?: return null
-            return if (constants.all { it == first }) first else null
-        }
+    val constValue: String? get() = resolvedConstValue
 }
