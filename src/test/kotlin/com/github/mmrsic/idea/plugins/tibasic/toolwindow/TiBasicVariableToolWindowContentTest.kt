@@ -106,6 +106,15 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertEquals("\"HELLO\", \"BYE\"", displayedValue(content, "G$", "String", RANGE_COLUMN))
     }
 
+    fun `test range column abbreviates consecutive numeric values`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 FOR I=1 TO 5\n110 NEXT I")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("1-5", displayedValue(content, "I", "Numeric", RANGE_COLUMN))
+    }
+
     fun `test rows grow automatically when wrapped cells need more height`() {
         val content = TiBasicVariableToolWindowContent(project)
         Disposer.register(testRootDisposable, content)

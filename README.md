@@ -308,7 +308,8 @@ The annotator inspects every file and highlights:
   column shows the effective finite value range for scalar numeric and string variables — singleton ranges behave like
   the previous constant display (`0`, `""`, `42`, `"HELLO"`), while multi-value ranges are shown as comma-separated
   literal lists (e.g. `"307C6EF8FE7C7C30", "0C3E761F7F3E3E0C"` for `G$` when it can receive either value through simple
-  variable aliases)
+  variable aliases, or `1, 3, 5` for `I` in `FOR I=1 TO 5 STEP 2` when the loop bounds are statically resolvable);
+  consecutive integer runs are abbreviated as ranges such as `1-5`
 - **TI Basic Character Definitions tool window** — a dockable bottom panel listing all statically resolvable
   `CALL CHAR` definitions in the active TI-Basic file in a sortable table with columns Code, ASCII, Pattern, Icon, and Line;
   entries stay grouped by their actual character code even when multiple codes share the same pattern and the same derived

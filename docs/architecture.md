@@ -210,11 +210,15 @@ the single row for each array:
 - **Never written** (`writes == 0`): `valueRange = ["0"]` (NUMERIC) or `["\"\""]` (STRING).
 - **Direct literal writes** contribute that literal to the range.
 - **Simple alias writes** such as `G$=E$` inherit the referenced scalar variable's full finite range, with cycle protection.
+- **Resolvable `FOR` loop writes** contribute the loop variable's iteration values, including explicit `STEP` values and
+  singleton numeric aliases in the start/end/step expressions.
 - **Multiple writes** union their finite values in first-seen order and remove duplicates.
-- **Any write is non-resolvable** (INPUT/READ/FOR/CALL, a compound expression, or a reference to a variable with unknown range): `valueRange = null`.
+- **Any other write is non-resolvable** (`INPUT`, `READ`, `CALL`, a compound expression, or a reference to a variable
+  with unknown range): `valueRange = null`.
 
 `constValue` remains available as the singleton case of `valueRange`, and `rangeDisplay`
-renders the finite list for the tool window column.
+renders the finite list for the tool window column, abbreviating consecutive integer runs
+of length 3 or more as `start-end`.
 
 `TiBasicVariableCollector.extractWrittenValue` checks that the RHS `EXPRESSION` node of a
 `TiBasicLetStatement` has exactly one non-whitespace child and records either:

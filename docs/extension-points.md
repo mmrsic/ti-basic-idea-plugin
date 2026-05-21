@@ -609,7 +609,9 @@ declarations directly on each numeric or string array row, including implicit or
 array usages. The DIM column shows the declaration line number on that same array row when
 the array has an explicit `DIM`. Clicking any line number in the DIM, Writes,
 or Reads column navigates the editor to that line. The Range column shows singleton values
-like the previous constant display and otherwise renders finite comma-separated value lists
+like the previous constant display and otherwise renders finite comma-separated value lists,
+including statically resolvable `FOR` loop iteration values for numeric control variables;
+consecutive integer runs are abbreviated as `start-end`
 inferred from simple literal and variable-alias assignments. The table refreshes automatically on
 every document edit and whenever the active file changes, and all columns wrap automatically with
 row heights adjusted to the available width.

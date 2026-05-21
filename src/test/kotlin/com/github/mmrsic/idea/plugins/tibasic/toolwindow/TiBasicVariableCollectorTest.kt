@@ -259,6 +259,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
         assertEquals(listOf("5", "10"), entry.valueRange)
+        assertEquals("5, 10", entry.rangeDisplay)
         assertNull(entry.constValue)
     }
 
@@ -294,8 +295,45 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         assertNull(entry.constValue)
     }
 
-    fun `test FOR loop variable has null constValue`() {
+    fun `test FOR loop variable range includes loop values`() {
         val file = configureFile("100 FOR I=1 TO 10\n200 NEXT I")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals((1..10).map(Int::toString), entry.valueRange)
+        assertEquals("1-10", entry.rangeDisplay)
+        assertNull(entry.constValue)
+    }
+
+    fun `test FOR loop variable range respects STEP`() {
+        val file = configureFile("100 FOR I=1 TO 5 STEP 2\n200 NEXT I")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals(listOf("1", "3", "5"), entry.valueRange)
+        assertEquals("1, 3, 5", entry.rangeDisplay)
+        assertNull(entry.constValue)
+    }
+
+    fun `test FOR loop variable range resolves singleton numeric aliases`() {
+        val file = configureFile("100 LET A=2\n110 LET B=6\n120 FOR I=A TO B STEP 2\n130 NEXT I")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
+        assertEquals(listOf("2", "4", "6"), entry.valueRange)
+        assertNull(entry.constValue)
+    }
+
+    fun `test range display abbreviates only consecutive numeric runs`() {
+        val entry = TiBasicVariableEntry(
+            name = "I",
+            type = TiBasicVariableType.NUMERIC,
+            occurrences = emptyList(),
+            resolvedValueRange = listOf("1", "2", "3", "5", "6", "\"A\"", "8", "9", "10"),
+        )
+
+        assertEquals("1-3, 5, 6, \"A\", 8-10", entry.rangeDisplay)
+    }
+
+    fun `test FOR loop variable range stays null for unresolved bounds`() {
+        val file = configureFile("100 INPUT A\n110 FOR I=A TO 5\n120 NEXT I")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
         assertNull(entry.valueRange)

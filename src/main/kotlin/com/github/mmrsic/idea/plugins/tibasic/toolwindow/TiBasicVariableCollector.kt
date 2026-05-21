@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
+import com.github.mmrsic.idea.plugins.tibasic.editor.resolveNumericExpressionValue
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
 import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
@@ -23,6 +24,7 @@ import com.intellij.psi.util.CachedValuesManager
 
 private const val DEFAULT_ARRAY_DIMENSION = 10
 private const val DEFAULT_OPTION_BASE = 0
+private const val DEFAULT_FOR_STEP = 1
 
 object TiBasicVariableCollector {
 
@@ -208,17 +210,12 @@ object TiBasicVariableCollector {
         if (entry.writes == 0) return defaultValueRange(entry.type)
         val possibleValues = mutableListOf<String>()
         for (occurrence in entry.occurrences.filter { it.accessType == AccessType.WRITE }) {
-            val writtenRange = when (val writtenValue = occurrence.writtenValue) {
-                    is TiBasicWrittenValue.Constant -> listOf(writtenValue.value)
-                    is TiBasicWrittenValue.VariableReference -> {
-                        val referencedKey = VariableEntryKey(writtenValue.name, writtenValue.type)
-                        resolvedRanges[referencedKey]
-                            ?: resolveValueRange(referencedKey, entryByKey, resolvedRanges, visitedKeys + key)
-                                ?.also { resolvedRanges[referencedKey] = it }
-                    }
-
-                    null -> null
-            }
+            val writtenRange = resolveWrittenValueRange(
+                occurrence.writtenValue,
+                entryByKey,
+                resolvedRanges,
+                visitedKeys + key,
+            )
             possibleValues += writtenRange ?: return null
         }
         return possibleValues.distinct()
@@ -228,6 +225,14 @@ object TiBasicVariableCollector {
         listOf(if (type == TiBasicVariableType.NUMERIC) DEFAULT_NUMERIC_CONST_VALUE else DEFAULT_STRING_CONST_VALUE)
 
     private fun extractWrittenValue(varAccess: TiBasicVariableAccess): TiBasicWrittenValue? {
+        val forStmt = varAccess.parent as? TiBasicForStatement
+        if (forStmt != null) {
+            return TiBasicWrittenValue.ForLoopRange(
+                startExpression = forStmt.startExpression(),
+                endExpression = forStmt.endExpression(),
+                stepExpression = forStmt.stepExpression(),
+            )
+        }
         val letStmt = varAccess.parent as? TiBasicLetStatement ?: return null
         val rhs = letStmt.node
             .childrenAfter(TiBasicTokenTypes.EQ_OP)
@@ -248,6 +253,87 @@ object TiBasicVariableCollector {
 
             else -> null
         }
+    }
+
+    private fun resolveWrittenValueRange(
+        writtenValue: TiBasicWrittenValue?,
+        entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
+        resolvedRanges: MutableMap<VariableEntryKey, List<String>?>,
+        visitedKeys: Set<VariableEntryKey>,
+    ): List<String>? =
+        when (writtenValue) {
+            is TiBasicWrittenValue.Constant -> listOf(writtenValue.value)
+            is TiBasicWrittenValue.VariableReference -> {
+                val referencedKey = VariableEntryKey(writtenValue.name, writtenValue.type)
+                resolvedRanges[referencedKey]
+                    ?: resolveValueRange(referencedKey, entryByKey, resolvedRanges, visitedKeys)
+                        ?.also { resolvedRanges[referencedKey] = it }
+            }
+
+            is TiBasicWrittenValue.ForLoopRange -> resolveForLoopRange(
+                writtenValue,
+                entryByKey,
+                resolvedRanges,
+                visitedKeys,
+            )
+
+            null -> null
+        }
+
+    private fun resolveForLoopRange(
+        writtenValue: TiBasicWrittenValue.ForLoopRange,
+        entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
+        resolvedRanges: MutableMap<VariableEntryKey, List<String>?>,
+        visitedKeys: Set<VariableEntryKey>,
+    ): List<String>? {
+        val start = resolveNumericExpressionToInt(
+            writtenValue.startExpression,
+            entryByKey,
+            resolvedRanges,
+            visitedKeys,
+        ) ?: return null
+        val end = resolveNumericExpressionToInt(
+            writtenValue.endExpression,
+            entryByKey,
+            resolvedRanges,
+            visitedKeys,
+        ) ?: return null
+        val step = writtenValue.stepExpression?.let { stepExpression ->
+            resolveNumericExpressionToInt(stepExpression, entryByKey, resolvedRanges, visitedKeys)
+        } ?: DEFAULT_FOR_STEP
+        if (step == 0) return null
+        return loopIterationValues(start, end, step).map(Int::toString)
+    }
+
+    private fun resolveNumericExpressionToInt(
+        expression: TiBasicExpression?,
+        entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
+        resolvedRanges: MutableMap<VariableEntryKey, List<String>?>,
+        visitedKeys: Set<VariableEntryKey>,
+    ): Int? =
+        resolveNumericExpressionValue(expression) { variableAccess ->
+            val name = variableAccess.name ?: return@resolveNumericExpressionValue null
+            val key = VariableEntryKey(name, TiBasicVariableType.NUMERIC)
+            val referencedRange = resolvedRanges[key]
+                ?: resolveValueRange(key, entryByKey, resolvedRanges, visitedKeys)
+                    ?.also { resolvedRanges[key] = it }
+            referencedRange?.singleOrNull()?.toIntOrNull()
+        }
+
+    private fun loopIterationValues(
+        start: Int,
+        end: Int,
+        step: Int,
+    ): List<Int> {
+        if (step > 0 && start > end) return listOf(start)
+        if (step < 0 && start < end) return listOf(start)
+        val values = mutableListOf<Int>()
+        var current = start
+        while ((step > 0 && current <= end) || (step < 0 && current >= end)) {
+            values += current
+            current += step
+        }
+        return values.ifEmpty { listOf(start) }
     }
 
     private fun PsiElement.containingTiBasicLine(): TiBasicLine? {

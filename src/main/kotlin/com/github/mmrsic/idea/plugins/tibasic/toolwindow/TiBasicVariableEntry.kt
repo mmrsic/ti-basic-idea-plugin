@@ -23,8 +23,59 @@ data class TiBasicVariableEntry(
     val dimLine: String? get() = dimOccurrences.map { it.lineNumber }.distinct().singleOrNull()?.toString()
 
     val valueRange: List<String>? get() = resolvedValueRange
-    val rangeDisplay: String? get() = valueRange?.joinToString(RANGE_VALUE_SEPARATOR)
+    val rangeDisplay: String? get() = valueRange?.asDisplaySegments()?.joinToString(RANGE_VALUE_SEPARATOR)
     val constValue: String? get() = valueRange?.singleOrNull()
 }
 
+private fun List<String>.asDisplaySegments(): List<String> {
+    val displaySegments = mutableListOf<String>()
+    var numericRunStart: Int? = null
+    var previousNumericValue: Int? = null
+
+    fun flushNumericRun() {
+        val runStartIndex = numericRunStart ?: return
+        val runValues = subList(runStartIndex, previousNumericValueIndex(runStartIndex, previousNumericValue))
+        displaySegments += runValues.toDisplaySegment()
+        numericRunStart = null
+        previousNumericValue = null
+    }
+
+    forEachIndexed { index, value ->
+        val numericValue = value.toIntOrNull()
+        when {
+            numericValue == null -> {
+                flushNumericRun()
+                displaySegments += value
+            }
+
+            numericRunStart == null -> {
+                numericRunStart = index
+                previousNumericValue = numericValue
+            }
+
+            numericValue == previousNumericValue?.plus(1) -> previousNumericValue = numericValue
+            else -> {
+                flushNumericRun()
+                numericRunStart = index
+                previousNumericValue = numericValue
+            }
+        }
+    }
+    flushNumericRun()
+    return displaySegments
+}
+
+private fun List<String>.previousNumericValueIndex(
+    runStartIndex: Int,
+    previousNumericValue: Int?,
+): Int {
+    if (previousNumericValue == null) return runStartIndex
+    val runLength = previousNumericValue - this[runStartIndex].toInt() + 1
+    return runStartIndex + runLength
+}
+
+private fun List<String>.toDisplaySegment(): String =
+    if (size >= 3) "${first()}$RANGE_DISPLAY_SEPARATOR${last()}" else joinToString(RANGE_VALUE_SEPARATOR)
+
 private const val RANGE_VALUE_SEPARATOR = ", "
+private const val RANGE_DISPLAY_SEPARATOR = "-"
