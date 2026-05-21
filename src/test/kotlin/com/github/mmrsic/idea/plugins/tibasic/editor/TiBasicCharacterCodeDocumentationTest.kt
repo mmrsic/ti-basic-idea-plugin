@@ -19,10 +19,44 @@ class TiBasicCharacterCodeDocumentationTest : TiBasicTestBase() {
         val documentation = doc!!
         assertTrue(documentation.contains("Character code 65"))
         assertTrue(documentation.contains("CALL HCHAR character code"))
+        assertTrue(documentation.contains("TI radix-100"))
+        assertTrue(documentation.contains("&gt;40 &gt;41 &gt;00 &gt;00 &gt;00 &gt;00 &gt;00 &gt;00"))
         assertTrue(documentation.contains("ASCII"))
         assertTrue(documentation.contains("A"))
         assertTrue(documentation.contains("TI-Basic character group"))
         assertTrue(documentation.contains("5"))
+    }
+
+    fun `test quick documentation shows TI radix-100 info for generic numeric literal`() {
+        val doc = quickDocumentation("100 PRINT 11516292<caret>3")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("Numeric value 115162923"))
+        assertTrue(documentation.contains("TI value"))
+        assertTrue(documentation.contains("115162923"))
+        assertTrue(documentation.contains("TI radix-100"))
+        assertTrue(documentation.contains("1.15162923 x 100^4"))
+        assertTrue(documentation.contains("&gt;44 &gt;01 &gt;0F &gt;10 &gt;1D &gt;17 &gt;00 &gt;00"))
+        assertTrue(documentation.contains("Stored exactly"))
+    }
+
+    fun `test quick documentation shows rounded TI value for generic numeric literal`() {
+        val doc = quickDocumentation("100 PRINT 0.12345678901234<caret>56")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("Numeric value 0.1234567890123456"))
+        assertTrue(documentation.contains("TI value"))
+        assertTrue(documentation.contains("0.12345678901235"))
+        assertTrue(documentation.contains("Rounded to the nearest TI radix-100 value"))
+    }
+
+    fun `test quick documentation resolves signed numeric literal`() {
+        val doc = quickDocumentation("100 PRINT -5<caret>")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("Numeric value -5"))
+        assertTrue(documentation.contains("-5 x 100^0"))
+        assertTrue(documentation.contains("&gt;BF &gt;FB &gt;00 &gt;00 &gt;00 &gt;00 &gt;00 &gt;00"))
     }
 
     fun `test quick documentation shows overrides for CHR dollar constant variable`() {
@@ -192,8 +226,13 @@ class TiBasicCharacterCodeDocumentationTest : TiBasicTestBase() {
         assertTrue(documentation.contains("Value is not statically determinable here"))
     }
 
-    fun `test quick documentation is unavailable for short numeric DATA item`() {
-        assertNull(quickDocumentation("10 DATA 3<caret>0,FFFFFFFFFFFFFFFF"))
+    fun `test quick documentation shows TI radix-100 info for short numeric DATA item`() {
+        val doc = quickDocumentation("10 DATA 3<caret>0,FFFFFFFFFFFFFFFF")
+        assertNotNull(doc)
+        val documentation = doc!!
+        assertTrue(documentation.contains("Numeric value 30"))
+        assertTrue(documentation.contains("30 x 100^0"))
+        assertTrue(documentation.contains("&gt;40 &gt;1E &gt;00 &gt;00 &gt;00 &gt;00 &gt;00 &gt;00"))
     }
 
     fun `test quick documentation shows preview for short leading zero numeric DATA item`() {

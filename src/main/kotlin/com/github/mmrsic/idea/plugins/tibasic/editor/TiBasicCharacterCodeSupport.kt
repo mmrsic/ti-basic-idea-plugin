@@ -12,9 +12,13 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
 import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
+import com.github.mmrsic.idea.plugins.tibasic.util.parseTiBasicDecimalLiteral
+import com.github.mmrsic.idea.plugins.tibasic.util.tiBasicDecimalString
+import com.github.mmrsic.idea.plugins.tibasic.util.tiBasicRadix100Number
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import java.math.BigDecimal
 
 internal const val CALL_CHAR_SUBPROGRAM = "CHAR"
 private const val CALL_COLOR_SUBPROGRAM = "COLOR"
@@ -41,6 +45,14 @@ private const val CHARACTER_CODE_RANGE_SECTION = "Character code range"
 private const val ASCII_CHARACTERS_SECTION = "ASCII characters"
 private const val TI_COLOR_NAME_SECTION = "TI color name"
 private const val NON_CONSTANT_VALUE_MESSAGE = "Value is not statically determinable here"
+private const val TI_VALUE_SECTION = "TI value"
+private const val TI_RADIX_100_SECTION = "TI radix-100"
+private const val TI_BYTES_HEX_SECTION = "Bytes (hex)"
+private const val TI_BYTES_DECIMAL_SECTION = "Bytes (decimal)"
+private const val EXACTNESS_SECTION = "Exactness"
+private const val STORED_EXACTLY_MESSAGE = "Stored exactly in TI radix-100 format"
+private const val ROUNDED_TO_TI_MESSAGE = "Rounded to the nearest TI radix-100 value"
+private const val OUT_OF_RANGE_MESSAGE = "Not representable in the TI radix-100 range"
 private const val LAST_CHARACTER_GROUP =
     ((CHARACTER_GROUP_END_CODE - CHARACTER_GROUP_START_CODE) / CHARACTER_GROUP_SIZE) + FIRST_CHARACTER_GROUP
 private val HEX_CHAR_PATTERN_REGEX = Regex("^[0-9A-Fa-f]{0,16}$")
@@ -98,6 +110,12 @@ internal data class TiBasicCallColorUsage(
     override val documentationElement: PsiElement = expression
 }
 
+internal data class TiBasicNumericLiteralUsage(
+    override val documentationElement: PsiElement,
+    val sourceText: String,
+    val sourceValue: BigDecimal,
+) : TiBasicDocumentationUsage
+
 internal data class TiBasicCharacterCodeOverride(
     val lineNumber: Int,
     val pattern: String,
@@ -109,6 +127,7 @@ internal fun resolveDocumentationUsage(element: PsiElement?): TiBasicDocumentati
         ?: resolveCallCharHexPatternUsage(element)
         ?: resolveDataHexPatternUsage(element)
         ?: resolveStringLiteralHexPatternUsage(element)
+        ?: resolveNumericLiteralUsage(element)
 
 internal fun resolveCharacterCodeUsage(element: PsiElement?): TiBasicCharacterCodeUsage? {
     val expression = when (element) {
@@ -208,6 +227,7 @@ internal fun buildDocumentation(usage: TiBasicDocumentationUsage): String =
         is TiBasicCallColorUsage -> buildCallColorDocumentation(usage)
         is TiBasicCharacterCodeUsage -> buildCharacterCodeDocumentation(usage)
         is TiBasicHexPatternUsage -> buildHexPatternDocumentation(usage)
+        is TiBasicNumericLiteralUsage -> buildNumericLiteralDocumentation(usage)
     }
 
 internal fun buildCallColorDocumentation(usage: TiBasicCallColorUsage): String {
@@ -221,6 +241,7 @@ internal fun buildCallColorDocumentation(usage: TiBasicCallColorUsage): String {
         return htmlDocument(usage.argument.title, sections)
     }
     sections += htmlSection(VALUE_SECTION, value.toString())
+    sections += tiRadix100Sections(BigDecimal.valueOf(value.toLong()))
     when (usage.argument) {
         TiBasicCallColorArgument.CHARACTER_SET -> {
             val characterSetRange = callColorCharacterSetRange(value)
@@ -257,6 +278,7 @@ internal fun buildCharacterCodeDocumentation(usage: TiBasicCharacterCodeUsage): 
         return htmlDocument("Character code", sections)
     }
     sections += htmlSection("Code", code.toString())
+    sections += tiRadix100Sections(BigDecimal.valueOf(code.toLong()))
     sections += htmlSection("ASCII", asciiCharacterName(code) ?: "No ASCII character")
     sections += htmlSection(
         "TI-Basic character group",
@@ -274,6 +296,36 @@ internal fun buildCharacterCodeDocumentation(usage: TiBasicCharacterCodeUsage): 
         },
     )
     return htmlDocument("Character code $code", sections)
+}
+
+private fun resolveNumericLiteralUsage(element: PsiElement?): TiBasicNumericLiteralUsage? {
+    val expression = when (element) {
+        null -> null
+        is TiBasicExpression -> element
+        else -> PsiTreeUtil.getParentOfType(element, TiBasicExpression::class.java, false)
+    }
+    signedNumericLiteralUsage(expression)?.let { return it }
+    val numericLiteral = element?.takeIf { it.node.elementType == TiBasicTokenTypes.NUMERIC_LITERAL } ?: return null
+    val value = parseTiBasicDecimalLiteral(numericLiteral.text) ?: return null
+    return TiBasicNumericLiteralUsage(
+        documentationElement = numericLiteral,
+        sourceText = numericLiteral.text,
+        sourceValue = value,
+    )
+}
+
+private fun signedNumericLiteralUsage(expression: TiBasicExpression?): TiBasicNumericLiteralUsage? {
+    expression ?: return null
+    val children = expression.node.nonWhitespaceChildren
+    if (children.isEmpty() || children.last().elementType != TiBasicTokenTypes.NUMERIC_LITERAL) return null
+    if (children.dropLast(1).any { it.elementType !in UNARY_EXPRESSION_OPERATOR_TYPES }) return null
+    val sourceText = children.joinToString(separator = "") { it.text }
+    val value = parseTiBasicDecimalLiteral(sourceText) ?: return null
+    return TiBasicNumericLiteralUsage(
+        documentationElement = expression,
+        sourceText = sourceText,
+        sourceValue = value,
+    )
 }
 
 private fun resolveCallCharacterCodeUsage(
@@ -406,6 +458,36 @@ private fun buildHexPatternDocumentation(usage: TiBasicHexPatternUsage): String 
     sections += htmlSectionRaw("Normalized pattern", htmlCode(usage.normalizedPattern))
     sections += htmlSectionRaw("Preview", htmlCharPatternPreview(usage.normalizedPattern))
     return htmlDocument(usage.title, sections)
+}
+
+private fun buildNumericLiteralDocumentation(usage: TiBasicNumericLiteralUsage): String {
+    val sections = mutableListOf(
+        htmlSection("Usage", "Numeric constant"),
+        htmlSection("Value", tiBasicDecimalString(usage.sourceValue)),
+    )
+    sections += tiRadix100Sections(usage.sourceValue)
+    return htmlDocument("Numeric value ${usage.sourceText}", sections)
+}
+
+private fun tiRadix100Sections(sourceValue: BigDecimal): List<String> {
+    val storedValue = tiBasicRadix100Number(sourceValue)
+        ?: return listOf(htmlSection(TI_VALUE_SECTION, OUT_OF_RANGE_MESSAGE))
+    return buildList {
+        add(htmlSection(TI_VALUE_SECTION, tiBasicDecimalString(storedValue.value)))
+        add(htmlSectionRaw(TI_RADIX_100_SECTION, htmlCode(storedValue.radixNotation())))
+        add(htmlSectionRaw(TI_BYTES_HEX_SECTION, htmlCode(storedValue.hexBytes())))
+        add(htmlSectionRaw(TI_BYTES_DECIMAL_SECTION, htmlCode(storedValue.decimalBytes())))
+        add(
+            htmlSection(
+                EXACTNESS_SECTION,
+                if (sourceValue.compareTo(storedValue.value) == 0) {
+                    STORED_EXACTLY_MESSAGE
+                } else {
+                    ROUNDED_TO_TI_MESSAGE
+                },
+            ),
+        )
+    }
 }
 
 private fun htmlDocument(title: String, sections: List<String>): String =

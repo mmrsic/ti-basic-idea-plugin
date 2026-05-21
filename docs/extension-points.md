@@ -48,12 +48,14 @@ Returns a `TiBasicSyntaxHighlighter` instance. The highlighter maps token types 
 | `language`            | `TI-Basic`                                                  |
 | `implementationClass` | `tibasic.editor.TiBasicCharacterCodeDocumentationProvider`  |
 
-Provides Quick Documentation (`Ctrl+Q`) for the character-code argument positions of
-`CALL CHAR`, `CALL HCHAR`, `CALL VCHAR`, and the argument of `CHR$`.
-The documentation resolves numeric literals, constant numeric variables, and simple
-statically resolvable numeric expressions, shows the
-ASCII character if one exists, computes the TI-Basic character group for codes
-`32..159`, and lists file-local `CALL CHAR` overrides for the same code.
+Provides Quick Documentation (`Ctrl+Q`) for numeric constants and for the character-code
+argument positions of `CALL CHAR`, `CALL HCHAR`, `CALL VCHAR`, and the argument of
+`CHR$`. Numeric quick documentation shows the TI radix-100 representation, the encoded
+byte sequence in hexadecimal and decimal, and the stored TI value after radix-100 rounding.
+For character-code positions, the provider also resolves constant numeric variables and
+simple statically resolvable numeric expressions, shows the ASCII character if one exists,
+computes the TI-Basic character group for codes `32..159`, and lists file-local
+`CALL CHAR` overrides for the same code.
 
 The same provider also handles all three argument positions of `CALL COLOR(set,fg,bg)`.
 For each argument it first shows the resolved constant value when one can be determined
