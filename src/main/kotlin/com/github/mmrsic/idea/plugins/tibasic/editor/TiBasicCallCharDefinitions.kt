@@ -21,7 +21,7 @@ internal fun collectCallCharDefinitions(file: TiBasicFile): List<TiBasicCallChar
         CachedValueProvider.Result.create(
             collectStaticallyTraceableCallStatements(file)
                 .mapNotNull { statement ->
-                    resolveCallCharDefinition(statement.callStatement, file, statement.readDataVariableValues)
+                    resolveCallCharDefinition(statement.callStatement, file, statement.staticValues)
                 }
                 .sortedWith(compareBy(TiBasicCallCharDefinition::code, TiBasicCallCharDefinition::lineNumber)),
             file,
@@ -31,12 +31,12 @@ internal fun collectCallCharDefinitions(file: TiBasicFile): List<TiBasicCallChar
 internal fun resolveCallCharDefinition(
     callStatement: TiBasicCallStatement,
     file: TiBasicFile,
-    readDataVariableValues: Map<String, String> = emptyMap(),
+    staticValues: StaticValueSnapshot = StaticValueSnapshot(),
 ): TiBasicCallCharDefinition? {
     if (callStatement.subprogramName() != CALL_CHAR_SUBPROGRAM) return null
-    val code = resolveCallCharNumericValue(callStatement.arguments().getOrNull(0), file, readDataVariableValues) ?: return null
+    val code = resolveCallCharNumericValue(callStatement.arguments().getOrNull(0), file, staticValues) ?: return null
     val pattern = normalizeHexPattern(
-        resolveCallCharStringValue(callStatement.arguments().getOrNull(1), file, readDataVariableValues),
+        resolveCallCharStringValue(callStatement.arguments().getOrNull(1), file, staticValues),
     ) ?: return null
     val line = PsiTreeUtil.getParentOfType(callStatement, TiBasicLine::class.java) ?: return null
     return TiBasicCallCharDefinition(
@@ -50,13 +50,13 @@ internal fun resolveCallCharDefinition(
 private fun resolveCallCharNumericValue(
     expression: com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression?,
     file: TiBasicFile,
-    readDataVariableValues: Map<String, String>,
+    staticValues: StaticValueSnapshot,
 ): Int? =
-    resolveStaticNumericValue(expression, file, readDataVariableValues)
+    resolveStaticNumericValue(expression, file, staticValues)
 
 private fun resolveCallCharStringValue(
     expression: com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression?,
     file: TiBasicFile,
-    readDataVariableValues: Map<String, String>,
+    staticValues: StaticValueSnapshot,
 ): String? =
-    resolveStaticStringValue(expression, file, readDataVariableValues)
+    resolveStaticStringValue(expression, file, staticValues)

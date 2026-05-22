@@ -47,9 +47,8 @@ class TiBasicCallColorAssignmentCollectorTest : TiBasicTestBase() {
             """
             100 CALL COLOR(0,7,16)
             110 CALL COLOR(5,0,16)
-            120 LET S=5
-            130 LET S=6
-            140 CALL COLOR(S,7,16)
+            120 INPUT S
+            130 CALL COLOR(S,7,16)
             """.trimIndent(),
         )
 

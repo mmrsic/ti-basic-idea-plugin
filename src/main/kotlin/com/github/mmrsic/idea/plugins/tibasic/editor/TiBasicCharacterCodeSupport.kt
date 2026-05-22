@@ -145,7 +145,7 @@ internal fun resolveCharacterCodeUsage(element: PsiElement?): TiBasicCharacterCo
 internal fun resolveConstantNumericValue(expression: TiBasicExpression?, file: TiBasicFile?): Int? {
     file ?: return null
     return resolveNumericExpressionValue(expression) { variableAccess ->
-        constantNumericVariableValue(variableAccess.name, file)
+        TiBasicVariableCollector.constantValueOf(variableAccess, file)?.toIntOrNull()
     }
 }
 
@@ -156,11 +156,11 @@ internal fun resolveConstantStringValue(expression: TiBasicExpression?, file: Ti
     val child = children.first()
     return when (child.elementType) {
         TiBasicTokenTypes.STRING_LITERAL -> child.text.removePrefix("\"").removeSuffix("\"")
-        TiBasicNodeTypes.VARIABLE_ACCESS -> constantVariableValue(
-            variableName = child.firstChildNode?.text,
-            file = file,
-            acceptedTypes = setOf(TiBasicVariableType.STRING),
-        )?.removePrefix("\"")?.removeSuffix("\"")
+        TiBasicNodeTypes.VARIABLE_ACCESS -> (child.psi as? com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess)
+            ?.takeIf { variableAccess -> variableAccess.name?.endsWith('$') == true }
+            ?.let { variableAccess -> file?.let { currentFile -> TiBasicVariableCollector.constantValueOf(variableAccess, currentFile) } }
+            ?.removePrefix("\"")
+            ?.removeSuffix("\"")
 
         else -> null
     }
@@ -434,6 +434,7 @@ private fun constantVariableValue(
     acceptedTypes: Set<TiBasicVariableType>,
 ): String? {
     if (file == null || variableName == null) return null
+    if (TiBasicVariableCollector.collectedConstantFallbackSuppressed()) return null
     return TiBasicVariableCollector.collectCached(file)
         .find { entry -> entry.name == variableName.uppercase() && entry.type in acceptedTypes }
         ?.constValue

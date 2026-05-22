@@ -16,6 +16,7 @@ import com.intellij.ui.table.JBTable
 import java.awt.BorderLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JToolBar
@@ -36,6 +37,8 @@ abstract class TiBasicFileToolWindowContent(
     }
 
     protected abstract fun refreshForFile(file: TiBasicFile?)
+
+    protected open fun toolbarComponents(): List<JComponent> = emptyList()
 
     protected fun installLineNavigation(table: JBTable, lineColumn: Int, offsetAtRow: (modelRow: Int) -> Int) {
         table.addMouseListener(object : MouseAdapter() {
@@ -70,6 +73,10 @@ abstract class TiBasicFileToolWindowContent(
     private fun setupToolbar() {
         val toolbar = JToolBar().also { it.isFloatable = false }
         toolbar.add(fileLabel)
+        toolbarComponents().forEach { component ->
+            toolbar.addSeparator()
+            toolbar.add(component)
+        }
         add(toolbar, BorderLayout.NORTH)
     }
 

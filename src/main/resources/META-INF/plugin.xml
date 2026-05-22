@@ -121,6 +121,9 @@
         <applicationService
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicAutoLineNumberSettings"
         />
+        <applicationService
+                serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableToolWindowSettings"
+        />
         <postStartupActivity
                 implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnGuideInitializer"
         />

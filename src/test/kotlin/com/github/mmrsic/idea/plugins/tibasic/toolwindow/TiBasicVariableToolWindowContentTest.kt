@@ -7,8 +7,11 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.PlatformTestUtil
 import java.awt.Dimension
+import javax.swing.JCheckBox
 import javax.swing.JLabel
 import javax.swing.JTable
+import javax.swing.RowSorter
+import javax.swing.SortOrder
 
 class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
 
@@ -27,6 +30,27 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
         assertEquals(listOf("B"), displayedVariableNames(content))
+    }
+
+    fun `test refresh keeps user selected sort order`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 LET A=1\n110 LET B=1")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val table = table(content)
+        table.rowSorter.sortKeys = listOf(RowSorter.SortKey(NAME_COLUMN, SortOrder.DESCENDING))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        assertEquals(listOf("B", "A"), displayedVariableNamesInViewOrder(content))
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            myFixture.editor.document.setText("100 LET A=2\n110 LET B=1")
+        }
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(listOf(RowSorter.SortKey(NAME_COLUMN, SortOrder.DESCENDING)), table.rowSorter.sortKeys)
+        assertEquals(listOf("B", "A"), displayedVariableNamesInViewOrder(content))
     }
 
     fun `test non TI-Basic document changes do not trigger invokeLater side effects`() {
@@ -54,15 +78,15 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertEquals(listOf("A"), displayedVariableNames(content))
     }
 
-    fun `test array rows display dimensions and option base`() {
+    fun `test array rows display combined dimensions declaration`() {
         val content = TiBasicVariableToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
         myFixture.configureByText("test.tibasic", "100 OPTION BASE 1\n200 DIM A(10,10,10)\n300 LET A(1,1,1)=5")
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals("10,10,10", displayedValue(content, "A", "Numeric Array", DIMENSIONS_COLUMN))
-        assertEquals("1", displayedValue(content, "A", "Numeric Array", BASE_COLUMN))
-        assertEquals(listOf(200), displayedOccurrences(content, "A", "Numeric Array", DIM_LINE_COLUMN).map { it.lineNumber })
+        val dimensionsDisplay = displayedDimensions(content, "A", "Numeric Array")
+        assertEquals("DIM A(1-10,1-10,1-10)", dimensionsDisplay.text)
+        assertEquals(listOf(200), dimensionsDisplay.occurrences.map { it.lineNumber })
     }
 
     fun `test scalar-only programs hide array-specific columns`() {
@@ -74,8 +98,6 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         val tableModel = tableModel(content)
         assertEquals(listOf("Name", "Type", "Writes", "Reads", "Range"), displayedColumnNames(tableModel))
         assertFalse(tableModel.hasColumn(DIMENSIONS_COLUMN))
-        assertFalse(tableModel.hasColumn(BASE_COLUMN))
-        assertFalse(tableModel.hasColumn(DIM_LINE_COLUMN))
     }
 
     fun `test adding an array shows array-specific columns`() {
@@ -91,7 +113,7 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
         assertEquals(
-            listOf("Name", "Type", "Dimensions", "Base", "DIM", "Writes", "Reads", "Range"),
+            listOf("Name", "Type", "Dimensions", "Writes", "Reads", "Range"),
             displayedColumnNames(tableModel(content)),
         )
     }
@@ -103,7 +125,7 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
         assertEquals("Range", columnName(tableModel(content), RANGE_COLUMN))
-        assertEquals("\"HELLO\", \"BYE\"", displayedValue(content, "G$", "String", RANGE_COLUMN))
+        assertEquals("\"BYE\", \"HELLO\"", displayedValue(content, "G$", "String", RANGE_COLUMN))
     }
 
     fun `test range column abbreviates consecutive numeric values`() {
@@ -112,7 +134,36 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         myFixture.configureByText("test.tibasic", "100 FOR I=1 TO 5\n110 NEXT I")
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals("1-5", displayedValue(content, "I", "Numeric", RANGE_COLUMN))
+        assertEquals("[1; 5]", displayedValue(content, "I", "Numeric", RANGE_COLUMN))
+    }
+
+    fun `test range column shows descending FOR values in ascending order`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 FOR I=5 TO 1 STEP -1\n110 NEXT I")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("[1; 5]", displayedValue(content, "I", "Numeric", RANGE_COLUMN))
+    }
+
+    fun `test range column shows incremented scalar values from nested FOR loops`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            970 S=31
+            980 FOR H=9 TO 16
+            990 FOR V=10 TO 25
+            1000 S=S+1
+            1010 CALL HCHAR(H,V,S)
+            1020 NEXT V
+            1030 NEXT H
+            """.trimIndent(),
+        )
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("[31; 159]", displayedValue(content, "S", "Numeric", RANGE_COLUMN))
     }
 
     fun `test rows grow automatically when wrapped cells need more height`() {
@@ -170,10 +221,119 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertEquals("\"HELLO\"", displayedValue(content, "E$", "String", RANGE_COLUMN))
     }
 
+    fun `test array constants toggle controls range display on demand`() {
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 LET I=1\n110 LET P$(I)=\"FF\"")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(null, displayedValue(content, "P$", "String Array", RANGE_COLUMN))
+
+        constantsToggle(content).doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("(1)=\"FF\"", displayedValue(content, "P$", "String Array", RANGE_COLUMN))
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
+    }
+
+    fun `test range column shows READ DATA derived array element values when enabled`() {
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = true
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 READ A$\n110 LET F$(1)=A$\n120 DATA \"X\"")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("(1)=\"X\"", displayedValue(content, "F$", "String Array", RANGE_COLUMN))
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
+    }
+
+    fun `test range column stays empty for string arrays with more than ten constant elements`() {
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = true
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText(
+            "test.tibasic",
+            (1..11).joinToString("\n") { index -> "${index * 10} LET F$($index)=\"V$index\"" },
+        )
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(null, displayedValue(content, "F$", "String Array", RANGE_COLUMN))
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
+    }
+
+    fun `test range column shows CALL KEY status as bracketed fixed range`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 CALL KEY(0,K,S)")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("[-1; 1]", displayedValue(content, "S", "Numeric", RANGE_COLUMN))
+    }
+
+    fun `test range column shows CALL KEY status interval plus separate literal`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "1 CALL KEY(0,K,S)\n2 PRINT S\n3 S=4")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("[-1; 1], 4", displayedValue(content, "S", "Numeric", RANGE_COLUMN))
+    }
+
+    fun `test range column merges CALL KEY status interval with adjacent literal`() {
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "1 CALL KEY(0,K,S)\n2 S=2")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("[-1; 2]", displayedValue(content, "S", "Numeric", RANGE_COLUMN))
+    }
+
+    fun `test range column grows row height for wrapped array constants`() {
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = true
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 LET F$(10)="TEN"
+            110 LET F$(2)="TWO"
+            120 LET F$(1)="ONE"
+            130 LET F$(11)="ELEVEN"
+            """.trimIndent(),
+        )
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val table = table(content)
+        table.size = Dimension(260, 200)
+        val rangeColumn = modelColumnIndex(tableModel(content), RANGE_COLUMN)
+        table.columnModel.getColumn(rangeColumn).width = 70
+        table.columnModel.getColumn(rangeColumn).preferredWidth = 70
+        table.doLayout()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val row = (0 until table.rowCount).first { rowIndex ->
+            table.getValueAt(rowIndex, 0) == "F$" && table.getValueAt(rowIndex, 1) == "String Array"
+        }
+        assertEquals(
+            "(1)=\"ONE\"; (2)=\"TWO\"; (10)=\"TEN\"; (11)=\"ELEVEN\"",
+            table.getValueAt(row, rangeColumn),
+        )
+        assertTrue(table.getRowHeight(row) > table.getFontMetrics(table.font).height + table.rowMargin)
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
+    }
+
     private fun displayedVariableNames(content: TiBasicVariableToolWindowContent): List<String> {
         val tableModel = tableModel(content)
         return (0 until tableModel.rowCount).map { row ->
             tableModel.getValueAt(row, 0) as String
+        }
+    }
+
+    private fun displayedVariableNamesInViewOrder(content: TiBasicVariableToolWindowContent): List<String> {
+        val table = table(content)
+        return (0 until table.rowCount).map { row ->
+            table.getValueAt(row, NAME_COLUMN) as String
         }
     }
 
@@ -186,20 +346,18 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         val tableModel = tableModel(content)
         val row = (0 until tableModel.rowCount).first { rowIndex ->
             tableModel.getValueAt(rowIndex, modelColumnIndex(tableModel, NAME_COLUMN)) == name &&
-                tableModel.getValueAt(rowIndex, modelColumnIndex(tableModel, TYPE_COLUMN)) == type
+                    tableModel.getValueAt(rowIndex, modelColumnIndex(tableModel, TYPE_COLUMN)) == type
         }
         return tableModel.getValueAt(row, modelColumnIndex(tableModel, column))
     }
 
-    private fun displayedOccurrences(
+    private fun displayedDimensions(
         content: TiBasicVariableToolWindowContent,
         name: String,
         type: String,
-        column: Int,
-    ): List<TiBasicVariableOccurrence> =
-        (displayedValue(content, name, type, column) as? List<*>)
-            ?.filterIsInstance<TiBasicVariableOccurrence>()
-            ?: emptyList()
+    ): TiBasicVariableDimensionsDisplay =
+        displayedValue(content, name, type, DIMENSIONS_COLUMN) as? TiBasicVariableDimensionsDisplay
+            ?: error("Expected dimensions display for $name")
 
     private fun tableModel(content: TiBasicVariableToolWindowContent): TiBasicVariableTableModel {
         val tableModelField = TiBasicVariableToolWindowContent::class.java.getDeclaredField("tableModel")
@@ -224,5 +382,11 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         val tableField = TiBasicVariableToolWindowContent::class.java.getDeclaredField("table")
         tableField.isAccessible = true
         return tableField.get(content) as JTable
+    }
+
+    private fun constantsToggle(content: TiBasicVariableToolWindowContent): JCheckBox {
+        val toggleField = TiBasicVariableToolWindowContent::class.java.getDeclaredField("constantsToggle")
+        toggleField.isAccessible = true
+        return toggleField.get(content) as JCheckBox
     }
 }

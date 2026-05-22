@@ -102,6 +102,26 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val entryS = entries.single { it.name == "S" && it.type == TiBasicVariableType.NUMERIC }
         assertEquals(1, entryK.writes)
         assertEquals(1, entryS.writes)
+        assertEquals(listOf("-1", "1"), entryS.valueRange)
+        assertEquals("[-1; 1]", entryS.rangeDisplay)
+    }
+
+    fun `test CALL KEY status range plus later literal stays separated when not adjacent`() {
+        val file = configureFile("1 CALL KEY(0,K,S)\n2 PRINT S\n3 S=4")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entryS = entries.single { it.name == "S" && it.type == TiBasicVariableType.NUMERIC }
+
+        assertEquals(listOf("-1", "1", "4"), entryS.valueRange)
+        assertEquals("[-1; 1], 4", entryS.rangeDisplay)
+    }
+
+    fun `test CALL KEY status range merges with adjacent literal into interval`() {
+        val file = configureFile("1 CALL KEY(0,K,S)\n2 S=2")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entryS = entries.single { it.name == "S" && it.type == TiBasicVariableType.NUMERIC }
+
+        assertEquals(listOf("-1", "1", "2"), entryS.valueRange)
+        assertEquals("[-1; 2]", entryS.rangeDisplay)
     }
 
     fun `test CALL JOYST second and third arguments are writes`() {
@@ -246,6 +266,41 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         assertEquals("\"HELLO\"", entry.constValue)
     }
 
+    fun `test string array element written from constant alias is tracked separately`() {
+        val file = configureFile("100 LET I=1\n110 LET S$=\"HELLO\"\n120 LET F$(I)=S$")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "F$" && it.type == TiBasicVariableType.STRING_ARRAY }
+
+        assertEquals(listOf("\"HELLO\""), entry.arrayElementValueRange(listOf(1)))
+        assertEquals("\"HELLO\"", entry.arrayElementConstValue(listOf(1)))
+        assertEquals("(1)=\"HELLO\"", entry.arrayElementConstantsDisplay)
+    }
+
+    fun `test string array element written from READ DATA is tracked separately`() {
+        val file = configureFile("100 READ A$\n110 LET F$(1)=A$\n120 DATA \"X\"")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "F$" && it.type == TiBasicVariableType.STRING_ARRAY }
+
+        assertEquals(listOf("\"X\""), entry.arrayElementValueRange(listOf(1)))
+        assertEquals("\"X\"", entry.arrayElementConstValue(listOf(1)))
+        assertEquals("(1)=\"X\"", entry.arrayElementConstantsDisplay)
+    }
+
+    fun `test array element constants display sorts indices numerically ascending`() {
+        val entry = TiBasicVariableEntry(
+            name = "F$",
+            type = TiBasicVariableType.STRING_ARRAY,
+            occurrences = emptyList(),
+            resolvedArrayElementRanges = mapOf(
+                listOf(10) to listOf("\"TEN\""),
+                listOf(2) to listOf("\"TWO\""),
+                listOf(1) to listOf("\"ONE\""),
+            ),
+        )
+
+        assertEquals("(1)=\"ONE\"; (2)=\"TWO\"; (10)=\"TEN\"", entry.arrayElementConstantsDisplay)
+    }
+
     fun `test numeric variable written with same literal twice has that constValue`() {
         val file = configureFile("100 LET A=5\n200 LET A=5")
         val entries = TiBasicVariableCollector.collect(file)
@@ -267,23 +322,23 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val file = configureFile("100 LET E$=\"HELLO\"\n110 LET F$=\"BYE\"\n120 LET G$=E$\n130 LET G$=F$")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "G$" && it.type == TiBasicVariableType.STRING }
-        assertEquals(listOf("\"HELLO\"", "\"BYE\""), entry.valueRange)
+        assertEquals(listOf("\"BYE\"", "\"HELLO\""), entry.valueRange)
         assertNull(entry.constValue)
     }
 
-    fun `test numeric variable written via expression has null constValue`() {
+    fun `test numeric variable written via statically traceable expression has resolved constValue`() {
         val file = configureFile("100 LET A=5*2")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "A" && it.type == TiBasicVariableType.NUMERIC }
-        assertNull(entry.valueRange)
-        assertNull(entry.constValue)
+        assertEquals(listOf("10"), entry.valueRange)
+        assertEquals("10", entry.constValue)
     }
 
     fun `test string variable written from non constant string variable has null constValue`() {
         val file = configureFile("100 LET E$=\"HELLO\"\n110 LET E$=\"BYE\"\n120 LET G$=E$")
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "G$" && it.type == TiBasicVariableType.STRING }
-        assertEquals(listOf("\"HELLO\"", "\"BYE\""), entry.valueRange)
+        assertEquals(listOf("\"BYE\"", "\"HELLO\""), entry.valueRange)
         assertNull(entry.constValue)
     }
 
@@ -300,7 +355,7 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
         assertEquals((1..10).map(Int::toString), entry.valueRange)
-        assertEquals("1-10", entry.rangeDisplay)
+        assertEquals("[1; 10]", entry.rangeDisplay)
         assertNull(entry.constValue)
     }
 
@@ -329,7 +384,51 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
             resolvedValueRange = listOf("1", "2", "3", "5", "6", "\"A\"", "8", "9", "10"),
         )
 
-        assertEquals("1-3, 5, 6, \"A\", 8-10", entry.rangeDisplay)
+        assertEquals("[1; 3], 5, 6, [8; 10], \"A\"", entry.rangeDisplay)
+    }
+
+    fun `test numeric range display stays empty when more than twenty display items would be shown`() {
+        val entry = TiBasicVariableEntry(
+            name = "I",
+            type = TiBasicVariableType.NUMERIC,
+            occurrences = emptyList(),
+            resolvedValueRange = (1..21).map { (it * 2).toString() },
+        )
+
+        assertNull(entry.rangeDisplay)
+    }
+
+    fun `test string range display stays empty when more than ten values would be shown`() {
+        val entry = TiBasicVariableEntry(
+            name = "A$",
+            type = TiBasicVariableType.STRING,
+            occurrences = emptyList(),
+            resolvedValueRange = (1..11).map { "\"V$it\"" },
+        )
+
+        assertNull(entry.rangeDisplay)
+    }
+
+    fun `test array element constants display stays empty when more than limit entries exist`() {
+        val entry = TiBasicVariableEntry(
+            name = "F$",
+            type = TiBasicVariableType.STRING_ARRAY,
+            occurrences = emptyList(),
+            resolvedArrayElementRanges = (1..11).associate { index ->
+                listOf(index) to listOf("\"V$index\"")
+            },
+        )
+
+        assertNull(entry.arrayElementConstantsDisplay)
+    }
+
+    fun `test FOR loop variable range with negative STEP is displayed in ascending order`() {
+        val file = configureFile("100 FOR I=10 TO 1 STEP -1\n200 NEXT I")
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
+
+        assertEquals((1..10).map(Int::toString), entry.valueRange)
+        assertEquals("[1; 10]", entry.rangeDisplay)
     }
 
     fun `test FOR loop variable range stays null for unresolved bounds`() {
@@ -337,6 +436,26 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         val entries = TiBasicVariableCollector.collect(file)
         val entry = entries.single { it.name == "I" && it.type == TiBasicVariableType.NUMERIC }
         assertNull(entry.valueRange)
+        assertNull(entry.constValue)
+    }
+
+    fun `test numeric variable incremented inside nested FOR loops gets finite range from static traversal`() {
+        val file = configureFile(
+            """
+            970 S=31
+            980 FOR H=9 TO 16
+            990 FOR V=10 TO 25
+            1000 S=S+1
+            1010 CALL HCHAR(H,V,S)
+            1020 NEXT V
+            1030 NEXT H
+            """.trimIndent(),
+        )
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "S" && it.type == TiBasicVariableType.NUMERIC }
+
+        assertEquals((31..159).map(Int::toString), entry.valueRange)
+        assertEquals("[31; 159]", entry.rangeDisplay)
         assertNull(entry.constValue)
     }
 

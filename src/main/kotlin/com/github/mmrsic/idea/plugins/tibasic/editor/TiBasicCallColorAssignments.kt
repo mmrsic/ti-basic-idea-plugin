@@ -22,7 +22,7 @@ internal fun collectCallColorAssignments(file: TiBasicFile): List<TiBasicCallCol
         CachedValueProvider.Result.create(
             collectStaticallyTraceableCallStatements(file)
                 .mapNotNull { statement ->
-                    resolveCallColorAssignment(statement.callStatement, file, statement.readDataVariableValues)
+                    resolveCallColorAssignment(statement.callStatement, file, statement.staticValues)
                 },
             file,
         )
@@ -31,14 +31,14 @@ internal fun collectCallColorAssignments(file: TiBasicFile): List<TiBasicCallCol
 internal fun resolveCallColorAssignment(
     callStatement: TiBasicCallStatement,
     file: TiBasicFile,
-    readDataVariableValues: Map<String, String> = emptyMap(),
+    staticValues: StaticValueSnapshot = StaticValueSnapshot(),
 ): TiBasicCallColorAssignment? {
     if (callStatement.subprogramName() != CALL_COLOR_SUBPROGRAM_NAME) return null
     val args = callStatement.arguments()
-    val set = resolveStaticNumericValue(args.getOrNull(CALL_COLOR_SET_INDEX), file, readDataVariableValues) ?: return null
+    val set = resolveStaticNumericValue(args.getOrNull(CALL_COLOR_SET_INDEX), file, staticValues) ?: return null
     val codeRange = callColorCharacterSetRange(set) ?: return null
-    val fgValue = resolveStaticNumericValue(args.getOrNull(CALL_COLOR_FOREGROUND_INDEX), file, readDataVariableValues)
-    val bgValue = resolveStaticNumericValue(args.getOrNull(CALL_COLOR_BACKGROUND_INDEX), file, readDataVariableValues)
+    val fgValue = resolveStaticNumericValue(args.getOrNull(CALL_COLOR_FOREGROUND_INDEX), file, staticValues)
+    val bgValue = resolveStaticNumericValue(args.getOrNull(CALL_COLOR_BACKGROUND_INDEX), file, staticValues)
     val fg = tiColorAt(fgValue) ?: return null
     val bg = tiColorAt(bgValue) ?: return null
     val line = PsiTreeUtil.getParentOfType(callStatement, TiBasicLine::class.java) ?: return null

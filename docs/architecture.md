@@ -183,12 +183,13 @@ in the active TI-Basic file. It refreshes automatically after every committed do
 
 ### Data model
 
-| Class                       | Responsibility                                                                                                                                                                                                                               |
-|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TiBasicVariableOccurrence` | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), optional `writtenValue` (`Constant` or `VariableReference` for simple `LET` writes, else `null`)                                                              |
-| `TiBasicVariableEntry`      | Aggregated entry: `name`, `type`, `occurrences`, optional `arrayDetails`, optional `dimOccurrences`; derived properties: `reads`, `writes`, `lineNumbers`, `dimensions`, `optionBase`, `dimLine`, `valueRange`, `rangeDisplay`, `constValue` |
-| `TiBasicArrayDetails`       | Effective array metadata: declared or implicit dimension list plus the active `OPTION BASE` value                                                                                                                                            |
-| `TiBasicVariableType`       | Enum: NUMERIC, STRING, NUMERIC_ARRAY, STRING_ARRAY, USER_FUNCTION                                                                                                                                                                            |
+| Class                              | Responsibility                                                                                                                                                                                                             |
+|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TiBasicVariableOccurrence`        | Single PSI occurrence: `lineNumber`, `offset`, `accessType` (READ/WRITE/NONE), optional `writtenValue` (`Constant` or `VariableReference` for simple `LET` writes, else `null`)                                            |
+| `TiBasicVariableEntry`             | Aggregated entry: `name`, `type`, `occurrences`, optional `arrayDetails`, optional `dimOccurrences`; derived properties: `reads`, `writes`, `lineNumbers`, `dimensionsDisplay`, `valueRange`, `rangeDisplay`, `constValue` |
+| `TiBasicArrayDetails`              | Effective array metadata: declared or implicit dimension list plus the active `OPTION BASE` value                                                                                                                          |
+| `TiBasicVariableDimensionsDisplay` | Combined array declaration display with clickable DIM-line occurrences plus a DIM-like text such as `DIM A(1-10)`                                                                                                          |
+| `TiBasicVariableType`              | Enum: NUMERIC, STRING, NUMERIC_ARRAY, STRING_ARRAY, USER_FUNCTION                                                                                                                                                          |
 
 ### Array metadata
 
@@ -206,25 +207,41 @@ the single row for each array:
 
 `TiBasicVariableCollector` resolves `TiBasicVariableEntry.valueRange` once per collected entry:
 
-- Only `NUMERIC` and `STRING` scalar types can have a finite `valueRange` (arrays and user functions → `null`).
+- Only `NUMERIC` and `STRING` scalar types can have a finite `valueRange` (arrays and user functions keep
+  `valueRange = null` on the row itself).
 - **Never written** (`writes == 0`): `valueRange = ["0"]` (NUMERIC) or `["\"\""]` (STRING).
 - **Direct literal writes** contribute that literal to the range.
 - **Simple alias writes** such as `G$=E$` inherit the referenced scalar variable's full finite range, with cycle protection.
 - **Resolvable `FOR` loop writes** contribute the loop variable's iteration values, including explicit `STEP` values and
   singleton numeric aliases in the start/end/step expressions.
-- **Multiple writes** union their finite values in first-seen order and remove duplicates.
-- **Any other write is non-resolvable** (`INPUT`, `READ`, `CALL`, a compound expression, or a reference to a variable
-  with unknown range): `valueRange = null`.
+- **Statically traceable scalar writes** can also contribute a finite range when the lightweight statement traversal can
+  determine the post-write value exactly (for example `READ`/`DATA`-driven writes, simple numeric expressions such as
+  `A=5*2`, or accumulator-style updates like `S=S+1` inside statically bounded nested `FOR` loops).
+- **Multiple writes** union their finite values, remove duplicates, and sort them in ascending natural order.
+- **Any other write is non-resolvable** (`INPUT`, `CALL`, or a write whose post-state cannot be traced statically, for
+  example because it depends on a variable with unknown range): `valueRange = null`.
 
 `constValue` remains available as the singleton case of `valueRange`, and `rangeDisplay`
-renders the finite list for the tool window column, abbreviating consecutive integer runs
-of length 3 or more as `start-end`.
+renders the finite list for the tool window column in ascending order, abbreviating
+consecutive integer runs of length 3 or more only as ascending interval segments such as
+`[-3; -1]` or `[1; 5]`. The
+rendered list is capped at 20 numeric items/ranges and 10 string items; when the display
+would exceed that limit, the Range cell stays empty.
+
+For arrays, the collector also resolves statically known element values when both the
+subscript tuple and the assigned value are reducible to constants. These per-element
+ranges stay on the array row as `resolvedArrayElementRanges` and are rendered in the
+**Range** column only when the Variables tool window view option enables array constants.
+Array-element displays use the same type-based limits: 20 entries for numeric arrays and
+10 entries for string arrays.
+Assignments with unresolved target subscripts are treated conservatively and suppress
+array-element constant display for that array row.
 
 `TiBasicVariableCollector.extractWrittenValue` checks that the RHS `EXPRESSION` node of a
 `TiBasicLetStatement` has exactly one non-whitespace child and records either:
 
 - a `Constant` when that child is a `NUMERIC_LITERAL` or `STRING_LITERAL`
-- a `VariableReference` when that child is a scalar `VARIABLE_ACCESS`
+- a `VariableReference` when that child is a `VARIABLE_ACCESS` (scalar or array element)
 
 ### Access type classification
 
@@ -240,21 +257,21 @@ of length 3 or more as `start-end`.
 | `TiBasicExpression` inside `TiBasicCallStatement` | WRITE for the third `GCHAR` argument and the second/third `KEY`/`JOYST` arguments; READ otherwise   |
 | any other parent                                  | READ                                                                                                |
 
-| Index               | Name       | Content                                                                                                         |
-|---------------------|------------|-----------------------------------------------------------------------------------------------------------------|
-| 0                   | Name       | Variable name                                                                                                   |
-| 1                   | Type       | `TiBasicVariableType.displayName`                                                                               |
-| `NAME_COLUMN`       | Name       | Variable name                                                                                                   |
-| `TYPE_COLUMN`       | Type       | `TiBasicVariableType.displayName`                                                                               |
-| `DIMENSIONS_COLUMN` | Dimensions | `String?` — comma-separated array dimension sizes; visible only for files with arrays                           |
-| `BASE_COLUMN`       | Base       | `String?` — effective `OPTION BASE` (`0` or `1`); visible only for files with arrays                            |
-| `DIM_LINE_COLUMN`   | DIM        | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badge; visible only for files with arrays |
-| `WRITES_COLUMN`     | Writes     | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                    |
-| `READS_COLUMN`      | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                    |
-| `RANGE_COLUMN`      | Range      | `String?` — finite value list rendered for display                                                              |
+| Index               | Name       | Content                                                                                                                                                  |
+|---------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0                   | Name       | Variable name                                                                                                                                            |
+| 1                   | Type       | `TiBasicVariableType.displayName`                                                                                                                        |
+| `NAME_COLUMN`       | Name       | Variable name                                                                                                                                            |
+| `TYPE_COLUMN`       | Type       | `TiBasicVariableType.displayName`                                                                                                                        |
+| `DIMENSIONS_COLUMN` | Dimensions | `TiBasicVariableDimensionsDisplay?` — clickable DIM-line prefix plus DIM-like declaration text such as `DIM A(1-10)`; visible only for files with arrays |
+| `WRITES_COLUMN`     | Writes     | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                                                             |
+| `READS_COLUMN`      | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                                                             |
+| `RANGE_COLUMN`      | Range      | `String?` — scalar value list with interval segments such as `[-1; 1]` or, when enabled, wrapped array-element values such as `(1)="HELLO"`              |
 
-`TiBasicVariableTableModel` keeps the three array-specific columns out of the table whenever the
-current file has no arrays, then restores them as soon as at least one array entry exists.
+`TiBasicVariableTableModel` keeps the array-specific Dimensions column out of the table whenever the
+current file has no arrays, then restores it as soon as at least one array entry exists. The
+persisted `TiBasicVariableToolWindowSettings` toggle in the tool-window toolbar controls whether
+statically known array-element values are shown in the Range column for array rows.
 
 All columns use wrapping renderers, and `TiBasicVariableToolWindowContent` recomputes row
 heights automatically after data refreshes and column-width changes so long values remain fully
@@ -265,7 +282,8 @@ visible in the current viewport width.
 The Character Definitions tool window lists all statically resolvable `CALL CHAR`
 definitions in the active TI-Basic file. Definitions remain separate per character
 code, even when multiple codes share the same normalized pattern and the same derived
-foreground/background color variants.
+foreground/background color variants. Definitions that differ only in source line are
+collapsed into one row with a sorted list of line occurrences.
 
 ### Shared static call traversal and collectors
 
@@ -273,7 +291,13 @@ foreground/background color variants.
 used by both `CALL CHAR` and `CALL COLOR` collection. It performs the shared linear trace
 through `READ`/`DATA`, `RESTORE`, simple statically resolvable `FOR`/`NEXT` loops, and
 simple statically decidable `IF ... THEN [ELSE]` jumps, and records each encountered
-`TiBasicCallStatement` together with the current `READ`-derived variable bindings.
+`TiBasicCallStatement` together with the current snapshot of statically known scalar and
+array-element values.
+For `RESTORE`, the traversal mirrors TI BASIC semantics closely enough for static analysis:
+`RESTORE` without a line resets to the first `DATA` line, numbered `RESTORE` targets are
+resolved to the next higher `DATA` line, and a target above the highest program line aborts
+the trace immediately while a target with only non-`DATA` lines above it aborts at the next
+`READ`.
 
 On top of that traversal, `editor/TiBasicCallCharDefinitions.kt` and
 `editor/TiBasicCallColorAssignments.kt` provide the cached file-level collectors used by
@@ -281,7 +305,7 @@ the tool window:
 
 | Type / function                 | Responsibility                                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------------------------|
-| `TiBasicStaticCallStatement`    | One traversed `CALL` statement plus the active `READ`-derived variable values at that execution point      |
+| `TiBasicStaticCallStatement`    | One traversed `CALL` statement plus the active `StaticValueSnapshot` at that execution point               |
 | `collectCallCharDefinitions()`  | Cached file-level collection of all statically resolvable `CALL CHAR` definitions, sorted by code/line     |
 | `resolveCallCharDefinition()`   | Resolves one `TiBasicCallStatement` into a char definition when both code and pattern are statically known |
 | `collectCallColorAssignments()` | Cached file-level collection of all statically resolvable `CALL COLOR` assignments                         |
@@ -291,9 +315,10 @@ Resolution reuses the existing helpers `resolveConstantNumericValue`,
 `resolveConstantStringValue`, `normalizeHexPattern`, `asciiCharacterName`,
 `callColorCharacterSetRange`, and `tiColorAt`. This lets the tool window collect both
 direct literal/constant-variable definitions, simple statically resolvable numeric code
-expressions, and color assignments that can be traced conservatively through the same static
-control flow. Definitions or color assignments whose required values are still not statically
-determinable are omitted.
+expressions, array-element aliases such as `F$(I)` after a statically known `LET F$(I)=...`,
+and color assignments that can be traced conservatively through the same static control flow.
+Definitions or color assignments whose required values are still not statically determinable
+are omitted.
 
 ### Tool-window table
 
@@ -303,7 +328,7 @@ determinable are omitted.
 | 1 (`CHARACTER_ASCII_COLUMN`)   | ASCII   | ASCII name/character or empty                                                                          |
 | 2 (`CHARACTER_PATTERN_COLUMN`) | Pattern | Normalized 16-digit hex pattern                                                                        |
 | 3 (`CHARACTER_ICON_COLUMN`)    | Icon    | Base `TiBasicCharPatternIcon` plus distinct `TiBasicColoredCharPatternIcon` variants from `CALL COLOR` |
-| 4 (`CHARACTER_LINE_COLUMN`)    | Line    | Source program line; click navigates                                                                   |
+| 4 (`CHARACTER_LINE_COLUMN`)    | Lines   | Sorted `List<TiBasicCharacterDefinitionOccurrence>`; rendered as clickable line-number list            |
 
 ## Annotator checks
 

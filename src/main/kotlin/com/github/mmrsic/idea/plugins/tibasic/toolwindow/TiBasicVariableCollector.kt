@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
+import com.github.mmrsic.idea.plugins.tibasic.editor.collectStaticallyTraceableStatementSnapshots
 import com.github.mmrsic.idea.plugins.tibasic.editor.resolveNumericExpressionValue
 import com.github.mmrsic.idea.plugins.tibasic.ext.childrenAfter
 import com.github.mmrsic.idea.plugins.tibasic.ext.firstChildOfType
@@ -19,6 +20,7 @@ import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicNextStatement
 import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicReadStatement
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
@@ -30,10 +32,13 @@ object TiBasicVariableCollector {
 
     fun collect(file: TiBasicFile): List<TiBasicVariableEntry> {
         val arrayMetadataByKey = collectArrayMetadataByKey(file)
+        val (staticallyTraceableScalarWriteRanges, staticallyTraceableArrayRanges) = withoutCollectedConstantFallback {
+            collectStaticallyTraceableRanges(file)
+        }
         val result = mutableListOf<TiBasicVariableEntry>()
         result += collectUserFunctions(file)
         result += collectRegularVariables(file, arrayMetadataByKey)
-        return resolveValueRanges(result)
+        return resolveValueRanges(result, staticallyTraceableScalarWriteRanges, staticallyTraceableArrayRanges)
             .sortedWith(compareBy({ it.name }, { it.type.ordinal }))
     }
 
@@ -73,7 +78,13 @@ object TiBasicVariableCollector {
             val line = varAccess.containingTiBasicLine() ?: continue
             val accessType = determineAccessType(varAccess)
             val writtenValue = if (accessType == AccessType.WRITE) extractWrittenValue(varAccess) else null
-            val occurrence = TiBasicVariableOccurrence(line.lineNumber(), nameNode.startOffset, accessType, writtenValue)
+            val occurrence = TiBasicVariableOccurrence(
+                line.lineNumber(),
+                nameNode.startOffset,
+                accessType,
+                writtenValue,
+                varAccess.subscriptExpressions(),
+            )
             grouped.getOrPut(VariableEntryKey(name, type)) { mutableListOf() }.add(occurrence)
         }
 
@@ -185,15 +196,67 @@ object TiBasicVariableCollector {
             else -> AccessType.READ
         }
 
-    private fun resolveValueRanges(entries: List<TiBasicVariableEntry>): List<TiBasicVariableEntry> {
+    internal fun constantValueOf(variableAccess: TiBasicVariableAccess, file: TiBasicFile): String? =
+        constantRangeOf(variableAccess, file)?.singleOrNull()
+
+    internal fun collectedConstantFallbackSuppressed(): Boolean =
+        collectedConstantFallbackSuppressed.get()
+
+    internal fun constantRangeOf(variableAccess: TiBasicVariableAccess, file: TiBasicFile): List<String>? {
+        if (collectedConstantFallbackSuppressed.get()) return null
+        val nameNode = variableAccess.node.firstChildNode ?: return null
+        val variableType = variableTypeOf(nameNode.elementType, variableAccess.hasSubscriptParens())
+        val entry = collectCached(file)
+            .firstOrNull { candidate ->
+                candidate.name == variableAccess.name && candidate.type == variableType
+            } ?: return null
+        if (!variableAccess.hasSubscriptParens()) {
+            return entry.valueRange
+        }
+        val subscripts = variableAccess.subscriptExpressions()
+            .map { expression ->
+                resolveNumericExpressionValue(expression) { referencedVariable ->
+                    constantValueOf(referencedVariable, file)?.toIntOrNull()
+                }
+            }
+        if (subscripts.any { it == null }) return null
+        return entry.arrayElementValueRange(subscripts.filterNotNull())
+    }
+
+    private fun resolveValueRanges(
+        entries: List<TiBasicVariableEntry>,
+        staticallyTraceableScalarWriteRanges: Map<ScalarWriteKey, List<String>>,
+        staticallyTraceableArrayRanges: Map<VariableEntryKey, Map<List<Int>, List<String>>>,
+    ): List<TiBasicVariableEntry> {
         val entryByKey = entries.associateBy { VariableEntryKey(it.name, it.type) }
-        val resolvedRanges = mutableMapOf<VariableEntryKey, List<String>?>()
+        val resolvedScalarRanges = mutableMapOf<VariableEntryKey, List<String>?>()
+        val resolvedArrayElementRanges = mutableMapOf<ArrayElementKey, List<String>?>()
         return entries.map { entry ->
             val key = VariableEntryKey(entry.name, entry.type)
             entry.copy(
-                    resolvedValueRange = resolvedRanges.getOrPut(key) {
-                        resolveValueRange(key, entryByKey, resolvedRanges, emptySet())
-                    },
+                resolvedValueRange = resolvedScalarRanges.getOrPut(key) {
+                    resolveValueRange(
+                        key,
+                        entryByKey,
+                        resolvedScalarRanges,
+                        resolvedArrayElementRanges,
+                        staticallyTraceableScalarWriteRanges,
+                        emptySet(),
+                    )
+                },
+                resolvedArrayElementRanges = if (entry.type in ARRAY_VARIABLE_TYPES) {
+                    mergeArrayElementRanges(
+                        resolveArrayElementRanges(
+                            key = key,
+                            entryByKey = entryByKey,
+                            resolvedScalarRanges = resolvedScalarRanges,
+                            resolvedArrayElementRanges = resolvedArrayElementRanges,
+                        ),
+                        staticallyTraceableArrayRanges[key].orEmpty(),
+                    )
+                } else {
+                    emptyMap()
+                },
             )
         }
     }
@@ -201,7 +264,9 @@ object TiBasicVariableCollector {
     private fun resolveValueRange(
         key: VariableEntryKey,
         entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
-        resolvedRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedScalarRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedArrayElementRanges: MutableMap<ArrayElementKey, List<String>?>,
+        staticallyTraceableScalarWriteRanges: Map<ScalarWriteKey, List<String>>,
         visitedKeys: Set<VariableEntryKey>,
     ): List<String>? {
         if (key in visitedKeys) return null
@@ -213,12 +278,17 @@ object TiBasicVariableCollector {
             val writtenRange = resolveWrittenValueRange(
                 occurrence.writtenValue,
                 entryByKey,
-                resolvedRanges,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                staticallyTraceableScalarWriteRanges,
                 visitedKeys + key,
+                emptySet(),
             )
-            possibleValues += writtenRange ?: return null
+            possibleValues += writtenRange ?: staticallyTraceableScalarWriteRanges[ScalarWriteKey(key, occurrence.offset)] ?: return null
         }
-        return possibleValues.distinct()
+        return possibleValues
+            .distinct()
+            .sortedRangeValues()
     }
 
     private fun defaultValueRange(type: TiBasicVariableType): List<String> =
@@ -232,6 +302,14 @@ object TiBasicVariableCollector {
                 endExpression = forStmt.endExpression(),
                 stepExpression = forStmt.stepExpression(),
             )
+        }
+        val callExpression = varAccess.parent as? TiBasicExpression
+        val callStatement = callExpression?.parent as? TiBasicCallStatement
+        if (callStatement?.subprogramName()?.uppercase() == KEY_SUBPROGRAM_NAME) {
+            val argIndex = callStatement.arguments().indexOf(callExpression)
+            if (argIndex == KEY_STATUS_ARG_INDEX) {
+                return TiBasicWrittenValue.FixedRange(KEY_STATUS_RANGE_VALUES)
+            }
         }
         val letStmt = varAccess.parent as? TiBasicLetStatement ?: return null
         val rhs = letStmt.node
@@ -248,6 +326,7 @@ object TiBasicVariableCollector {
                 TiBasicWrittenValue.VariableReference(
                     name = nameNode.text.uppercase(),
                     type = variableTypeOf(nameNode.elementType, referencedVariable.hasSubscriptParens()),
+                    subscriptExpressions = referencedVariable.subscriptExpressions(),
                 )
             }
 
@@ -258,23 +337,66 @@ object TiBasicVariableCollector {
     private fun resolveWrittenValueRange(
         writtenValue: TiBasicWrittenValue?,
         entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
-        resolvedRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedScalarRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedArrayElementRanges: MutableMap<ArrayElementKey, List<String>?>,
+        staticallyTraceableScalarWriteRanges: Map<ScalarWriteKey, List<String>>,
         visitedKeys: Set<VariableEntryKey>,
+        visitedArrayKeys: Set<ArrayElementKey>,
     ): List<String>? =
         when (writtenValue) {
             is TiBasicWrittenValue.Constant -> listOf(writtenValue.value)
+            is TiBasicWrittenValue.FixedRange -> writtenValue.values
             is TiBasicWrittenValue.VariableReference -> {
-                val referencedKey = VariableEntryKey(writtenValue.name, writtenValue.type)
-                resolvedRanges[referencedKey]
-                    ?: resolveValueRange(referencedKey, entryByKey, resolvedRanges, visitedKeys)
-                        ?.also { resolvedRanges[referencedKey] = it }
+                when (writtenValue.type) {
+                    in SCALAR_VARIABLE_TYPES -> {
+                        val referencedKey = VariableEntryKey(writtenValue.name, writtenValue.type)
+                        resolvedScalarRanges[referencedKey]
+                            ?: resolveValueRange(
+                                referencedKey,
+                                entryByKey,
+                                resolvedScalarRanges,
+                                resolvedArrayElementRanges,
+                                staticallyTraceableScalarWriteRanges,
+                                visitedKeys,
+                            )?.also { resolvedScalarRanges[referencedKey] = it }
+                    }
+
+                    in ARRAY_VARIABLE_TYPES -> {
+                        val referencedKey = VariableEntryKey(writtenValue.name, writtenValue.type)
+                        val referencedSubscripts = resolveSubscripts(
+                            writtenValue.subscriptExpressions,
+                            entryByKey,
+                            resolvedScalarRanges,
+                            resolvedArrayElementRanges,
+                            staticallyTraceableScalarWriteRanges,
+                            visitedKeys,
+                            visitedArrayKeys,
+                        ) ?: return null
+                        val arrayElementKey = ArrayElementKey(referencedKey, referencedSubscripts)
+                        resolvedArrayElementRanges[arrayElementKey]
+                            ?: resolveArrayElementValueRange(
+                                arrayElementKey,
+                                entryByKey,
+                                resolvedScalarRanges,
+                                resolvedArrayElementRanges,
+                                staticallyTraceableScalarWriteRanges,
+                                visitedKeys,
+                                visitedArrayKeys,
+                            )?.also { resolvedArrayElementRanges[arrayElementKey] = it }
+                    }
+
+                    else -> null
+                }
             }
 
             is TiBasicWrittenValue.ForLoopRange -> resolveForLoopRange(
                 writtenValue,
                 entryByKey,
-                resolvedRanges,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                staticallyTraceableScalarWriteRanges,
                 visitedKeys,
+                visitedArrayKeys,
             )
 
             null -> null
@@ -283,23 +405,40 @@ object TiBasicVariableCollector {
     private fun resolveForLoopRange(
         writtenValue: TiBasicWrittenValue.ForLoopRange,
         entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
-        resolvedRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedScalarRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedArrayElementRanges: MutableMap<ArrayElementKey, List<String>?>,
+        staticallyTraceableScalarWriteRanges: Map<ScalarWriteKey, List<String>>,
         visitedKeys: Set<VariableEntryKey>,
+        visitedArrayKeys: Set<ArrayElementKey>,
     ): List<String>? {
         val start = resolveNumericExpressionToInt(
             writtenValue.startExpression,
             entryByKey,
-            resolvedRanges,
+            resolvedScalarRanges,
+            resolvedArrayElementRanges,
+            staticallyTraceableScalarWriteRanges,
             visitedKeys,
+            visitedArrayKeys,
         ) ?: return null
         val end = resolveNumericExpressionToInt(
             writtenValue.endExpression,
             entryByKey,
-            resolvedRanges,
+            resolvedScalarRanges,
+            resolvedArrayElementRanges,
+            staticallyTraceableScalarWriteRanges,
             visitedKeys,
+            visitedArrayKeys,
         ) ?: return null
         val step = writtenValue.stepExpression?.let { stepExpression ->
-            resolveNumericExpressionToInt(stepExpression, entryByKey, resolvedRanges, visitedKeys)
+            resolveNumericExpressionToInt(
+                stepExpression,
+                entryByKey,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                staticallyTraceableScalarWriteRanges,
+                visitedKeys,
+                visitedArrayKeys,
+            )
         } ?: DEFAULT_FOR_STEP
         if (step == 0) return null
         return loopIterationValues(start, end, step).map(Int::toString)
@@ -308,17 +447,188 @@ object TiBasicVariableCollector {
     private fun resolveNumericExpressionToInt(
         expression: TiBasicExpression?,
         entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
-        resolvedRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedScalarRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedArrayElementRanges: MutableMap<ArrayElementKey, List<String>?>,
+        staticallyTraceableScalarWriteRanges: Map<ScalarWriteKey, List<String>>,
         visitedKeys: Set<VariableEntryKey>,
+        visitedArrayKeys: Set<ArrayElementKey>,
     ): Int? =
         resolveNumericExpressionValue(expression) { variableAccess ->
-            val name = variableAccess.name ?: return@resolveNumericExpressionValue null
+            resolveNumericVariableAccessToInt(
+                variableAccess,
+                entryByKey,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                staticallyTraceableScalarWriteRanges,
+                visitedKeys,
+                visitedArrayKeys,
+            )
+        }
+
+    private fun resolveNumericVariableAccessToInt(
+        variableAccess: TiBasicVariableAccess,
+        entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
+        resolvedScalarRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedArrayElementRanges: MutableMap<ArrayElementKey, List<String>?>,
+        staticallyTraceableScalarWriteRanges: Map<ScalarWriteKey, List<String>>,
+        visitedKeys: Set<VariableEntryKey>,
+        visitedArrayKeys: Set<ArrayElementKey>,
+    ): Int? {
+        val name = variableAccess.name ?: return null
+        return if (variableAccess.hasSubscriptParens()) {
+            val arrayKey = VariableEntryKey(name, TiBasicVariableType.NUMERIC_ARRAY)
+            val subscripts = resolveSubscripts(
+                variableAccess.subscriptExpressions(),
+                entryByKey,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                staticallyTraceableScalarWriteRanges,
+                visitedKeys,
+                visitedArrayKeys,
+            ) ?: return null
+            val elementKey = ArrayElementKey(arrayKey, subscripts)
+            val referencedRange = resolvedArrayElementRanges[elementKey]
+                ?: resolveArrayElementValueRange(
+                    elementKey,
+                    entryByKey,
+                    resolvedScalarRanges,
+                    resolvedArrayElementRanges,
+                    staticallyTraceableScalarWriteRanges,
+                    visitedKeys,
+                    visitedArrayKeys,
+                )?.also { resolvedArrayElementRanges[elementKey] = it }
+            referencedRange?.singleOrNull()?.toIntOrNull()
+        } else {
             val key = VariableEntryKey(name, TiBasicVariableType.NUMERIC)
-            val referencedRange = resolvedRanges[key]
-                ?: resolveValueRange(key, entryByKey, resolvedRanges, visitedKeys)
-                    ?.also { resolvedRanges[key] = it }
+            val referencedRange = resolvedScalarRanges[key]
+                ?: resolveValueRange(
+                    key,
+                    entryByKey,
+                    resolvedScalarRanges,
+                    resolvedArrayElementRanges,
+                    staticallyTraceableScalarWriteRanges,
+                    visitedKeys,
+                )?.also { resolvedScalarRanges[key] = it }
             referencedRange?.singleOrNull()?.toIntOrNull()
         }
+    }
+
+    private fun resolveArrayElementRanges(
+        key: VariableEntryKey,
+        entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
+        resolvedScalarRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedArrayElementRanges: MutableMap<ArrayElementKey, List<String>?>,
+    ): Map<List<Int>, List<String>> {
+        val entry = entryByKey[key] ?: return emptyMap()
+        val invalidatedElements = mutableSetOf<List<Int>>()
+        val resolvedRangesBySubscript = mutableMapOf<List<Int>, MutableList<String>>()
+        for (occurrence in entry.occurrences.filter { it.accessType == AccessType.WRITE }) {
+            val subscripts = resolveSubscripts(
+                occurrence.subscriptExpressions,
+                entryByKey,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                emptyMap(),
+                emptySet(),
+                emptySet(),
+            ) ?: return emptyMap()
+            val range = resolveWrittenValueRange(
+                occurrence.writtenValue,
+                entryByKey,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                emptyMap(),
+                emptySet(),
+                setOf(ArrayElementKey(key, subscripts)),
+            )
+            if (range == null) {
+                invalidatedElements += subscripts
+                resolvedRangesBySubscript.remove(subscripts)
+                continue
+            }
+            if (subscripts !in invalidatedElements) {
+                resolvedRangesBySubscript.getOrPut(subscripts) { mutableListOf() } += range
+            }
+        }
+        return resolvedRangesBySubscript.mapValues { (_, ranges) -> ranges.distinct().sortedRangeValues() }
+    }
+
+    private fun resolveArrayElementValueRange(
+        key: ArrayElementKey,
+        entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
+        resolvedScalarRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedArrayElementRanges: MutableMap<ArrayElementKey, List<String>?>,
+        staticallyTraceableScalarWriteRanges: Map<ScalarWriteKey, List<String>>,
+        visitedKeys: Set<VariableEntryKey>,
+        visitedArrayKeys: Set<ArrayElementKey>,
+    ): List<String>? {
+        if (key in visitedArrayKeys) return null
+        val entry = entryByKey[key.variableKey] ?: return null
+        val matchingWrites = entry.occurrences
+            .filter { it.accessType == AccessType.WRITE }
+            .filter { occurrence ->
+                resolveSubscripts(
+                    occurrence.subscriptExpressions,
+                    entryByKey,
+                    resolvedScalarRanges,
+                    resolvedArrayElementRanges,
+                    staticallyTraceableScalarWriteRanges,
+                    visitedKeys,
+                    visitedArrayKeys + key,
+                ) == key.subscripts
+            }
+        if (matchingWrites.isEmpty()) return null
+        val possibleValues = mutableListOf<String>()
+        for (occurrence in matchingWrites) {
+            val writtenRange = resolveWrittenValueRange(
+                occurrence.writtenValue,
+                entryByKey,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                staticallyTraceableScalarWriteRanges,
+                visitedKeys,
+                visitedArrayKeys + key,
+            ) ?: return null
+            possibleValues += writtenRange
+        }
+        return possibleValues.distinct().sortedRangeValues()
+    }
+
+    private fun resolveSubscripts(
+        expressions: List<TiBasicExpression>,
+        entryByKey: Map<VariableEntryKey, TiBasicVariableEntry>,
+        resolvedScalarRanges: MutableMap<VariableEntryKey, List<String>?>,
+        resolvedArrayElementRanges: MutableMap<ArrayElementKey, List<String>?>,
+        staticallyTraceableScalarWriteRanges: Map<ScalarWriteKey, List<String>>,
+        visitedKeys: Set<VariableEntryKey>,
+        visitedArrayKeys: Set<ArrayElementKey>,
+    ): List<Int>? {
+        val resolved = expressions.map { expression ->
+            resolveNumericExpressionToInt(
+                expression,
+                entryByKey,
+                resolvedScalarRanges,
+                resolvedArrayElementRanges,
+                staticallyTraceableScalarWriteRanges,
+                visitedKeys,
+                visitedArrayKeys,
+            )
+        }
+        return if (resolved.all { it != null }) resolved.filterNotNull() else null
+    }
+
+    private fun mergeArrayElementRanges(
+        resolvedRanges: Map<List<Int>, List<String>>,
+        staticallyTraceableRanges: Map<List<Int>, List<String>>,
+    ): Map<List<Int>, List<String>> =
+        (resolvedRanges.keys + staticallyTraceableRanges.keys)
+            .associateWith { subscripts ->
+                resolvedRanges[subscripts].orEmpty()
+                    .plus(staticallyTraceableRanges[subscripts].orEmpty())
+                    .distinct()
+                    .sortedRangeValues()
+            }
+            .filterValues(List<String>::isNotEmpty)
 
     private fun loopIterationValues(
         start: Int,
@@ -345,11 +655,14 @@ object TiBasicVariableCollector {
         return null
     }
 
-    private fun variableEntryKey(varAccess: TiBasicVariableAccess): VariableEntryKey? {
+    private fun variableEntryKey(
+        varAccess: TiBasicVariableAccess,
+        isArray: Boolean = true,
+    ): VariableEntryKey? {
         val nameNode = varAccess.node.firstChildNode ?: return null
         return VariableEntryKey(
             name = nameNode.text.uppercase(),
-            type = variableTypeOf(nameNode.elementType, isArray = true),
+            type = variableTypeOf(nameNode.elementType, isArray = isArray),
         )
     }
 
@@ -363,6 +676,63 @@ object TiBasicVariableCollector {
             isArray -> TiBasicVariableType.NUMERIC_ARRAY
             else -> TiBasicVariableType.NUMERIC
         }
+
+    private fun collectStaticallyTraceableRanges(
+        file: TiBasicFile,
+    ): Pair<Map<ScalarWriteKey, List<String>>, Map<VariableEntryKey, Map<List<Int>, List<String>>>> =
+        collectStaticallyTraceableStatementSnapshots(file)
+            .fold(
+                TraceableRanges(
+                    scalarWriteRanges = mutableMapOf(),
+                    arrayRanges = mutableMapOf(),
+                ),
+            ) { groupedRanges, snapshot ->
+                PsiTreeUtil.findChildrenOfType(snapshot.statement, TiBasicVariableAccess::class.java)
+                    .filter { determineAccessType(it) == AccessType.WRITE }
+                    .forEach { variableAccess ->
+                        if (variableAccess.hasSubscriptParens()) return@forEach
+                        val variableKey = variableEntryKey(variableAccess, isArray = false) ?: return@forEach
+                        val value = when (variableKey.type) {
+                            TiBasicVariableType.NUMERIC -> snapshot.staticValues.numericVariables[variableKey.name]?.toString()
+                            TiBasicVariableType.STRING -> snapshot.staticValues.stringVariables[variableKey.name]?.let { "\"$it\"" }
+                            else -> null
+                        } ?: return@forEach
+                        groupedRanges.scalarWriteRanges
+                            .getOrPut(ScalarWriteKey(variableKey, variableAccess.textOffset)) { mutableListOf() }
+                            .add(value)
+                    }
+                snapshot.staticValues.numericArrays.forEach { (key, value) ->
+                    groupedRanges.arrayRanges.addArrayValue(
+                        variableKey = VariableEntryKey(key.name, TiBasicVariableType.NUMERIC_ARRAY),
+                        subscripts = key.subscripts,
+                        value = value.toString(),
+                    )
+                }
+                snapshot.staticValues.stringArrays.forEach { (key, value) ->
+                    groupedRanges.arrayRanges.addArrayValue(
+                        variableKey = VariableEntryKey(key.name, TiBasicVariableType.STRING_ARRAY),
+                        subscripts = key.subscripts,
+                        value = "\"$value\"",
+                    )
+                }
+                groupedRanges
+            }
+            .let { groupedRanges ->
+                groupedRanges.scalarWriteRanges.mapValues { (_, values) -> values.distinct().sortedRangeValues() } to
+                    groupedRanges.arrayRanges.mapValues { (_, valuesBySubscript) ->
+                        valuesBySubscript.mapValues { (_, values) -> values.distinct().sortedRangeValues() }
+                    }
+            }
+
+    private fun <T> withoutCollectedConstantFallback(action: () -> T): T {
+        val previousValue = collectedConstantFallbackSuppressed.get()
+        collectedConstantFallbackSuppressed.set(true)
+        return try {
+            action()
+        } finally {
+            collectedConstantFallbackSuppressed.set(previousValue)
+        }
+    }
 }
 
 private val ARRAY_VARIABLE_TYPES: Set<TiBasicVariableType> = setOf(
@@ -375,16 +745,46 @@ private val SCALAR_VARIABLE_TYPES: Set<TiBasicVariableType> = setOf(
 )
 private const val DEFAULT_NUMERIC_CONST_VALUE = "0"
 private const val DEFAULT_STRING_CONST_VALUE = "\"\""
+private const val KEY_SUBPROGRAM_NAME = "KEY"
+private const val KEY_STATUS_ARG_INDEX = 2
+private val KEY_STATUS_RANGE_VALUES = listOf("-1", "1")
 
 private data class VariableEntryKey(
     val name: String,
     val type: TiBasicVariableType,
 )
 
+private data class ScalarWriteKey(
+    val variableKey: VariableEntryKey,
+    val offset: Int,
+)
+
+private data class ArrayElementKey(
+    val variableKey: VariableEntryKey,
+    val subscripts: List<Int>,
+)
+
 private data class TiBasicArrayMetadata(
     val details: TiBasicArrayDetails,
     val dimOccurrences: List<TiBasicVariableOccurrence> = emptyList(),
 )
+
+private data class TraceableRanges(
+    val scalarWriteRanges: MutableMap<ScalarWriteKey, MutableList<String>>,
+    val arrayRanges: MutableMap<VariableEntryKey, MutableMap<List<Int>, MutableList<String>>>,
+)
+
+private val collectedConstantFallbackSuppressed = ThreadLocal.withInitial { false }
+
+private fun MutableMap<VariableEntryKey, MutableMap<List<Int>, MutableList<String>>>.addArrayValue(
+    variableKey: VariableEntryKey,
+    subscripts: List<Int>,
+    value: String,
+) {
+    getOrPut(variableKey) { mutableMapOf() }
+        .getOrPut(subscripts) { mutableListOf() }
+        .add(value)
+}
 
 private fun List<Pair<VariableEntryKey, TiBasicArrayMetadata>>.entriesByKey(): Map<VariableEntryKey, TiBasicArrayMetadata> =
     groupBy({ it.first }, { it.second })

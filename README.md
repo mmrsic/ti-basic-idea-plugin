@@ -299,26 +299,35 @@ The annotator inspects every file and highlights:
   TI-Basic files; for all other file types the default behavior is preserved
 - **TI Basic Variables tool window** — a dockable bottom panel listing all variables in the active TI-Basic file
   in a sortable table with columns Name, Type, Writes, Reads, and Range, plus the additional array-only columns
-  Dimensions, Base, and DIM whenever the file defines at least one array; the Dimensions and Base columns show the
-  effective array size and `OPTION BASE` value directly on each numeric or string array row, including explicit `DIM`
-  declarations and implicit arrays with the TI-Basic default dimension size `10`; the **DIM** column shows the
-  clickable `DIM` statement line number on that same array row when the array was declared explicitly; the Writes and Reads
+  a combined Dimensions column whenever the file defines at least one array; it shows an explicit-DIM-like declaration
+  such as `200 DIM A(1-10,1-10,1-10)` directly on each numeric or string array row, including implicit arrays with the
+  TI-Basic default dimension size `10`, and the leading line number stays clickable when the array was declared
+  explicitly; the Writes and Reads
   columns show clickable line numbers that navigate to the selected occurrence in the editor; all table columns wrap
   automatically as the tool window is resized; the table refreshes
   automatically on every document change; the **Range**
   column shows the effective finite value range for scalar numeric and string variables — singleton ranges behave like
-  the previous constant display (`0`, `""`, `42`, `"HELLO"`), while multi-value ranges are shown as comma-separated
-  literal lists (e.g. `"307C6EF8FE7C7C30", "0C3E761F7F3E3E0C"` for `G$` when it can receive either value through simple
-  variable aliases, or `1, 3, 5` for `I` in `FOR I=1 TO 5 STEP 2` when the loop bounds are statically resolvable);
-  consecutive integer runs are abbreviated as ranges such as `1-5`
+  like the previous constant display (`0`, `""`, `42`, `"HELLO"`), while multi-value ranges are
+  shown as comma-separated lists (e.g. `"307C6EF8FE7C7C30", "0C3E761F7F3E3E0C"` for `G$` when it can
+  receive either value through simple variable aliases, or `1, 3, 5` for `I` in `FOR I=1 TO 5 STEP 2` when the loop
+  bounds are statically resolvable);
+  simple statically traceable scalar updates inside loops are also reflected (for example an accumulator like
+  `S=S+1` inside nested `FOR` loops can show as `[31; 159]`);
+  values are always listed in ascending natural order, and consecutive integer runs are abbreviated only as mathematical
+  intervals such as `[1; 5]`; if the rendered list would exceed 20 numeric items/ranges or 10 string items, the Range cell
+  stays empty; a toolbar view option can additionally show statically resolvable array elements directly in the
+  **Range** column, for example `(32)="FFFFFFFFFFFFFFFF"`, with the same 20-item / 10-item limits
 - **TI Basic Character Definitions tool window** — a dockable bottom panel listing all statically resolvable
   `CALL CHAR` definitions in the active TI-Basic file in a sortable table with columns Code, ASCII, Pattern, Icon, and Line;
   entries stay grouped by their actual character code even when multiple codes share the same pattern and the same derived
   foreground/background colors;
+  rows that differ only by source line are merged, and their line numbers are shown as an ascending clickable list;
   besides direct literals, simple constant variables, and simple statically resolvable numeric code expressions,
   the table also includes definitions that can be traced
-  statically through `READ`/`DATA` statements (including `RESTORE`) and through simple statically resolvable
-  `FOR`/`NEXT` loops that repeatedly execute such `READ` + `CALL CHAR` sequences, including simple `IF ... THEN`
+  statically through `READ`/`DATA` statements (including `RESTORE`, where `RESTORE` without a line resets to the first
+  `DATA` line and a referenced line resolves to the next higher `DATA` line) and through simple statically resolvable
+  `FOR`/`NEXT` loops that repeatedly execute such `READ` + `CALL CHAR` sequences, including array-element assignments
+  such as `F$(I)=S$` before `CALL CHAR(I,F$(I))` and simple `IF ... THEN`
   line jumps inside those loops when the branch condition is statically decidable;
   the Icon column renders the defined character as a base black/white pictogram plus all distinct colorized variants
   that can be derived statically from matching `CALL COLOR(set,fg,bg)` statements for the character's set;

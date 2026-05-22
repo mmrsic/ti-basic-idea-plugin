@@ -286,6 +286,18 @@ strictly greater 10er-Zahl so duplicate line numbers cannot occur.
 
 ---
 
+### `applicationService` — `TiBasicVariableToolWindowSettings`
+
+| Attribute               | Value                                                     |
+|-------------------------|-----------------------------------------------------------|
+| `serviceImplementation` | `tibasic.toolwindow.TiBasicVariableToolWindowSettings`    |
+
+Persists the Variables tool-window view option that toggles whether
+array-element constants are shown in the **Range** column. The state is stored in `editor.xml` so
+the toolbar toggle survives IDE restarts.
+
+---
+
 ### `applicationConfigurable` — Parenthesis Auto-Close
 
 | Attribute  | Value                                              |
@@ -605,17 +617,19 @@ Delegates to `TiBasicVariableCollector.determineAccessType` for the classificati
 
 Provides a dockable bottom panel that lists all variables in the currently active TI-Basic
 file in a sortable table (columns: Name, Type, Writes, Reads, Range, plus the conditional
-array columns Dimensions, Base, and DIM when the file defines at least one array). The
-Dimensions and Base columns show effective array metadata for DIM
-declarations directly on each numeric or string array row, including implicit or explicit
-array usages. The DIM column shows the declaration line number on that same array row when
-the array has an explicit `DIM`. Clicking any line number in the DIM, Writes,
+Dimensions column when the file defines at least one array). That column renders a DIM-like
+declaration such as `200 DIM A(1-10,1-10)` directly on each numeric or string array row,
+including implicit or explicit array usages, and keeps the leading DIM line number clickable
+when the array has an explicit `DIM`. Clicking any line number in the Dimensions, Writes,
 or Reads column navigates the editor to that line. The Range column shows singleton values
-like the previous constant display and otherwise renders finite comma-separated value lists,
+without extra delimiters and otherwise renders finite comma-separated value lists, using
+interval notation like `[-1; 1]` only for actual interval segments,
 including statically resolvable `FOR` loop iteration values for numeric control variables;
-consecutive integer runs are abbreviated as `start-end`
-inferred from simple literal and variable-alias assignments. The table refreshes automatically on
-every document edit and whenever the active file changes, and all columns wrap automatically with
+consecutive integer runs are abbreviated as interval segments such as `[1; 5]`
+inferred from simple literal and variable-alias assignments. A persisted toolbar toggle can
+also show statically known array-element values in the **Range** column, such as
+`(1)="HELLO"` or `(32)="FFFFFFFFFFFFFFFF"`. The table refreshes automatically on every
+document edit and whenever the active file changes, and all columns wrap automatically with
 row heights adjusted to the available width.
 
 ---
@@ -631,8 +645,9 @@ row heights adjusted to the available width.
 
 Provides a dockable bottom panel that lists all statically resolvable `CALL CHAR`
 definitions in the currently active TI-Basic file in a sortable table (columns: Code,
-ASCII, Pattern, Icon, Line). Each `CALL CHAR` statement appears as its own row, so repeated
-definitions of the same character code remain visible. The Icon column renders the
+ASCII, Pattern, Icon, Lines). Repeated definitions that differ only in line number are
+merged into one row and expose their source lines as an ascending clickable list, while
+definitions with different code or pattern remain separate. The Icon column renders the
 normalized pattern via `TiBasicCharPatternIcon` and, when available, adds distinct
 `TiBasicColoredCharPatternIcon` variants derived from matching statically resolvable
 `CALL COLOR(set,fg,bg)` assignments for the same character set. The collectors include

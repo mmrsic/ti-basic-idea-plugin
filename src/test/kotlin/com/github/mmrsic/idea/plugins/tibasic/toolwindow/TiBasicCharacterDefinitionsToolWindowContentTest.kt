@@ -120,6 +120,31 @@ class TiBasicCharacterDefinitionsToolWindowContentTest : TiBasicTestBase() {
         )
     }
 
+    fun `test identical character definitions with different line numbers are grouped into one row`() {
+        val content = TiBasicCharacterDefinitionsToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 CALL CHAR(65,"FF")
+            120 CALL CHAR(65,"FF")
+            110 CALL CHAR(65,"0F")
+            """.trimIndent(),
+        )
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(
+            listOf(
+                65 to "FF00000000000000",
+                65 to "0F00000000000000",
+            ),
+            displayedDefinitions(content),
+        )
+        assertEquals(listOf(100, 120), displayedLineNumbers(content, 0))
+        assertEquals(listOf(110), displayedLineNumbers(content, 1))
+    }
+
     fun `test icon renderer creates one label per displayed icon`() {
         val renderer = TiBasicCharacterDefinitionIconRenderer()
         val table = JTable(1, 1)
@@ -156,6 +181,15 @@ class TiBasicCharacterDefinitionsToolWindowContentTest : TiBasicTestBase() {
             code to pattern
         }
     }
+
+    private fun displayedLineNumbers(
+        content: TiBasicCharacterDefinitionsToolWindowContent,
+        row: Int,
+    ): List<Int> =
+        (tableModel(content).getValueAt(row, CHARACTER_LINE_COLUMN) as? List<*>)
+            ?.filterIsInstance<TiBasicCharacterDefinitionOccurrence>()
+            ?.map(TiBasicCharacterDefinitionOccurrence::lineNumber)
+            .orEmpty()
 
     private fun tableModel(content: TiBasicCharacterDefinitionsToolWindowContent): TiBasicCharacterDefinitionsTableModel {
         val tableModelField = TiBasicCharacterDefinitionsToolWindowContent::class.java.getDeclaredField("tableModel")

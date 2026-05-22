@@ -34,12 +34,10 @@ class TiBasicCharacterDefinitionCollectorTest : TiBasicTestBase() {
     fun `test collector omits non constant CALL CHAR code or pattern`() {
         val file = configureFile(
             """
-            100 LET CODE=65
-            110 LET CODE=66
-            120 LET PAT$="FF"
-            130 LET PAT$="0F"
-            140 CALL CHAR(CODE,"AA")
-            150 CALL CHAR(67,PAT$)
+            100 INPUT CODE
+            110 INPUT PAT$
+            120 CALL CHAR(CODE,"AA")
+            130 CALL CHAR(67,PAT$)
             """.trimIndent(),
         )
 
@@ -88,6 +86,85 @@ class TiBasicCharacterDefinitionCollectorTest : TiBasicTestBase() {
             definitions.map { it.pattern },
         )
         assertEquals(listOf(120, 170, 140), definitions.map { it.lineNumber })
+    }
+
+    fun `test collector resets READ DATA source to first DATA line for RESTORE without line number`() {
+        val file = configureFile(
+            """
+            100 READ CODE,PAT$
+            110 CALL CHAR(CODE,PAT$)
+            120 DATA 65,FF,66,0F
+            130 READ CODE,PAT$
+            140 CALL CHAR(CODE,PAT$)
+            150 RESTORE
+            160 READ CODE,PAT$
+            170 CALL CHAR(CODE,PAT$)
+            """.trimIndent(),
+        )
+
+        val definitions = collectCallCharDefinitions(file)
+
+        assertEquals(listOf(65, 65, 66), definitions.map { it.code })
+        assertEquals(
+            listOf("FF00000000000000", "FF00000000000000", "0F00000000000000"),
+            definitions.map { it.pattern },
+        )
+        assertEquals(listOf(110, 170, 140), definitions.map { it.lineNumber })
+    }
+
+    fun `test collector resolves RESTORE line to next higher DATA line`() {
+        val file = configureFile(
+            """
+            100 DATA 65,FF
+            110 PRINT "SKIP"
+            120 DATA 66,0F
+            130 RESTORE 115
+            140 READ CODE,PAT$
+            150 CALL CHAR(CODE,PAT$)
+            """.trimIndent(),
+        )
+
+        val definitions = collectCallCharDefinitions(file)
+
+        assertEquals(listOf(66), definitions.map { it.code })
+        assertEquals(listOf("0F00000000000000"), definitions.map { it.pattern })
+        assertEquals(listOf(150), definitions.map { it.lineNumber })
+    }
+
+    fun `test collector aborts only at READ after RESTORE points past last DATA line but not past program`() {
+        val file = configureFile(
+            """
+            100 CALL CHAR(64,"AA")
+            110 DATA 65,FF
+            120 RESTORE 200
+            130 CALL CHAR(66,"0F")
+            300 REM NO DATA HERE
+            310 READ CODE,PAT$
+            320 CALL CHAR(CODE,PAT$)
+            """.trimIndent(),
+        )
+
+        val definitions = collectCallCharDefinitions(file)
+
+        assertEquals(listOf(64, 66), definitions.map { it.code })
+        assertEquals(listOf("AA00000000000000", "0F00000000000000"), definitions.map { it.pattern })
+        assertEquals(listOf(100, 130), definitions.map { it.lineNumber })
+    }
+
+    fun `test collector aborts immediately when RESTORE line is greater than highest program line`() {
+        val file = configureFile(
+            """
+            100 CALL CHAR(64,"AA")
+            110 RESTORE 999
+            120 CALL CHAR(65,"FF")
+            """.trimIndent(),
+        )
+
+        val definitions = collectCallCharDefinitions(file)
+
+        assertEquals(listOf(64), definitions.map { it.code })
+        assertEquals(listOf("AA00000000000000"), definitions.map { it.pattern })
+        assertEquals(listOf(100), definitions.map { it.lineNumber })
     }
 
     fun `test collector resets READ DATA source to targeted RESTORE line`() {
@@ -251,6 +328,25 @@ class TiBasicCharacterDefinitionCollectorTest : TiBasicTestBase() {
         assertEquals(expectedDefinitions.map(ExpectedCharDefinition::code), definitions.map { it.code })
         assertEquals(expectedDefinitions.map(ExpectedCharDefinition::pattern), definitions.map { it.pattern })
         assertEquals(expectedDefinitions.map(ExpectedCharDefinition::lineNumber), definitions.map { it.lineNumber })
+    }
+
+    fun `test collector resolves CALL CHAR pattern through constant string array elements inside FOR loop`() {
+        val file = configureFile(
+            """
+            100 DATA FF,0F
+            110 FOR I=65 TO 66
+            120 READ S$
+            130 F$(I)=S$
+            140 CALL CHAR(I,F$(I))
+            150 NEXT I
+            """.trimIndent(),
+        )
+
+        val definitions = collectCallCharDefinitions(file)
+
+        assertEquals(listOf(65, 66), definitions.map { it.code })
+        assertEquals(listOf("FF00000000000000", "0F00000000000000"), definitions.map { it.pattern })
+        assertEquals(List(2) { 140 }, definitions.map { it.lineNumber })
     }
 
     fun `test collector omits arithmetic CALL CHAR code with array access`() {

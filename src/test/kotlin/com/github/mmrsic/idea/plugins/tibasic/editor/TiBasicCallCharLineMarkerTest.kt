@@ -73,6 +73,12 @@ class TiBasicCallCharLineMarkerTest : TiBasicTestBase() {
         assertEquals("Gutter icon must appear when pattern variable has a single constant string value", 1, gutters.size)
     }
 
+    fun `test gutter icon appears for CALL CHAR with constant string array element`() {
+        configureFile("100 LET I=1\n110 LET P$(1)=\"FFFFFFFFFFFFFFFF\"\n120 CALL CHAR(96,P$(I))")
+        val gutters = myFixture.findAllGutters()
+        assertEquals("Gutter icon must appear when pattern array element has a single constant string value", 1, gutters.size)
+    }
+
     fun `test gutter icon does not appear for CALL CHAR with non-constant string variable`() {
         configureFile("100 LET P$=\"FF\"\n200 LET P$=\"0F\"\n300 CALL CHAR(96,P$)")
         val gutters = myFixture.findAllGutters()

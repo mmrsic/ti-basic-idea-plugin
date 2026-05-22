@@ -2,6 +2,7 @@ package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
 import javax.swing.JLabel
 import javax.swing.JTable
+import javax.swing.JTextArea
 
 class TiBasicVariableCellRendererTest : junit.framework.TestCase() {
 
@@ -30,9 +31,9 @@ class TiBasicVariableCellRendererTest : junit.framework.TestCase() {
         renderer.getTableCellRendererComponent(
             table = table,
             value = listOf(
-                TiBasicVariableOccurrence(100, 0, AccessType.WRITE),
-                TiBasicVariableOccurrence(200, 0, AccessType.WRITE),
-                TiBasicVariableOccurrence(300, 0, AccessType.WRITE),
+                TiBasicVariableOccurrence(100, 0, AccessType.WRITE, null, emptyList()),
+                TiBasicVariableOccurrence(200, 0, AccessType.WRITE, null, emptyList()),
+                TiBasicVariableOccurrence(300, 0, AccessType.WRITE, null, emptyList()),
             ),
             isSelected = false,
             hasFocus = false,
@@ -54,8 +55,8 @@ class TiBasicVariableCellRendererTest : junit.framework.TestCase() {
         renderer.getTableCellRendererComponent(
             table = table,
             value = listOf(
-                TiBasicVariableOccurrence(100, 0, AccessType.WRITE),
-                TiBasicVariableOccurrence(200, 0, AccessType.WRITE),
+                TiBasicVariableOccurrence(100, 0, AccessType.WRITE, null, emptyList()),
+                TiBasicVariableOccurrence(200, 0, AccessType.WRITE, null, emptyList()),
             ),
             isSelected = false,
             hasFocus = false,
@@ -69,5 +70,30 @@ class TiBasicVariableCellRendererTest : junit.framework.TestCase() {
             .filterIsInstance<JLabel>()
             .first { it.text == "100" }
         assertTrue(firstLineLabel.x <= 4)
+    }
+
+    fun `test dimensions renderer shows clickable line prefix and DIM text`() {
+        val renderer = TiBasicVariableDimensionsRenderer()
+        val table = JTable(1, 1)
+        table.columnModel.getColumn(0).width = 180
+
+        renderer.getTableCellRendererComponent(
+            table = table,
+            value = TiBasicVariableDimensionsDisplay(
+                occurrences = listOf(TiBasicVariableOccurrence(200, 0, AccessType.NONE, null, emptyList())),
+                text = "DIM A(1-10,1-10,1-10)",
+            ),
+            isSelected = false,
+            hasFocus = false,
+            row = 0,
+            column = 0,
+        )
+        renderer.panel.setSize(180, Int.MAX_VALUE)
+        renderer.panel.doLayout()
+
+        val labels = renderer.panel.components.filterIsInstance<JLabel>()
+        val textArea = renderer.panel.components.filterIsInstance<JTextArea>().single()
+        assertTrue(labels.any { it.text == "200" })
+        assertEquals("DIM A(1-10,1-10,1-10)", textArea.text)
     }
 }

@@ -1,5 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
+import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBundle
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.intellij.codeInsight.highlighting.HighlightManager
 import com.intellij.openapi.editor.colors.EditorColors
@@ -11,6 +12,8 @@ import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import javax.swing.JCheckBox
+import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.RowSorter
 import javax.swing.SortOrder
@@ -21,10 +24,13 @@ import javax.swing.table.TableRowSorter
 
 class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindowContent(project) {
 
-    private val tableModel = TiBasicVariableTableModel()
+    private val settings = TiBasicVariableToolWindowSettings.getInstance()
+    private val tableModel = TiBasicVariableTableModel(showArrayElementConstants = settings.showArrayElementConstants)
+    private val dimensionsRenderer = TiBasicVariableDimensionsRenderer()
     private val lineNumberRenderer = TiBasicVariableLineNumberRenderer()
     private val wrappedTextRenderer = TiBasicWrappedTextCellRenderer()
     private val table = JBTable(tableModel)
+    private val constantsToggle = JCheckBox(TiBasicBundle.message("tool.window.variables.show.constants"))
     private val activeHighlighters = ArrayList<RangeHighlighter>()
     private val sorter = TableRowSorter(tableModel)
     private val lineNumberComparator = compareBy<Any?> {
@@ -33,19 +39,28 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
             ?.minOfOrNull { occ -> occ.lineNumber }
             ?: Int.MAX_VALUE
     }
+    private val defaultSort = listOf(VariableTableSort(NAME_COLUMN, SortOrder.ASCENDING))
 
     init {
+        constantsToggle.isSelected = settings.showArrayElementConstants
+        constantsToggle.addActionListener {
+            settings.showArrayElementConstants = constantsToggle.isSelected
+            tableModel.setShowArrayElementConstants(constantsToggle.isSelected)
+            refreshForFile(currentFile)
+        }
         setupTable()
         initializeToolWindow(table)
     }
 
+    override fun toolbarComponents(): List<JComponent> = listOf(constantsToggle)
+
     private fun setupTable() {
+        table.setDefaultRenderer(TiBasicVariableDimensionsDisplay::class.java, dimensionsRenderer)
         table.setDefaultRenderer(List::class.java, lineNumberRenderer)
         table.setDefaultRenderer(String::class.java, wrappedTextRenderer)
         table.tableHeader.defaultRenderer = leftAlignedHeaderRenderer(table.tableHeader.defaultRenderer)
         table.rowSorter = sorter
-        sorter.sortKeys = listOf(RowSorter.SortKey(0, SortOrder.ASCENDING))
-        configureVisibleColumns(lineNumberComparator)
+        configureVisibleColumns(sortState = defaultSort)
         table.addMouseListener(LineNumberClickHandler())
         table.selectionModel.addListSelectionListener { event ->
             if (!event.valueIsAdjusting) updateHighlightsForSelection()
@@ -58,9 +73,10 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
 
     override fun refreshForFile(file: TiBasicFile?) {
         clearHighlights()
+        val sortState = currentSortState()
         val entries = if (file != null) TiBasicVariableCollector.collect(file) else emptyList()
         tableModel.updateEntries(entries)
-        configureVisibleColumns(lineNumberComparator)
+        configureVisibleColumns(sortState = sortState)
         updateRowHeights()
     }
 
@@ -106,6 +122,10 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
             val col = table.columnAtPoint(e.point)
             if (row < 0) return
             val modelColumn = table.convertColumnIndexToModel(col)
+            if (modelColumn == DIMENSIONS_COLUMN) {
+                navigateFromDimensionsCell(row, col, e)
+                return
+            }
             if (!tableModel.isLineNumberColumn(modelColumn)) return
 
             val cellRect = table.getCellRect(row, col, false)
@@ -125,6 +145,29 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
             val lineNum = clickedLabel.text.toIntOrNull() ?: return
 
             val occurrence = occurrences.firstOrNull { it.lineNumber == lineNum } ?: return
+            navigateToOffset(occurrence.offset)
+        }
+
+        private fun navigateFromDimensionsCell(
+            row: Int,
+            col: Int,
+            event: MouseEvent,
+        ) {
+            val cellRect = table.getCellRect(row, col, false)
+            val relX = event.x - cellRect.x
+            val relY = event.y - cellRect.y
+            val modelRow = table.convertRowIndexToModel(row)
+            val dimensionsDisplay = tableModel.getValueAt(modelRow, DIMENSIONS_COLUMN) as? TiBasicVariableDimensionsDisplay ?: return
+
+            table.prepareRenderer(dimensionsRenderer, row, col)
+            dimensionsRenderer.panel.setSize(cellRect.width, cellRect.height)
+            dimensionsRenderer.panel.doLayout()
+
+            val clickedLabel = dimensionsRenderer.panel.components
+                .firstOrNull { component -> component is JLabel && component.bounds.contains(relX, relY) } as? JLabel
+                ?: return
+            val lineNum = clickedLabel.text.toIntOrNull() ?: return
+            val occurrence = dimensionsDisplay.occurrences.firstOrNull { it.lineNumber == lineNum } ?: return
             navigateToOffset(occurrence.offset)
         }
     }
@@ -165,15 +208,47 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
         override fun columnMarginChanged(event: javax.swing.event.ChangeEvent) = updateRowHeights()
     }
 
-    private fun configureVisibleColumns(lineNumberComparator: Comparator<Any?>) {
-        sorter.modelStructureChanged()
-        tableModel.modelColumnIndex(DIM_LINE_COLUMN)?.let { sorter.setComparator(it, lineNumberComparator) }
+    private fun configureVisibleColumns(sortState: List<VariableTableSort>) {
+        tableModel.modelColumnIndex(DIMENSIONS_COLUMN)?.let {
+            sorter.setComparator(
+                it,
+                compareBy<Any?>(
+                    { (it as? TiBasicVariableDimensionsDisplay)?.occurrences?.minOfOrNull(TiBasicVariableOccurrence::lineNumber) ?: Int.MAX_VALUE },
+                    { (it as? TiBasicVariableDimensionsDisplay)?.text ?: "" },
+                ),
+            )
+        }
         tableModel.modelColumnIndex(WRITES_COLUMN)?.let { sorter.setComparator(it, lineNumberComparator) }
         tableModel.modelColumnIndex(READS_COLUMN)?.let { sorter.setComparator(it, lineNumberComparator) }
-        tableModel.modelColumnIndex(DIMENSIONS_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 90 }
-        tableModel.modelColumnIndex(BASE_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 45 }
-        tableModel.modelColumnIndex(DIM_LINE_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 45 }
+        restoreSortState(sortState)
+        tableModel.modelColumnIndex(DIMENSIONS_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 180 }
         tableModel.modelColumnIndex(RANGE_COLUMN)?.let { table.columnModel.getColumn(it).preferredWidth = 140 }
+    }
+
+    private fun currentSortState(): List<VariableTableSort> =
+        sorter.sortKeys
+            .mapNotNull { sortKey ->
+                tableModel.columnIdAt(sortKey.column)?.let { columnId ->
+                    VariableTableSort(columnId, sortKey.sortOrder)
+                }
+            }
+            .ifEmpty { defaultSort }
+
+    private fun restoreSortState(sortState: List<VariableTableSort>) {
+        val restoredSortKeys = sortState
+            .mapNotNull { sort ->
+                tableModel.modelColumnIndex(sort.columnId)?.let { modelColumn ->
+                    RowSorter.SortKey(modelColumn, sort.order)
+                }
+            }
+            .ifEmpty {
+                defaultSort.mapNotNull { sort ->
+                    tableModel.modelColumnIndex(sort.columnId)?.let { modelColumn ->
+                        RowSorter.SortKey(modelColumn, sort.order)
+                    }
+                }
+            }
+        sorter.sortKeys = restoredSortKeys
     }
 
     private fun leftAlignedHeaderRenderer(delegate: TableCellRenderer): TableCellRenderer =
@@ -184,3 +259,8 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
                 }
         }
 }
+
+private data class VariableTableSort(
+    val columnId: Int,
+    val order: SortOrder,
+)
