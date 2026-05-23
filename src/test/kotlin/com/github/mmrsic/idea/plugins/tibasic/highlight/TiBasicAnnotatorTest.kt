@@ -1032,6 +1032,11 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, false)
     }
 
+    fun testNoErrorForImplicitLetWithComparisonAssignment() {
+        configureFile("100 A = 1<2")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
     fun testNoErrorForImplicitLetWithUnaryPlusAssignmentToAtVariable() {
         configureFile("10 @1=+1")
         myFixture.checkHighlighting(true, false, false)
@@ -1107,6 +1112,13 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
     fun testErrorForImplicitLetWithMissingRhsExpression() {
         configureFile(
             "790 <error descr=\"Incorrect statement\">T1=</error>",
+        )
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun testErrorForImplicitLetWithIncompleteComparisonRhs() {
+        configureFile(
+            "520 <error descr=\"Incorrect statement\">MIN=<</error>",
         )
         myFixture.checkHighlighting(true, false, false)
     }

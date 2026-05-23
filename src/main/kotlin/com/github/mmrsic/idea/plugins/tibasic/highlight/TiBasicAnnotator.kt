@@ -790,9 +790,9 @@ class TiBasicAnnotator : Annotator {
         if (expression == null) {
             val hasEqOp = statement.node.firstChildOfType(TiBasicTokenTypes.EQ_OP) != null
             if (hasEqOp) {
-                val nonWsAfterEq = statement.node.childrenAfter(TiBasicTokenTypes.EQ_OP)
+                val nonWhitespaceAfterEq = statement.node.childrenAfter(TiBasicTokenTypes.EQ_OP)
                     .filter { it.elementType != TokenType.WHITE_SPACE }
-                if (nonWsAfterEq.isEmpty() || nonWsAfterEq.any { it.elementType == TiBasicTokenTypes.PRINT_ARGUMENT }) {
+                if (nonWhitespaceAfterEq.firstOrNull()?.elementType != TiBasicTokenTypes.TAB_KEYWORD) {
                     holder.error("Incorrect statement", statement)
                 }
             }
