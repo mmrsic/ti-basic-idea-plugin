@@ -265,6 +265,24 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
     }
 
+    fun `test range column compacts consecutive single dimension array constants with same value`() {
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = true
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            590 FOR I=0 TO 127
+            600 A$(I)="0"
+            610 NEXT I
+            """.trimIndent(),
+        )
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("(0-127)=\"0\"", displayedValue(content, "A$", "String Array", RANGE_COLUMN))
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
+    }
+
     fun `test range column stays empty for string arrays with more than ten constant elements`() {
         TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = true
         val content = TiBasicVariableToolWindowContent(project)

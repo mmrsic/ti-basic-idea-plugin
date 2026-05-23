@@ -286,6 +286,20 @@ class TiBasicVariableCollectorTest : TiBasicTestBase() {
         assertEquals("(1)=\"X\"", entry.arrayElementConstantsDisplay)
     }
 
+    fun `test array element constants display compacts consecutive single dimension elements with same value`() {
+        val file = configureFile(
+            """
+            590 FOR I=0 TO 127
+            600 A$(I)="0"
+            610 NEXT I
+            """.trimIndent(),
+        )
+        val entries = TiBasicVariableCollector.collect(file)
+        val entry = entries.single { it.name == "A$" && it.type == TiBasicVariableType.STRING_ARRAY }
+
+        assertEquals("(0-127)=\"0\"", entry.arrayElementConstantsDisplay)
+    }
+
     fun `test array element constants display sorts indices numerically ascending`() {
         val entry = TiBasicVariableEntry(
             name = "F$",

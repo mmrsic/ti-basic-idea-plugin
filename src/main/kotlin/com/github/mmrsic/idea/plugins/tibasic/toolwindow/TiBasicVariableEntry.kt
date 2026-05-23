@@ -47,12 +47,11 @@ data class TiBasicVariableEntry(
     val arrayElementConstantsDisplay: String?
         get() = resolvedArrayElementRanges
             .takeIf(Map<List<Int>, List<String>>::isNotEmpty)
-            ?.toSortedMap(arraySubscriptComparator)
-            ?.takeIf { it.size <= displayItemLimit }
             ?.entries
-            ?.joinToString(ARRAY_ELEMENT_SEPARATOR) { (subscripts, range) ->
-                "${subscripts.asSubscriptDisplay()}=${range.toRangeDisplay()}"
-            }
+            ?.sortedWith(arrayElementEntryComparator)
+            ?.toCompactArrayElementDisplays()
+            ?.takeIf { it.size <= displayItemLimit }
+            ?.joinToString(ARRAY_ELEMENT_SEPARATOR)
 
     fun rangeDisplay(showArrayElementConstants: Boolean): String? =
         rangeDisplay ?: arrayElementConstantsDisplay.takeIf { showArrayElementConstants }
@@ -190,6 +189,70 @@ private fun List<String>.toDisplaySegment(): String =
 
 private fun List<Int>.asSubscriptDisplay(): String = "(${joinToString(",")})"
 
+private fun List<Map.Entry<List<Int>, List<String>>>.toCompactArrayElementDisplays(): List<String> {
+    val displays = mutableListOf<String>()
+    var currentRunStartEntryIndex: Int? = null
+    var currentRunEndEntryIndex: Int? = null
+    var currentRunStartSubscript: Int? = null
+    var currentRunEndSubscript: Int? = null
+    var currentRunRange: List<String>? = null
+
+    fun flushRun() {
+        val runStartEntryIndex = currentRunStartEntryIndex ?: return
+        val runEndEntryIndex = currentRunEndEntryIndex ?: return
+        val runStartSubscript = currentRunStartSubscript ?: return
+        val runEndSubscript = currentRunEndSubscript ?: return
+        val range = currentRunRange ?: return
+        if (runEndSubscript - runStartSubscript + 1 >= MIN_ARRAY_ELEMENT_RANGE_LENGTH) {
+            displays += "(${runStartSubscript}$RANGE_DISPLAY_SEPARATOR$runEndSubscript)=${range.toRangeDisplay()}"
+        } else {
+            subList(runStartEntryIndex, runEndEntryIndex + 1).forEach { (subscripts, elementRange) ->
+                displays += "${subscripts.asSubscriptDisplay()}=${elementRange.toRangeDisplay()}"
+            }
+        }
+        currentRunStartEntryIndex = null
+        currentRunEndEntryIndex = null
+        currentRunStartSubscript = null
+        currentRunEndSubscript = null
+        currentRunRange = null
+    }
+
+    forEachIndexed { entryIndex, (subscripts, range) ->
+        val subscript = subscripts.singleOrNull()
+        if (subscript == null) {
+            flushRun()
+            displays += "${subscripts.asSubscriptDisplay()}=${range.toRangeDisplay()}"
+            return@forEachIndexed
+        }
+
+        when {
+            currentRunStartEntryIndex == null -> {
+                currentRunStartEntryIndex = entryIndex
+                currentRunEndEntryIndex = entryIndex
+                currentRunStartSubscript = subscript
+                currentRunEndSubscript = subscript
+                currentRunRange = range
+            }
+
+            currentRunRange == range && subscript == currentRunEndSubscript?.plus(1) -> {
+                currentRunEndEntryIndex = entryIndex
+                currentRunEndSubscript = subscript
+            }
+
+            else -> {
+                flushRun()
+                currentRunStartEntryIndex = entryIndex
+                currentRunEndEntryIndex = entryIndex
+                currentRunStartSubscript = subscript
+                currentRunEndSubscript = subscript
+                currentRunRange = range
+            }
+        }
+    }
+    flushRun()
+    return displays
+}
+
 private val arraySubscriptComparator = Comparator<List<Int>> { left, right ->
     val sharedSize = minOf(left.size, right.size)
     for (index in 0 until sharedSize) {
@@ -199,10 +262,15 @@ private val arraySubscriptComparator = Comparator<List<Int>> { left, right ->
     left.size.compareTo(right.size)
 }
 
+private val arrayElementEntryComparator = Comparator<Map.Entry<List<Int>, List<String>>> { left, right ->
+    arraySubscriptComparator.compare(left.key, right.key)
+}
+
 private const val RANGE_VALUE_SEPARATOR = ", "
 private const val RANGE_DISPLAY_SEPARATOR = "-"
 private const val INTERVAL_VALUE_SEPARATOR = "; "
 private const val ARRAY_ELEMENT_SEPARATOR = "; "
+private const val MIN_ARRAY_ELEMENT_RANGE_LENGTH = 3
 private const val RANGE_PREFIX = "["
 private const val RANGE_POSTFIX = "]"
 private const val MAX_NUMERIC_DISPLAY_ITEMS = 20

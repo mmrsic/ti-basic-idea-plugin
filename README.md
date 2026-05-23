@@ -316,7 +316,8 @@ The annotator inspects every file and highlights:
   values are always listed in ascending natural order, and consecutive integer runs are abbreviated only as mathematical
   intervals such as `[1; 5]`; if the rendered list would exceed 20 numeric items/ranges or 10 string items, the Range cell
   stays empty; a toolbar view option can additionally show statically resolvable array elements directly in the
-  **Range** column, for example `(32)="FFFFFFFFFFFFFFFF"`, with the same 20-item / 10-item limits
+  **Range** column, for example `(32)="FFFFFFFFFFFFFFFF"` or compacted runs such as `(0-127)="0"`, with the same
+  20-item / 10-item limits
 - **TI Basic Character Definitions tool window** — a dockable bottom panel listing all statically resolvable
   `CALL CHAR` definitions in the active TI-Basic file in a sortable table with columns Code, ASCII, Pattern, Icon, and Line;
   entries stay grouped by their actual character code even when multiple codes share the same pattern and the same derived

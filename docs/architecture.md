@@ -232,8 +232,11 @@ For arrays, the collector also resolves statically known element values when bot
 subscript tuple and the assigned value are reducible to constants. These per-element
 ranges stay on the array row as `resolvedArrayElementRanges` and are rendered in the
 **Range** column only when the Variables tool window view option enables array constants.
-Array-element displays use the same type-based limits: 20 entries for numeric arrays and
-10 entries for string arrays.
+One-dimensional runs of 3 or more consecutive subscripts with the same resolved value are
+compacted to a single segment such as `(0-127)="0"`; all other elements stay as individual
+entries such as `(32)="FFFFFFFFFFFFFFFF"`. Array-element displays use the same type-based
+limits: 20 entries for numeric arrays and 10 entries for string arrays, counted after
+compaction.
 Assignments with unresolved target subscripts are treated conservatively and suppress
 array-element constant display for that array row.
 
@@ -257,16 +260,16 @@ array-element constant display for that array row.
 | `TiBasicExpression` inside `TiBasicCallStatement` | WRITE for the third `GCHAR` argument and the second/third `KEY`/`JOYST` arguments; READ otherwise   |
 | any other parent                                  | READ                                                                                                |
 
-| Index               | Name       | Content                                                                                                                                                  |
-|---------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 0                   | Name       | Variable name                                                                                                                                            |
-| 1                   | Type       | `TiBasicVariableType.displayName`                                                                                                                        |
-| `NAME_COLUMN`       | Name       | Variable name                                                                                                                                            |
-| `TYPE_COLUMN`       | Type       | `TiBasicVariableType.displayName`                                                                                                                        |
-| `DIMENSIONS_COLUMN` | Dimensions | `TiBasicVariableDimensionsDisplay?` — clickable DIM-line prefix plus DIM-like declaration text such as `DIM A(1-10)`; visible only for files with arrays |
-| `WRITES_COLUMN`     | Writes     | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                                                             |
-| `READS_COLUMN`      | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                                                             |
-| `RANGE_COLUMN`      | Range      | `String?` — scalar value list with interval segments such as `[-1; 1]` or, when enabled, wrapped array-element values such as `(1)="HELLO"`              |
+| Index               | Name       | Content                                                                                                                                                                |
+|---------------------|------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0                   | Name       | Variable name                                                                                                                                                          |
+| 1                   | Type       | `TiBasicVariableType.displayName`                                                                                                                                      |
+| `NAME_COLUMN`       | Name       | Variable name                                                                                                                                                          |
+| `TYPE_COLUMN`       | Type       | `TiBasicVariableType.displayName`                                                                                                                                      |
+| `DIMENSIONS_COLUMN` | Dimensions | `TiBasicVariableDimensionsDisplay?` — clickable DIM-line prefix plus DIM-like declaration text such as `DIM A(1-10)`; visible only for files with arrays               |
+| `WRITES_COLUMN`     | Writes     | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                                                                           |
+| `READS_COLUMN`      | Reads      | `List<TiBasicVariableOccurrence>` — rendered as clickable line-number badges                                                                                           |
+| `RANGE_COLUMN`      | Range      | `String?` — scalar value list with interval segments such as `[-1; 1]` or, when enabled, wrapped/compacted array-element values such as `(1)="HELLO"` or `(0-127)="0"` |
 
 `TiBasicVariableTableModel` keeps the array-specific Dimensions column out of the table whenever the
 current file has no arrays, then restores it as soon as at least one array entry exists. The
