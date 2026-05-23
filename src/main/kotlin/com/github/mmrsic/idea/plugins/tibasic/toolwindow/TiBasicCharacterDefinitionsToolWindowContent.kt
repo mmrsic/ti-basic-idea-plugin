@@ -22,13 +22,15 @@ class TiBasicCharacterDefinitionsToolWindowContent(project: Project) : TiBasicFi
     }
 
     override fun refreshForFile(file: TiBasicFile?) {
-        val entries = if (file != null) {
-            buildCharacterDefinitionEntries(
-                definitions = collectCallCharDefinitions(file),
-                colorAssignments = collectCallColorAssignments(file),
-            )
-        } else {
-            emptyList()
+        val entries = computeReadAction {
+            if (file != null) {
+                buildCharacterDefinitionEntries(
+                    definitions = collectCallCharDefinitions(file),
+                    colorAssignments = collectCallColorAssignments(file),
+                )
+            } else {
+                emptyList()
+            }
         }
         tableModel.updateEntries(entries)
     }

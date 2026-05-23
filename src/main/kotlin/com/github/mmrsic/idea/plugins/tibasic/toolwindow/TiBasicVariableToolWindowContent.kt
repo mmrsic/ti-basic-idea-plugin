@@ -74,7 +74,9 @@ class TiBasicVariableToolWindowContent(project: Project) : TiBasicFileToolWindow
     override fun refreshForFile(file: TiBasicFile?) {
         clearHighlights()
         val sortState = currentSortState()
-        val entries = if (file != null) TiBasicVariableCollector.collect(file) else emptyList()
+        val entries = computeReadAction {
+            file?.let(TiBasicVariableCollector::collect).orEmpty()
+        }
         tableModel.updateEntries(entries)
         configureVisibleColumns(sortState = sortState)
         updateRowHeights()

@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
@@ -231,6 +232,22 @@ class TiBasicVariableToolWindowContentTest : TiBasicTestBase() {
         assertEquals(null, displayedValue(content, "P$", "String Array", RANGE_COLUMN))
 
         constantsToggle(content).doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("(1)=\"FF\"", displayedValue(content, "P$", "String Array", RANGE_COLUMN))
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
+    }
+
+    fun `test array constants toggle refreshes on EDT without explicit read action`() {
+        TiBasicVariableToolWindowSettings.getInstance().showArrayElementConstants = false
+        val content = TiBasicVariableToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        myFixture.configureByText("test.tibasic", "100 LET I=1\n110 LET P$(I)=\"FF\"")
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        ApplicationManager.getApplication().invokeAndWait {
+            constantsToggle(content).doClick()
+        }
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
         assertEquals("(1)=\"FF\"", displayedValue(content, "P$", "String Array", RANGE_COLUMN))

@@ -3,6 +3,7 @@ package com.github.mmrsic.idea.plugins.tibasic.toolwindow
 import com.github.mmrsic.idea.plugins.tibasic.lang.fileTypeExtensions
 import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
@@ -10,12 +11,9 @@ import com.intellij.openapi.fileEditor.FileEditorManagerListener.FILE_EDITOR_MAN
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
-import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.JBTable
 import java.awt.BorderLayout
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
@@ -40,21 +38,8 @@ abstract class TiBasicFileToolWindowContent(
 
     protected open fun toolbarComponents(): List<JComponent> = emptyList()
 
-    protected fun installLineNavigation(table: JBTable, lineColumn: Int, offsetAtRow: (modelRow: Int) -> Int) {
-        table.addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(event: MouseEvent) {
-                val row = table.rowAtPoint(event.point)
-                val column = table.columnAtPoint(event.point)
-                if (row < 0 || column != lineColumn) return
-                val modelRow = table.convertRowIndexToModel(row)
-                navigateToOffset(offsetAtRow(modelRow))
-            }
-        })
-        table.columnModel.getColumn(lineColumn).cellRenderer = javax.swing.table.DefaultTableCellRenderer().also {
-            it.horizontalAlignment = JLabel.LEFT
-            it.foreground = JBColor.BLUE
-        }
-    }
+    protected fun <T> computeReadAction(action: () -> T): T =
+        ReadAction.compute<T, RuntimeException> { action() }
 
     protected fun navigateToOffset(offset: Int) {
         val file = currentFile ?: return
@@ -81,9 +66,12 @@ abstract class TiBasicFileToolWindowContent(
     }
 
     private fun refresh() {
-        val psiFile = currentTiBasicFile()
+        val (psiFile, fileLabelText) = computeReadAction {
+            val activeFile = currentTiBasicFile()
+            activeFile to if (activeFile != null) " ${activeFile.name}" else " (no TI-Basic file active)"
+        }
         currentFile = psiFile
-        fileLabel.text = if (psiFile != null) " ${psiFile.name}" else " (no TI-Basic file active)"
+        fileLabel.text = fileLabelText
         refreshForFile(psiFile)
     }
 
