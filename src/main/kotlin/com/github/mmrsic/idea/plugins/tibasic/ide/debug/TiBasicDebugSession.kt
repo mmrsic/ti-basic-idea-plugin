@@ -26,6 +26,7 @@ import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiB
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicEndStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGosubStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicIfStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicPrintStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRemStatement
@@ -120,6 +121,7 @@ internal data class TiBasicDebugProgramSnapshot(
             is TiBasicEndStatement -> TiBasicDebugLineSemantics.End(isStandaloneKeyword(statement.node, TiBasicTokenTypes.END_KEYWORD))
             is TiBasicStopStatement -> TiBasicDebugLineSemantics.Stop(isStandaloneKeyword(statement.node, TiBasicTokenTypes.STOP_KEYWORD))
             is TiBasicRemStatement -> TiBasicDebugLineSemantics.Rem
+            is TiBasicIfStatement -> createIfSemantics(statement)
             is TiBasicPrintStatement -> createPrintSemantics(statement)
             is TiBasicLetStatement -> createLetSemantics(statement)
             is TiBasicCallStatement -> createCallSemantics(statement)
@@ -222,12 +224,58 @@ internal data class TiBasicDebugProgramSnapshot(
             }
         }
 
+        private fun createIfSemantics(statement: TiBasicIfStatement): TiBasicDebugLineSemantics {
+            val conditionExpression = statement.conditionExpression() ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val thenLineNumber = statement.thenLineNumber() ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val elseKeywordPresent = statement.node.nonWhitespaceChildren.any { it.elementType == TiBasicTokenTypes.ELSE_KEYWORD }
+            val elseLineNumber = statement.elseLineNumber()
+            if (elseKeywordPresent && elseLineNumber == null) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val condition = createCondition(conditionExpression.node) ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            return TiBasicDebugLineSemantics.If(
+                condition = condition,
+                thenLineNumber = thenLineNumber,
+                elseLineNumber = elseLineNumber,
+            )
+        }
+
         private fun createPrintSemantics(statement: TiBasicPrintStatement): TiBasicDebugLineSemantics {
             if (statement.isFileOutput()) return TiBasicDebugLineSemantics.Sequential
             val items = statement.node.nonWhitespaceChildren
                 .drop(1)
                 .mapNotNull(::createPrintItem)
             return TiBasicDebugLineSemantics.Print(items)
+        }
+
+        private fun createCondition(expressionNode: ASTNode): TiBasicDebugCondition? {
+            val children = expressionNode.nonWhitespaceChildren
+            if (children.isEmpty()) return null
+            firstTopLevelBinaryOperatorIndex(children, RELATIONAL_OPERATOR_TYPES)?.let { operatorIndex ->
+                val operatorType = children[operatorIndex].elementType
+                val leftNodes = children.subList(0, operatorIndex)
+                val rightNodes = children.subList(operatorIndex + 1, children.size)
+                val leftNumeric = createNumericAssignmentFromNodes(leftNodes)
+                val rightNumeric = createNumericAssignmentFromNodes(rightNodes)
+                if (leftNumeric != null && rightNumeric != null) {
+                    return TiBasicDebugCondition.NumericComparison(
+                        left = leftNumeric,
+                        operatorType = operatorType,
+                        right = rightNumeric,
+                    )
+                }
+                val leftString = createStringAssignmentFromNodes(leftNodes)
+                val rightString = createStringAssignmentFromNodes(rightNodes)
+                if (leftString != null && rightString != null) {
+                    return TiBasicDebugCondition.StringComparison(
+                        left = leftString,
+                        operatorType = operatorType,
+                        right = rightString,
+                    )
+                }
+                return null
+            }
+            return createNumericAssignmentFromNodes(children)?.let(TiBasicDebugCondition::NumericValue)
         }
 
         private fun createPrintItem(node: ASTNode): TiBasicDebugPrintItem? =
@@ -244,13 +292,20 @@ internal data class TiBasicDebugProgramSnapshot(
 
         private fun createStringAssignmentFromExpression(expressionNode: ASTNode): TiBasicDebugStringAssignment? {
             val children = expressionNode.nonWhitespaceChildren
+            return createStringAssignmentFromNodes(children)
+        }
+
+        private fun createStringAssignmentFromNodes(children: List<ASTNode>): TiBasicDebugStringAssignment? {
             if (children.isEmpty()) return null
+            if (isFullyParenthesized(children)) {
+                return createStringAssignmentFromNodes(children.subList(FIRST_INNER_NODE_INDEX, children.lastIndex))
+            }
             if (children.size == SINGLE_OPERAND_CHILD_COUNT) {
                 return createStringAssignment(children.single())
             }
             if (children.size.isEven() || children.indices.any { index ->
                     if (index.isEven()) {
-                        createStringAssignment(children[index]) == null
+                        createStringAssignmentFromNodes(listOf(children[index])) == null
                     } else {
                         children[index].elementType != TiBasicTokenTypes.CONCAT_OP
                     }
@@ -258,10 +313,10 @@ internal data class TiBasicDebugProgramSnapshot(
             ) {
                 return null
             }
-            var assignment = createStringAssignment(children.first()) ?: return null
+            var assignment = createStringAssignmentFromNodes(listOf(children.first())) ?: return null
             var index = FIRST_CONCAT_RIGHT_OPERAND_INDEX
             while (index < children.size) {
-                val rightOperand = createStringAssignment(children[index]) ?: return null
+                val rightOperand = createStringAssignmentFromNodes(listOf(children[index])) ?: return null
                 assignment = TiBasicDebugStringAssignment.Concat(assignment, rightOperand)
                 index += CONCAT_GROUP_SIZE
             }
@@ -538,6 +593,7 @@ internal data class TiBasicDebugSession(
             TiBasicDebugLineSemantics.Rem -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber))
             is TiBasicDebugLineSemantics.Goto -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target))
             is TiBasicDebugLineSemantics.Gosub -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target, rememberOrigin = true))
+            is TiBasicDebugLineSemantics.If -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyIf(programLine.lineNumber, semantics))
             is TiBasicDebugLineSemantics.Return -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.returnFrom(semantics.isStandaloneKeyword))
             is TiBasicDebugLineSemantics.End -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
             is TiBasicDebugLineSemantics.Stop -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
@@ -628,6 +684,21 @@ internal data class TiBasicDebugSession(
         )
     }
 
+    private fun applyIf(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.If,
+    ): TiBasicDebugSession {
+        val conditionEvaluation = evaluateCondition(semantics.condition) ?: return incorrectStatement()
+        val sessionAfterCondition = mergeEvaluations(conditionEvaluation)
+        return if (conditionEvaluation.value) {
+            sessionAfterCondition.jumpToLineNumber(semantics.thenLineNumber)
+        } else {
+            semantics.elseLineNumber
+                ?.let(sessionAfterCondition::jumpToLineNumber)
+                ?: sessionAfterCondition.continueAfter(currentLineNumber)
+        }
+    }
+
     private fun applyPrint(
         currentLineNumber: Int,
         semantics: TiBasicDebugLineSemantics.Print,
@@ -709,7 +780,6 @@ internal data class TiBasicDebugSession(
     private fun applyCallClear(currentLineNumber: Int): TiBasicDebugSession =
         continueAfter(currentLineNumber).copy(
             screenContents = screenContents.copy(
-                screenBackground = INITIAL_SCREEN_BACKGROUND,
                 characterCodes = blankDebugScreenCharacterCodes(),
                 printCursorRow = INITIAL_PRINT_CURSOR_ROW,
                 printCursorColumn = INITIAL_PRINT_CURSOR_COLUMN,
@@ -821,6 +891,13 @@ internal data class TiBasicDebugSession(
             statusMessage = evaluation.warningMessage ?: statusMessage,
         )
 
+    private fun mergeEvaluations(evaluation: TiBasicDebugConditionEvaluation): TiBasicDebugSession =
+        copy(
+            numericVariables = numericVariables + evaluation.initializedNumericVariables,
+            stringVariables = stringVariables + evaluation.initializedStringVariables,
+            statusMessage = evaluation.warningMessage ?: statusMessage,
+        )
+
     private fun applyPrintSeparator(tokenType: IElementType): TiBasicDebugSession =
         when (tokenType) {
             TiBasicTokenTypes.COLON -> copy(screenContents = screenContents.lineFeed())
@@ -848,6 +925,42 @@ internal data class TiBasicDebugSession(
             !in VALID_CALL_KEY_MODES -> null
             REUSE_LAST_KEYBOARD_MODE -> lastKeyboardMode ?: DEFAULT_KEYBOARD_MODE
             else -> roundedMode
+        }
+
+    private fun evaluateCondition(condition: TiBasicDebugCondition): TiBasicDebugConditionEvaluation? =
+        when (condition) {
+            is TiBasicDebugCondition.NumericValue ->
+                evaluateNumericAssignment(condition.assignment)
+                    ?.let { numericEvaluation ->
+                        TiBasicDebugConditionEvaluation(
+                            value = numericEvaluation.value.value.compareTo(BigDecimal.ZERO) != 0,
+                            initializedNumericVariables = numericEvaluation.initializedNumericVariables,
+                            initializedStringVariables = numericEvaluation.initializedStringVariables,
+                            warningMessage = numericEvaluation.warningMessage,
+                        )
+                    }
+
+            is TiBasicDebugCondition.NumericComparison -> {
+                val left = evaluateNumericAssignment(condition.left) ?: return null
+                val right = evaluateNumericAssignment(condition.right) ?: return null
+                TiBasicDebugConditionEvaluation(
+                    value = compareNumericValues(left.value.value, condition.operatorType, right.value.value) ?: return null,
+                    initializedNumericVariables = left.initializedNumericVariables + right.initializedNumericVariables,
+                    initializedStringVariables = left.initializedStringVariables + right.initializedStringVariables,
+                    warningMessage = mergeWarningMessages(left.warningMessage, right.warningMessage),
+                )
+            }
+
+            is TiBasicDebugCondition.StringComparison -> {
+                val left = evaluateStringAssignment(condition.left) ?: return null
+                val right = evaluateStringAssignment(condition.right) ?: return null
+                TiBasicDebugConditionEvaluation(
+                    value = compareStringValues(left.value.text, condition.operatorType, right.value.text) ?: return null,
+                    initializedNumericVariables = left.initializedNumericVariables + right.initializedNumericVariables,
+                    initializedStringVariables = left.initializedStringVariables + right.initializedStringVariables,
+                    warningMessage = mergeWarningMessages(left.warningMessage, right.warningMessage),
+                )
+            }
         }
 
     private fun evaluateStringAssignment(assignment: TiBasicDebugStringAssignment): TiBasicDebugStringEvaluation? =
@@ -1019,11 +1132,20 @@ internal data class TiBasicDebugSession(
         }
     }
 
-    private fun pendingStopIf(isStandaloneKeyword: Boolean): TiBasicDebugSession =
-        if (isStandaloneKeyword) {
-            copy(status = TiBasicDebugSessionStatus.PendingStop, statusMessage = null, keyboardScanInput = EMPTY_STRING)
+    private fun jumpToLineNumber(targetLineNumber: Int): TiBasicDebugSession =
+    if (targetLineNumber !in VALID_LINE_NUMBER_RANGE) {
+        badLineNumber()
         } else {
-            incorrectStatement()
+        snapshot.lineNumberToProgramIndex[targetLineNumber]
+            ?.let { targetIndex -> moveTo(targetIndex) }
+            ?: badLineNumber()
+    }
+
+    private fun pendingStopIf(isStandaloneKeyword: Boolean): TiBasicDebugSession =
+    if (isStandaloneKeyword) {
+        copy(status = TiBasicDebugSessionStatus.PendingStop, statusMessage = null, keyboardScanInput = EMPTY_STRING)
+    } else {
+        incorrectStatement()
         }
 
     private fun badLineNumber(): TiBasicDebugSession =
@@ -1068,6 +1190,12 @@ internal sealed interface TiBasicDebugLineSemantics {
         val assignment: TiBasicDebugNumericAssignment,
     ) : TiBasicDebugLineSemantics
 
+    data class If(
+        val condition: TiBasicDebugCondition,
+        val thenLineNumber: Int,
+        val elseLineNumber: Int?,
+    ) : TiBasicDebugLineSemantics
+
     data class Print(
         val items: List<TiBasicDebugPrintItem>,
     ) : TiBasicDebugLineSemantics
@@ -1094,6 +1222,21 @@ internal sealed interface TiBasicDebugPrintItem {
     data class Separator(val tokenType: IElementType) : TiBasicDebugPrintItem
 }
 
+internal sealed interface TiBasicDebugCondition {
+    data class NumericValue(val assignment: TiBasicDebugNumericAssignment) : TiBasicDebugCondition
+    data class NumericComparison(
+        val left: TiBasicDebugNumericAssignment,
+        val operatorType: IElementType,
+        val right: TiBasicDebugNumericAssignment,
+    ) : TiBasicDebugCondition
+
+    data class StringComparison(
+        val left: TiBasicDebugStringAssignment,
+        val operatorType: IElementType,
+        val right: TiBasicDebugStringAssignment,
+    ) : TiBasicDebugCondition
+}
+
 internal data class TiBasicDebugSoundChannelAssignment(
     val pitchAssignment: TiBasicDebugNumericAssignment,
     val volumeAssignment: TiBasicDebugNumericAssignment,
@@ -1102,6 +1245,13 @@ internal data class TiBasicDebugSoundChannelAssignment(
 internal data class TiBasicDebugStepResult(
     val session: TiBasicDebugSession,
     val soundPlayback: TiBasicSoundPlayback? = null,
+)
+
+internal data class TiBasicDebugConditionEvaluation(
+    val value: Boolean,
+    val initializedNumericVariables: Map<String, TiBasicDebugNumericValue> = emptyMap(),
+    val initializedStringVariables: Map<String, TiBasicDebugStringValue> = emptyMap(),
+    val warningMessage: String? = null,
 )
 
 internal sealed interface TiBasicJumpTarget {
@@ -1420,6 +1570,14 @@ private val MULTIPLICATIVE_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.DIV_OP,
 )
 private val POWER_OPERATOR_TYPES = setOf(TiBasicTokenTypes.POW_OP)
+private val RELATIONAL_OPERATOR_TYPES = setOf(
+    TiBasicTokenTypes.EQ_OP,
+    TiBasicTokenTypes.LT_OP,
+    TiBasicTokenTypes.GT_OP,
+    TiBasicTokenTypes.NEQ_OP,
+    TiBasicTokenTypes.LE_OP,
+    TiBasicTokenTypes.GE_OP,
+)
 private val VALID_CALL_KEY_MODES = 0..5
 private val CALL_KEY_MODE_1_AND_2_CODES = 0..19
 private val CALL_KEY_MODE_3_CODES = (1..15) + (32..95)
@@ -1433,6 +1591,34 @@ private fun BigDecimal.toIntExactOrNull(): Int? =
 
 private fun BigDecimal.roundToWholeNumberIntOrNull(): Int? =
     setScale(0, RoundingMode.HALF_UP).toIntExactOrNull()
+
+private fun compareNumericValues(left: BigDecimal, operatorType: IElementType, right: BigDecimal): Boolean? =
+    when (operatorType) {
+        TiBasicTokenTypes.EQ_OP -> left.compareTo(right) == 0
+        TiBasicTokenTypes.LT_OP -> left < right
+        TiBasicTokenTypes.GT_OP -> left > right
+        TiBasicTokenTypes.NEQ_OP -> left.compareTo(right) != 0
+        TiBasicTokenTypes.LE_OP -> left <= right
+        TiBasicTokenTypes.GE_OP -> left >= right
+        else -> null
+    }
+
+private fun compareStringValues(left: String, operatorType: IElementType, right: String): Boolean? =
+    when (operatorType) {
+        TiBasicTokenTypes.EQ_OP -> left == right
+        TiBasicTokenTypes.LT_OP -> left < right
+        TiBasicTokenTypes.GT_OP -> left > right
+        TiBasicTokenTypes.NEQ_OP -> left != right
+        TiBasicTokenTypes.LE_OP -> left <= right
+        TiBasicTokenTypes.GE_OP -> left >= right
+        else -> null
+    }
+
+private fun mergeWarningMessages(vararg warnings: String?): String? =
+    warnings.filterNotNull()
+        .distinct()
+        .joinToString(WARNING_SEPARATOR)
+        .ifEmpty { null }
 
 private fun defaultKeyboardScanInput(semantics: TiBasicDebugLineSemantics): String =
     if (semantics is TiBasicDebugLineSemantics.CallKey) DEFAULT_CALL_KEY_SCAN_INPUT else EMPTY_STRING

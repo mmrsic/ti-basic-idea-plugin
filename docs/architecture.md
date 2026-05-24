@@ -282,6 +282,7 @@ V1 step behavior is intentionally narrow and must not infer unsupported TI-Basic
 |-----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `GOTO` with one valid existing target line                                                                      | Jump to target line and pause there                                                                                                                                                                                                                                                                                                                                                                          |
 | `GOSUB` with one valid existing target line                                                                     | Push the current line number as return origin, jump to target line, and pause there                                                                                                                                                                                                                                                                                                                          |
+| `IF expr THEN thenLine [ELSE elseLine]` with debugger-supported numeric or string comparison semantics         | Evaluate the condition against the current debugger state; if the resulting expression is non-zero, jump to `thenLine`, otherwise jump to `elseLine` or continue at the next higher line when `ELSE` is omitted                                                                                                                                                                                            |
 | string `LET` with debugger-supported string expressions (`"TEXT"`, `A$`, concatenation, `CHR$`, `SEG$`, `STR$`) | Update the known string-variable map and continue to the next higher line; unknown RHS string references are initialized as `""`, and every intermediate string result is truncated to 255 characters before further reuse, with a debugger warning                                                                                                                                                          |
 | `CALL KEY(mode,key,status)` with valid debugger-supported effective mode `1..5`                                 | Evaluate the numeric mode expression, resolve mode `0` to the last used keyboard mode or `5` if none exists yet, show a keyboard-input pane while paused on the line, round the entered scan result, validate it against the effective mode's allowed code set, write `key` to the rounded scan code or `-1`, write `status` to `1` for a key press or `0` for no key, then continue to the next higher line |
 | `CALL KEY(mode,key,status)` with rounded mode outside `0..5`                                                    | Show `Bad Value: <value>` and enter `PendingStop`                                                                                                                                                                                                                                                                                                                                                            |
@@ -304,6 +305,7 @@ The debugger should validate only the statements that V1 actively interprets:
 
 - `GOTO`
 - `GOSUB`
+- `IF`
 - simple scalar string `LET`
 - `CALL KEY`
 - `CALL SOUND`
@@ -318,6 +320,8 @@ This implies a dedicated runtime validator that works from the snapshot/PSI shap
 from editor highlighting. In particular:
 
 - undefined `GOTO`/`GOSUB` targets are **fatal in the debugger** even though the annotator only warns
+- `IF` conditions are evaluated against the current debug state; non-zero means `THEN`, zero means `ELSE`,
+  and a missing `ELSE` falls through to the next higher line
 - malformed `CALL KEY` statements become **`Incorrect Statement`**
 - debugger-supported `CALL KEY` effective modes are `1..5`; rounded mode `0` reuses the last
   successful keyboard mode and falls back to `5` initially, mode `3` accepts only `1..15` and

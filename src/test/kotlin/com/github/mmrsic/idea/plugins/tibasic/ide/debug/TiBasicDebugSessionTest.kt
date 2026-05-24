@@ -80,6 +80,20 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(110, session.currentProgramLine?.lineNumber)
     }
 
+    fun `test CALL CLEAR keeps current debug screen background`() {
+        var session = startSession(
+            """
+            100 CALL SCREEN(2)
+            110 CALL CLEAR
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals(TiColor.Black, session.screenContents.screenBackground)
+    }
+
     fun `test CALL SCREEN updates debug screen background`() {
         var session = startSession(
             """
@@ -257,6 +271,74 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertTrue(session.gosubOriginLineNumbers.isEmpty())
     }
 
+    fun `test IF with non-zero numeric expression jumps to THEN line`() {
+        var session = startSession(
+            """
+            100 LET X=2
+            110 IF X-1 THEN 300
+            200 PRINT "NO"
+            300 PRINT "YES"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.Paused, session.status)
+        assertEquals(300, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test IF with zero numeric expression uses implicit else continuation`() {
+        var session = startSession(
+            """
+            100 LET X=1
+            110 IF X-1 THEN 300
+            200 PRINT "NO"
+            300 PRINT "YES"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.Paused, session.status)
+        assertEquals(200, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test IF with false comparison jumps to explicit ELSE line`() {
+        var session = startSession(
+            """
+            100 LET X=1
+            110 IF X>5 THEN 300 ELSE 200
+            200 PRINT "NO"
+            300 PRINT "YES"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.Paused, session.status)
+        assertEquals(200, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test IF with true string comparison jumps to THEN line`() {
+        var session = startSession(
+            """
+            100 LET A$="YES"
+            110 IF A$="YES" THEN 300 ELSE 200
+            200 PRINT "NO"
+            300 PRINT "OK"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.Paused, session.status)
+        assertEquals(300, session.currentProgramLine?.lineNumber)
+    }
+
     fun `test RETURN without GOSUB shows runtime error then stops on next step`() {
         var session = startSession("100 RETURN")
 
@@ -281,10 +363,24 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(TiBasicDebugSessionStatus.Stopped, session.status)
     }
 
+    fun `test IF with missing THEN target line shows bad line number then stops on next step`() {
+        var session = startSession("100 IF 1 THEN 999")
+
+        session = session.step()
+        assertEquals(TiBasicDebugSessionStatus.PendingStop, session.status)
+        assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.badLineNumberKey), session.statusMessage)
+
+        session = session.step()
+        assertEquals(TiBasicDebugSessionStatus.Stopped, session.status)
+    }
+
     fun `test malformed supported statement shows incorrect statement`() {
         val malformedLines = listOf(
             "100 GOTO",
             "100 GOSUB X",
+            "100 IF X>0",
+            "100 IF X>0 THEN",
+            "100 IF X>0 THEN 200 ELSE",
             "100 RETURN 1",
             "100 END 1",
             "100 STOP 1",

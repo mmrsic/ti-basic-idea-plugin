@@ -276,6 +276,27 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertTrue(content.screenComponent.state.characterCodes.flatten().all { code -> code == 32 })
     }
 
+    fun `test debug tool window keeps screen background after CALL CLEAR step`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 CALL SCREEN(2)
+            110 CALL CLEAR
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("Black", content.screenComponent.state.screenBackground.name)
+    }
+
     fun `test debug tool window updates screen background after CALL SCREEN step`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
