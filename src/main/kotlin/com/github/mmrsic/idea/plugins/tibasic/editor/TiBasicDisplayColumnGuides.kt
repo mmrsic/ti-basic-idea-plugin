@@ -1,6 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicFileType
+import com.github.mmrsic.idea.plugins.tibasic.ide.language.TiBasicFileType
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager

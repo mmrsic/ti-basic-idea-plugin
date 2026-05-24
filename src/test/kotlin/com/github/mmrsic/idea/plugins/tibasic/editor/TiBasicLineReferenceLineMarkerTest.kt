@@ -1,6 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.references.TiBasicInboundLineReference
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.references.TiBasicInboundLineReferenceCollector
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.references.referencedByTooltip
 
 class TiBasicLineReferenceLineMarkerTest : TiBasicTestBase() {
 

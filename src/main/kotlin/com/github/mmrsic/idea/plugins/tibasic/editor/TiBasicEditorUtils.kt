@@ -1,10 +1,10 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicLexer
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.common.VALID_LINE_NUMBER_RANGE
-import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicLexer
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.common.VALID_LINE_NUMBER_RANGE
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLine
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.tree.IElementType
 

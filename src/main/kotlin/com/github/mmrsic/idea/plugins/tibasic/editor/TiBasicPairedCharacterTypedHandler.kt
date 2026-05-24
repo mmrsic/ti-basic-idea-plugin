@@ -1,11 +1,11 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.isLineNumberReference
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
+import com.github.mmrsic.idea.plugins.tibasic.common.ext.isLineNumberReference
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicDataStatement
 import com.intellij.psi.util.PsiTreeUtil
-import com.github.mmrsic.idea.plugins.tibasic.util.countUnclosedParens
-import com.github.mmrsic.idea.plugins.tibasic.util.isRemLine
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.countUnclosedParens
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.isRemLine
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileTypes.FileType
@@ -197,8 +197,8 @@ class TiBasicPairedCharacterTypedHandler : TypedHandlerDelegate() {
         val offset = editor.caretModel.offset
         if (offset == 0) return false
         val elementBeforeCaret = file.findElementAt(offset - 1) ?: return false
-        return elementBeforeCaret.node.elementType == com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.PRINT_ARGUMENT ||
-            elementBeforeCaret.node.elementType == com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes.REM_TEXT ||
+        return elementBeforeCaret.node.elementType == com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes.PRINT_ARGUMENT ||
+            elementBeforeCaret.node.elementType == com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes.REM_TEXT ||
             PsiTreeUtil.getParentOfType(elementBeforeCaret, TiBasicDataStatement::class.java, false) != null
     }
 

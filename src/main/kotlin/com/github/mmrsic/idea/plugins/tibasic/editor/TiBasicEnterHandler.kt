@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.util.countUnclosedParens
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.countUnclosedParens
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.editor.Caret
 import com.intellij.openapi.editor.Editor

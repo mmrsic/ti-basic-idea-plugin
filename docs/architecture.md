@@ -6,25 +6,41 @@ This document describes the internal structure of the TI-Basic IntelliJ IDEA plu
 
 All source code lives under `com.github.mmrsic.idea.plugins.tibasic` (abbreviated `tibasic` below).
 
-| Package                     | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `tibasic.lang`              | Language/file-type registration: `TiBasicLanguage`, `TiBasicFileType`, `TiBasicFileIconProvider`, `TiBasicKeywords`, `TiBasicCallSubprograms` (signatures for all 10 built-in subprograms), `TiBasicBuiltInFunctions` (signatures for all built-in expression functions)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `tibasic.lexer`             | Tokenisation: `TiBasicLexer`, `TiBasicTokenTypes` (token element types), `TiBasicElementType`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `tibasic.parser`            | Syntax analysis: `TiBasicParser`, `TiBasicParserDefinition`, `TiBasicNodeTypes` (composite node types)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `tibasic.psi`               | PSI root and shared file-level extensions: `TiBasicFile`, `containingTiBasicFile`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `tibasic.psi.statement`     | Statement PSI classes (e.g., `TiBasicLine`, `TiBasicPrintStatement`, `TiBasicOpenStatement`, `TiBasicDefStatement`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `tibasic.psi.expression`    | Expression PSI classes (`TiBasicExpression`, `TiBasicVariableAccess`, `TiBasicFunctionCall`, `TiBasicCallStatement`, `TiBasicTabFunction`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `tibasic.psi.contracts`     | Shared PSI contracts for file/record number statements (`TiBasicFileNumberStatement`, `TiBasicRecordNumberStatement`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `tibasic.psi.common`        | Shared PSI constants (`VALID_LINE_NUMBER_RANGE`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `tibasic.highlight`         | Syntax colours (`TiBasicSyntaxHighlighter`, `TiBasicSyntaxHighlighterFactory`) and semantic annotations (`TiBasicAnnotator`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `tibasic.editor`            | Editor assistance: keyword completion (`TiBasicCompletionContributor`), quick documentation for numeric constants, character-code positions, and `DATA`/`CALL CHAR` hex patterns (`TiBasicCharacterCodeDocumentationProvider`), paired-character typing for parentheses and string quotes plus auto-spacing after line numbers and numeric literals when a typed character would not continue the number (`TiBasicPairedCharacterTypedHandler`), Shift+Enter handling (`TiBasicShiftEnterHandler`), Ctrl+D duplicate-line renumbering (`TiBasicDuplicateLineHandler`), paste line-number renumbering (`TiBasicPastePreProcessor`), TI-99/4A display column guides (`TiBasicDisplayColumnGuideController`, `TiBasicDisplayColumnGuideRenderer`), line-number declaration navigation (`TiBasicGotoDeclarationHandler`), CALL CHAR/COLOR/SCREEN gutter previews, CALL SOUND gutter playback, and inbound line-reference markers (`TiBasicLineReferenceLineMarkerProvider`) |
-| `tibasic.debug`             | Debugger integration: Debug-action entry, TI-Basic run/debug configuration, frozen program snapshot, line-by-line stepping runtime, session state, and debugger-specific validation for supported control-flow statements                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `tibasic.action.format`     | Format action and formatting logic (`FormatAction`, `FormatCode`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `tibasic.action.resequence` | Resequence action, logic, options dialog, and quick-fix (`ResequenceAction`, `ResequenceLineNumbers`, `ResequenceOptionsDialog`, `ResequenceQuickFix`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `tibasic.action.preview`    | Selection-based screen preview action, evaluator, and dialog (`TiBasicScreenPreviewAction`, `TiBasicScreenPreviewDialog`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `tibasic.action`            | Abstract base for all TI-Basic actions (`TiBasicFileAction`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `tibasic.util`              | Document write-action helpers (`PsiFileUtils`) and small reusable utilities such as TI radix-100 number conversion (`TiBasicRadix100`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `tibasic.ext`               | Kotlin extensions on framework classes (`ASTNodeExtensions`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Package                                  | Responsibility                                                                                                                                                                                                                             |
+|------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `tibasic.ide.language`                   | IntelliJ language registration and entry points: `TiBasicLanguage`, `TiBasicFileType`, `TiBasicFileIconProvider`, `TiBasicParserDefinition`                                                                                                |
+| `tibasic.language.model`                 | TI-Basic registries and domain constants: `TiBasicKeywords`, `TiBasicCallSubprograms`, `TiBasicBuiltInFunctions`, `TiColor`                                                                                                                |
+| `tibasic.language.values`                | TI-Basic value encoding helpers such as radix-100 number parsing and formatting (`TiBasicRadix100`)                                                                                                                                        |
+| `tibasic.language.syntax`                | Small TI-Basic syntax helpers that are not IntelliJ extension points, e.g. parenthesis counting for source lines                                                                                                                           |
+| `tibasic.language.syntax.lexer`          | Tokenisation: `TiBasicLexer`, `TiBasicTokenTypes` (token element types)                                                                                                                                                                    |
+| `tibasic.language.syntax.parser`         | Syntax analysis core: `TiBasicParser`, `TiBasicNodeTypes` (composite node types)                                                                                                                                                           |
+| `tibasic.language.syntax.psi`            | PSI root and shared file-level extensions: `TiBasicFile`, `containingTiBasicFile`                                                                                                                                                          |
+| `tibasic.language.syntax.psi.statement`  | Statement PSI classes (e.g., `TiBasicLine`, `TiBasicPrintStatement`, `TiBasicOpenStatement`, `TiBasicDefStatement`)                                                                                                                        |
+| `tibasic.language.syntax.psi.expression` | Expression PSI classes (`TiBasicExpression`, `TiBasicVariableAccess`, `TiBasicFunctionCall`, `TiBasicCallStatement`, `TiBasicTabFunction`)                                                                                                 |
+| `tibasic.language.syntax.psi.contracts`  | Shared PSI contracts for file/record number statements (`TiBasicFileNumberStatement`, `TiBasicRecordNumberStatement`)                                                                                                                      |
+| `tibasic.language.syntax.psi.common`     | Shared PSI constants (`VALID_LINE_NUMBER_RANGE`)                                                                                                                                                                                           |
+| `tibasic.highlight`                      | Syntax colours (`TiBasicSyntaxHighlighter`, `TiBasicSyntaxHighlighterFactory`) plus the thin IntelliJ `TiBasicAnnotator` adapter that delegates semantic checks to `tibasic.language.analysis`                                             |
+| `tibasic.language.analysis`              | TI-Basic semantic analysis and expression evaluation (`TiBasicSemanticAnnotator`, `TiBasicNumericExpressionResolver`)                                                                                                                      |
+| `tibasic.editor`                         | Remaining IntelliJ editor infrastructure and shared editor utilities: paired-character typing, Shift+Enter, duplicate-line and paste renumbering, display column guides, sound/color/character helper logic, and line-reference collection |
+| `tibasic.ide.editor.completion`          | Completion contributor entry points (`TiBasicCompletionContributor`)                                                                                                                                                                       |
+| `tibasic.ide.editor.documentation`       | Quick documentation entry point (`TiBasicCharacterCodeDocumentationProvider`)                                                                                                                                                              |
+| `tibasic.ide.editor.navigation`          | Declaration navigation entry point (`TiBasicGotoDeclarationHandler`)                                                                                                                                                                       |
+| `tibasic.ide.editor.markers`             | Gutter marker entry points for CALL CHAR/COLOR/SCREEN/SOUND previews and inbound line references                                                                                                                                           |
+| `tibasic.language.analysis.calls`        | Static call traversal plus cached `CALL CHAR` / `CALL COLOR` collectors used by editor and tool-window features                                                                                                                            |
+| `tibasic.language.analysis.references`   | Inbound line-reference collection and tooltip text generation                                                                                                                                                                              |
+| `tibasic.language.analysis.variables`    | Variable-analysis model and collector (`TiBasicVariableCollector`, entry/occurrence/value types, access classification)                                                                                                                    |
+| `tibasic.ide.debug`                      | Debugger session service, frozen program snapshot, inspect evaluation, and line-by-line stepping runtime                                                                                                                                   |
+| `tibasic.ide.debug.run`                  | IntelliJ run/debug entry points for TI-Basic debug configurations                                                                                                                                                                          |
+| `tibasic.ide.findusages`                 | IntelliJ Find Usages integration and read/write access detection                                                                                                                                                                           |
+| `tibasic.language.format`                | Pure formatting and resequencing logic (`FormatCode`, `ResequenceLineNumbers`)                                                                                                                                                             |
+| `tibasic.language.runtime.screen`        | Selection-based screen preview evaluation and preview model (`TiBasicScreenPreviewEvaluator`, `TiBasicScreenPreview`)                                                                                                                      |
+| `tibasic.ide.actions.format`             | Format action entry points (`FormatAction`, `TiBasicReformatCodeAction`, `TiBasicReformatCodeActionOverrideInitializer`)                                                                                                                   |
+| `tibasic.ide.actions.resequence`         | Resequence action entry points (`ResequenceAction`, `ResequenceOptionsDialog`, `ResequenceQuickFix`)                                                                                                                                       |
+| `tibasic.ide.actions.preview`            | Screen-preview UI actions and dialog (`TiBasicScreenPreviewAction`, `TiBasicScreenPreviewDialog`)                                                                                                                                          |
+| `tibasic.ide.actions`                    | Abstract base for TI-Basic IDE actions (`TiBasicFileAction`)                                                                                                                                                                               |
+| `tibasic.common.bundle`                  | Resource bundle access (`TiBasicBundle`)                                                                                                                                                                                                   |
+| `tibasic.common.util`                    | Shared IntelliJ-facing utility helpers such as document write helpers (`PsiFileUtils`)                                                                                                                                                     |
+| `tibasic.common.ext`                     | Kotlin extensions on framework classes (`ASTNodeExtensions`, `PsiElementExtensions`, `AnnotationHolderExtensions`)                                                                                                                         |
 
 ## Data flow
 
@@ -32,13 +48,13 @@ All source code lives under `com.github.mmrsic.idea.plugins.tibasic` (abbreviate
 Source text
     │
     ▼
-TiBasicLexer          (tibasic.lexer)
+TiBasicLexer          (tibasic.language.syntax.lexer)
     Reads lines, classifies them, emits typed tokens.
     Each source line is classified as:
       VALID_STATEMENT, LINE_NUMBER_ONLY, LET_IMPLICIT_STATEMENT, UNKNOWN_STATEMENT, or NO_LINE_NUMBER.
     │
     ▼
-TiBasicParser         (tibasic.parser)
+TiBasicParser         (tibasic.language.syntax.parser)
     Driven by PsiBuilder; builds a composite AST.
     Produces nodes: LINE, PRINT_STATEMENT, DISPLAY_STATEMENT, INPUT_STATEMENT, READ_STATEMENT,
     DATA_STATEMENT, RESTORE_STATEMENT, LET_STATEMENT, DEF_STATEMENT, DIM_STATEMENT, OPTION_BASE_STATEMENT,
@@ -50,7 +66,7 @@ TiBasicParser         (tibasic.parser)
     FUNCTION_CALL.
     │
     ▼
-PSI tree              (tibasic.psi + subpackages)
+PSI tree              (tibasic.language.syntax.psi + subpackages)
     IntelliJ wraps each composite node via TiBasicParserDefinition.createElement().
     Typed PSI classes (TiBasicLine, TiBasicPrintStatement, …) provide
     convenience accessors (e.g., TiBasicLine.lineNumber(),
@@ -61,10 +77,14 @@ PSI tree              (tibasic.psi + subpackages)
     │       Token-level colouring: keywords, literals, operators, comments.
     │
     ├──▶ TiBasicAnnotator           (tibasic.highlight)
+    │       Thin adapter delegating to TiBasicSemanticAnnotator in
+    │       `tibasic.language.analysis`.
+    │
+    ├──▶ TiBasicSemanticAnnotator   (tibasic.language.analysis)
     │       Semantic checks on the PSI tree (see Annotator section below).
     │       Attaches error/warning annotations and quick-fixes.
     │
-    ├──▶ TiBasicCompletionContributor (tibasic.editor)
+    ├──▶ TiBasicCompletionContributor (tibasic.ide.editor.completion)
     │       Provides on-demand keyword suggestions (from TiBasicKeywords),
     │       variable suggestions (all variables defined in the current file),
     │       CALL subprogram name suggestions (from TiBasicCallSubprograms) when
@@ -84,7 +104,7 @@ PSI tree              (tibasic.psi + subpackages)
     │       with arguments insert `()`, while generated line numbers insert a
     │       trailing space and place the caret after it.
     │
-    ├──▶ TiBasicCharacterCodeDocumentationProvider (tibasic.editor)
+    ├──▶ TiBasicCharacterCodeDocumentationProvider (tibasic.ide.editor.documentation)
     │       Provides Quick Documentation (Ctrl+Q) for character-code positions
     │       in `CALL CHAR`, `CALL HCHAR`, `CALL VCHAR`, and `CHR$`, plus
     │       all argument positions of `CALL COLOR`.
@@ -98,7 +118,7 @@ PSI tree              (tibasic.psi + subpackages)
     │       `CALL COLOR` shows the resolved value plus the derived set range,
     │       ASCII characters, or TI color name.
     │
-    ├──▶ TiBasicScreenPreviewAction (tibasic.action.preview)
+    ├──▶ TiBasicScreenPreviewAction (tibasic.ide.actions.preview)
     │       Opens an explicit dialog-based 32x24 screen preview for the current
     │       editor selection. The action is enabled only when the selection
     │       intersects at least one `CALL HCHAR` or `CALL VCHAR` line. The
@@ -138,7 +158,7 @@ PSI tree              (tibasic.psi + subpackages)
     │       TiBasicDisplayColumnGuideRenderer. The guides are drawn as an
     │       overlay, so they do not alter the editor's text layout.
     │
-    ├──▶ GotoDeclarationHandler      (tibasic.editor)
+    ├──▶ GotoDeclarationHandler      (tibasic.ide.editor.navigation)
     │       TiBasicGotoDeclarationHandler recognizes numeric literals that are
     │       already classified as line-number references by
     │       PsiElement.lineNumberReferenceNodes().
@@ -148,7 +168,7 @@ PSI tree              (tibasic.psi + subpackages)
     │       IF ... THEN/ELSE, RESTORE, BREAK, UNBREAK, TRACE, and UNTRACE
     │       jumps to the referenced target line.
     │
-    ├──▶ LineMarkerProvider(s)      (tibasic.editor)
+    ├──▶ LineMarkerProvider(s)      (tibasic.ide.editor.markers)
     │       Provide gutter icons for CALL CHAR, CALL COLOR, CALL SCREEN, CALL SOUND, and
     │       inbound line references.
     │       The SOUND provider resolves `CALL SOUND` arguments from literals,
@@ -164,16 +184,16 @@ PSI tree              (tibasic.psi + subpackages)
     │
     │       TiBasicLineReferenceLineMarkerProvider is triggered on the
     │       LINE_NUMBER leaf token of a TiBasicLine. It uses
-    │       TiBasicInboundLineReferenceCollector, which scans the file's lines
+    │       `tibasic.language.analysis.references.TiBasicInboundLineReferenceCollector`, which scans the file's lines
     │       and reuses PsiElement.lineNumberReferenceNodes() to collect all
     │       inbound jumps per target line number. If at least one other line
     │       refers to the current line, the provider adds a gutter icon with a
     │       compact tooltip summary and standard click navigation to the
     │       referring lines.
     │
-    └──▶ Actions                    (tibasic.action.*)
-            FormatAction  — reformats the document text via FormatCode.
-            ResequenceAction — renumbers lines via ResequenceLineNumbers.
+    └──▶ Actions                    (`tibasic.ide.actions.*`)
+            FormatAction  — reformats the document text via `tibasic.language.format`.
+            ResequenceAction — renumbers lines via `tibasic.language.format`.
             Both actions modify the PSI document inside a WriteAction.
 ```
 
@@ -213,13 +233,11 @@ IDE Debug action
 
 V1 should keep the ownership boundaries small and explicit:
 
-| Component group         | Responsibility                                                                                                         |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------|
-| `tibasic.debug.run`     | Hooks the standard IntelliJ Debug entry points to the active TI-Basic file and creates the debug session start request |
-| `tibasic.debug.model`   | Immutable program snapshot and value objects such as line snapshots, session status, pending error, and step result    |
-| `tibasic.debug.runtime` | Pure stepping engine for `GOTO`, `GOSUB`, `RETURN`, `END`, and `STOP`, plus sequential fall-through                    |
-| `tibasic.debug`         | Project-level session coordination and lifecycle API used by UI and actions                                            |
-| `tibasic.toolwindow`    | Dedicated debugger tool-window content that renders the frozen listing and exposes Step/Stop controls                  |
+| Component group                | Responsibility                                                                                                         |
+|--------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `tibasic.ide.debug.run`        | Hooks the standard IntelliJ Debug entry points to the active TI-Basic file and creates the debug session start request |
+| `tibasic.ide.debug`            | Project-level session coordination, frozen snapshot/value objects, inspect evaluation, and stepping runtime            |
+| `tibasic.ide.toolwindow.debug` | Dedicated debugger tool-window content that renders the frozen listing and exposes Step/Stop controls                  |
 
 The standard IntelliJ Debug action is therefore the **entry mechanism**, not the long-term UI
 host. V1 does not need XDebugger-specific concepts such as stack frames, variable views, or
@@ -337,7 +355,7 @@ Because future stories will add interactive runtime devices, the tool window sho
 clear separation between the **listing pane** and future **runtime input/output panes** instead of
 hardwiring the entire UI into a single flat table component.
 
-## Variables tool window (tibasic.toolwindow)
+## Variables tool window (`tibasic.ide.toolwindow.variables`)
 
 The Variables tool window lists all scalar and array variables plus user-defined functions
 in the active TI-Basic file. It refreshes automatically after every committed document change.
@@ -354,7 +372,7 @@ in the active TI-Basic file. It refreshes automatically after every committed do
 
 ### Array metadata
 
-`TiBasicVariableCollector` resolves array metadata once per file and attaches it to
+`tibasic.language.analysis.variables.TiBasicVariableCollector` resolves array metadata once per file and attaches it to
 the single row for each array:
 
 - **Explicit DIM**: the displayed dimension list comes from the DIM subscript expressions.
@@ -442,7 +460,7 @@ All columns use wrapping renderers, and `TiBasicVariableToolWindowContent` recom
 heights automatically after data refreshes and column-width changes so long values remain fully
 visible in the current viewport width.
 
-## Character definitions tool window (tibasic.toolwindow)
+## Character definitions tool window (`tibasic.ide.toolwindow.characters`)
 
 The Character Definitions tool window lists all statically resolvable `CALL CHAR`
 definitions in the active TI-Basic file. Definitions remain separate per character
@@ -452,7 +470,7 @@ collapsed into one row with a sorted list of line occurrences.
 
 ### Shared static call traversal and collectors
 
-`editor/TiBasicStaticCallStatementTraversal.kt` provides the conservative file traversal
+`language/analysis/calls/TiBasicStaticCallStatementTraversal.kt` provides the conservative file traversal
 used by both `CALL CHAR` and `CALL COLOR` collection. It performs the shared linear trace
 through `READ`/`DATA`, `RESTORE`, simple statically resolvable `FOR`/`NEXT` loops, and
 simple statically decidable `IF ... THEN [ELSE]` jumps, and records each encountered
@@ -464,8 +482,8 @@ resolved to the next higher `DATA` line, and a target above the highest program 
 the trace immediately while a target with only non-`DATA` lines above it aborts at the next
 `READ`.
 
-On top of that traversal, `editor/TiBasicCallCharDefinitions.kt` and
-`editor/TiBasicCallColorAssignments.kt` provide the cached file-level collectors used by
+On top of that traversal, `language/analysis/calls/TiBasicCallCharDefinitions.kt` and
+`language/analysis/calls/TiBasicCallColorAssignments.kt` provide the cached file-level collectors used by
 the tool window:
 
 | Type / function                 | Responsibility                                                                                             |
@@ -555,11 +573,11 @@ are omitted.
   instead of generic parse errors.
 - **`VALID_LINE_NUMBER_RANGE` as a single constant.** Defined in `psi/TiBasicPsiElements.kt`; referenced by both the
   annotator and the resequence logic to avoid scattered magic numbers.
-- **Split token/node types.** `TiBasicTokenTypes` (leaf tokens) lives in `tibasic.lexer`; `TiBasicNodeTypes`
-  (composite nodes) lives in `tibasic.parser`. This reflects IntelliJ's own conventions and avoids circular imports
+- **Split token/node types.** `TiBasicTokenTypes` (leaf tokens) lives in `tibasic.language.syntax.lexer`; `TiBasicNodeTypes`
+  (composite nodes) lives in `tibasic.language.syntax.parser`. This reflects IntelliJ's own conventions and avoids circular imports
   between lexer and parser.
 - **Kotlin extensions on framework types.** Verbose framework calls (e.g., `node.getChildren(null)`) are wrapped in
-  extensions (`node.allChildren`) collected in `tibasic.ext`. See [`extension-points.md`](extension-points.md) and
+  extensions (`node.allChildren`) collected in `tibasic.common.ext`. See [`extension-points.md`](extension-points.md) and
   the coding conventions in `.github/copilot-instructions.md`.
 - **Debugger runs on a frozen snapshot.** Debugger V1 must not observe live file edits after startup; restart is
   the synchronization point.
@@ -572,7 +590,7 @@ TI-Basic provides a fixed set of built-in functions usable inside expressions (e
 These are distinct from `CALL` subprograms: they appear inside an expression and return a value, whereas `CALL`
 subprograms are stand-alone statements.
 
-### Function registry (`tibasic.lang` — `TiBasicBuiltInFunctions.kt`)
+### Function registry (`tibasic.language.model` — `TiBasicBuiltInFunctions.kt`)
 
 ```kotlin
 enum class FunctionReturnType { NUMERIC, STRING }

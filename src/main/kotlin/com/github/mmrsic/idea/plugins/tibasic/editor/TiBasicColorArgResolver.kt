@@ -1,9 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.lang.BadValue
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiColor
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression
+import com.github.mmrsic.idea.plugins.tibasic.language.model.BadValue
+import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicExpression
 
 internal fun colorFromArg(expr: TiBasicExpression?, file: TiBasicFile?): TiColor {
     val value = resolveConstantNumericValue(expr, file)

@@ -1,6 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 abstract class TiBasicTestBase : BasePlatformTestCase() {

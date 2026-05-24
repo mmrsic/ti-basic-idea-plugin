@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicCallStatement
 import kotlin.math.abs
 
 internal const val CALL_SOUND_SUBPROGRAM = "SOUND"

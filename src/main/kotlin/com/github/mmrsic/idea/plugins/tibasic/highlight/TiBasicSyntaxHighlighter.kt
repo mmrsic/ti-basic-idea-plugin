@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.highlight
 
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicLexer
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicLexer
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.SyntaxHighlighterBase

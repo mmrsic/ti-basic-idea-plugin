@@ -1,6 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiColor
+import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
 import com.intellij.ui.JBColor
 import java.awt.Component
 import java.awt.Graphics

@@ -44,9 +44,9 @@ Framework class improvements via Kotlin extensions
   `ASTNodeExtensions.kt`, extensions on `PsiElement` in `PsiElementExtensions.kt`, extensions on
   `AnnotationHolder` in `AnnotationHolderExtensions.kt`. Never scatter extensions on the same framework type
   across multiple files — with one exception: domain-specific convenience properties that are inseparable from the
-  PSI types they return (e.g., `val PsiElement.containingTiBasicFile`) may live in `tibasic.psi` alongside those
+  PSI types they return (e.g., `val PsiElement.containingTiBasicFile`) may live in `tibasic.language.syntax.psi` alongside those
   types.
-- **Current `tibasic.ext` files**:
+- **Current `tibasic.common.ext` files**:
     - `ASTNodeExtensions.kt` — `allChildren`, `nonWhitespaceChildren`, `firstChildType`, `childrenOfType`,
       `firstChildOfType`, `childrenAfter`
     - `PsiElementExtensions.kt` — `firstChildOfType<T>()`
@@ -99,7 +99,7 @@ Tests, quality assurance & debugging
 - At minimum provide: a parsing happy-path test, an annotator test (error detection), and a line marker/action test.
 - Run local tests before committing: `./gradlew test` and `./gradlew runIde` for manual sandbox testing.
 - Run a single test class: `./gradlew test --tests "*.TiBasicParserTest"` (short form) or fully-qualified
-  `./gradlew test --tests "com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicParserTest"`.
+  `./gradlew test --tests "com.github.mmrsic.idea.plugins.tibasic.language.syntax.parser.TiBasicParserTest"`.
 - Run a single test method: `./gradlew test --tests "*.TiBasicParserTest.test valid print line"`.
 - Use the Plugin Verifier (`./gradlew verifyPlugin`) only in CI for the target IDE versions.
 
@@ -112,7 +112,7 @@ Documentation maintenance
   testing conventions, update the corresponding file in `docs/`:
     - `docs/architecture.md` — package map, data-flow, annotator checks, threading, design decisions
     - `docs/grammar.md` — EBNF grammar, token reference, valid/invalid examples
-    - `docs/extension-points.md` — all registered extension points and `tibasic.ext` extensions
+    - `docs/extension-points.md` — all registered extension points and `tibasic.common.ext` extensions
     - `docs/testing.md` — test setup, base class, conventions
 - **Docs are part of the definition of done**: a PR that adds or changes a feature is not complete until the
   documentation is updated. Add doc updates to the same commit or PR as the code change.

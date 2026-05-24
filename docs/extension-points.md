@@ -7,12 +7,12 @@ This document lists all IntelliJ Platform extension points registered by the plu
 
 ### `fileType`
 
-| Attribute             | Value                           |
-|-----------------------|---------------------------------|
-| `name`                | `TI-Basic File`                 |
-| `language`            | `TI-Basic`                      |
-| `implementationClass` | `tibasic.lang.TiBasicFileType`  |
-| `extensions`          | `ti-basic`, `tibasic`, `ti.bas` |
+| Attribute             | Value                                  |
+|-----------------------|----------------------------------------|
+| `name`                | `TI-Basic File`                        |
+| `language`            | `TI-Basic`                             |
+| `implementationClass` | `tibasic.ide.language.TiBasicFileType` |
+| `extensions`          | `ti-basic`, `tibasic`, `ti.bas`        |
 
 Associates files with the plugin's language and provides the MIME type, default extension, and file description.
 
@@ -20,9 +20,9 @@ Associates files with the plugin's language and provides the MIME type, default 
 
 ### `fileIconProvider`
 
-| Attribute        | Value                                  |
-|------------------|----------------------------------------|
-| `implementation` | `tibasic.lang.TiBasicFileIconProvider` |
+| Attribute        | Value                                          |
+|------------------|------------------------------------------------|
+| `implementation` | `tibasic.ide.language.TiBasicFileIconProvider` |
 
 Supplies a custom icon for TI-Basic files in the project tree. Icons are loaded from
 `src/main/resources/icons/` via `IconLoader.getIcon(...)`.
@@ -43,10 +43,10 @@ Returns a `TiBasicSyntaxHighlighter` instance. The highlighter maps token types 
 
 ### `lang.documentationProvider`
 
-| Attribute             | Value                                                       |
-|-----------------------|-------------------------------------------------------------|
-| `language`            | `TI-Basic`                                                  |
-| `implementationClass` | `tibasic.editor.TiBasicCharacterCodeDocumentationProvider`  |
+| Attribute             | Value                                                                        |
+|-----------------------|------------------------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                                   |
+| `implementationClass` | `tibasic.ide.editor.documentation.TiBasicCharacterCodeDocumentationProvider` |
 
 Provides Quick Documentation (`Ctrl+Q`) for numeric constants and for the character-code
 argument positions of `CALL CHAR`, `CALL HCHAR`, `CALL VCHAR`, and the argument of
@@ -81,10 +81,10 @@ used to avoid excessive false positives.
 
 ### `completion.contributor`
 
-| Attribute             | Value                                         |
-|-----------------------|-----------------------------------------------|
-| `language`            | `TI-Basic`                                    |
-| `implementationClass` | `tibasic.editor.TiBasicCompletionContributor` |
+| Attribute             | Value                                                        |
+|-----------------------|--------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                   |
+| `implementationClass` | `tibasic.ide.editor.completion.TiBasicCompletionContributor` |
 
 Provides on-demand completion suggestions (Ctrl+Space only; auto-popup is disabled).
 If exactly one match remains after filtering, that match is inserted immediately
@@ -142,10 +142,10 @@ IntelliJ backspace behavior unchanged.
 
 ### `lang.parserDefinition`
 
-| Attribute             | Value                                    |
-|-----------------------|------------------------------------------|
-| `language`            | `TI-Basic`                               |
-| `implementationClass` | `tibasic.parser.TiBasicParserDefinition` |
+| Attribute             | Value                                          |
+|-----------------------|------------------------------------------------|
+| `language`            | `TI-Basic`                                     |
+| `implementationClass` | `tibasic.ide.language.TiBasicParserDefinition` |
 
 Wires together the lexer (`TiBasicLexer`), the parser (`TiBasicParser`), the file node type
 (`TiBasicNodeTypes.FILE`), and the PSI element factory (`createElement()`).
@@ -166,9 +166,9 @@ See [`architecture.md`](architecture.md) for the full list of checks.
 
 ### `projectService` — TI-Basic debugger session service
 
-| Attribute               | Value                                         |
-|-------------------------|-----------------------------------------------|
-| `serviceImplementation` | `tibasic.debug.TiBasicDebugSessionService`    |
+| Attribute               | Value                                          |
+|-------------------------|------------------------------------------------|
+| `serviceImplementation` | `tibasic.ide.debug.TiBasicDebugSessionService` |
 
 Project-level session holder for the TI-Basic debugger. It keeps the active frozen
 debug snapshot, current program-counter position, GOSUB return stack, and pending stop
@@ -178,9 +178,9 @@ state, and notifies the dedicated debugger tool window when the session changes.
 
 ### `configurationType` — TI-Basic Debug
 
-| Attribute        | Value                                             |
-|------------------|---------------------------------------------------|
-| `implementation` | `tibasic.debug.run.TiBasicDebugConfigurationType` |
+| Attribute        | Value                                                 |
+|------------------|-------------------------------------------------------|
+| `implementation` | `tibasic.ide.debug.run.TiBasicDebugConfigurationType` |
 
 Registers the TI-Basic debug run-configuration type. Configurations of this type are
 file-based and launch the debugger via the normal IntelliJ **Debug** action.
@@ -189,9 +189,9 @@ file-based and launch the debugger via the normal IntelliJ **Debug** action.
 
 ### `runConfigurationProducer` — TI-Basic Debug producer
 
-| Attribute        | Value                                                    |
-|------------------|----------------------------------------------------------|
-| `implementation` | `tibasic.debug.run.TiBasicDebugRunConfigurationProducer` |
+| Attribute        | Value                                                        |
+|------------------|--------------------------------------------------------------|
+| `implementation` | `tibasic.ide.debug.run.TiBasicDebugRunConfigurationProducer` |
 
 Creates TI-Basic debug configurations from context for TI-Basic files in the editor and
 project view. This enables the standard IDE debug entry points to target the current
@@ -201,9 +201,9 @@ TI-Basic file without a custom action.
 
 ### `programRunner` — TI-Basic Debug runner
 
-| Attribute        | Value                                         |
-|------------------|-----------------------------------------------|
-| `implementation` | `tibasic.debug.run.TiBasicDebugProgramRunner` |
+| Attribute        | Value                                             |
+|------------------|---------------------------------------------------|
+| `implementation` | `tibasic.ide.debug.run.TiBasicDebugProgramRunner` |
 
 Handles execution of TI-Basic debug configurations for the default IntelliJ **Debug**
 executor. The runner starts the TI-Basic debug session and opens the dedicated TI-Basic
@@ -215,10 +215,10 @@ debug tool window instead of creating a standard process-backed debug tab.
 
 ### `action` — `TiBasic.ShowScreenPreview`
 
-| Attribute | Value                                               |
-|-----------|-----------------------------------------------------|
-| `id`      | `TiBasic.ShowScreenPreview`                         |
-| `class`   | `tibasic.action.preview.TiBasicScreenPreviewAction` |
+| Attribute | Value                                                    |
+|-----------|----------------------------------------------------------|
+| `id`      | `TiBasic.ShowScreenPreview`                              |
+| `class`   | `tibasic.ide.actions.preview.TiBasicScreenPreviewAction` |
 
 Adds the **Preview TI-Basic Screen...** action to the editor popup menu and the
 Code menu. The action is available in TI-Basic files and is enabled only when the
@@ -250,11 +250,11 @@ Has no effect when pasting into the middle of the file or into non-TI-Basic file
 
 ### `toolWindow` — `TI Basic Debug`
 
-| Attribute      | Value                                              |
-|----------------|----------------------------------------------------|
-| `id`           | `TI Basic Debug`                                   |
-| `factoryClass` | `tibasic.toolwindow.TiBasicDebugToolWindowFactory` |
-| `anchor`       | `bottom`                                           |
+| Attribute      | Value                                                        |
+|----------------|--------------------------------------------------------------|
+| `id`           | `TI Basic Debug`                                             |
+| `factoryClass` | `tibasic.ide.toolwindow.debug.TiBasicDebugToolWindowFactory` |
+| `anchor`       | `bottom`                                                     |
 
 Shows the dedicated debugger UI for TI-Basic programs. The content renders the frozen
 listing captured at debug start, marks the current program-counter line, exposes **Step**
@@ -352,9 +352,9 @@ strictly greater 10er-Zahl so duplicate line numbers cannot occur.
 
 ### `applicationService` — `TiBasicVariableToolWindowSettings`
 
-| Attribute               | Value                                                     |
-|-------------------------|-----------------------------------------------------------|
-| `serviceImplementation` | `tibasic.toolwindow.TiBasicVariableToolWindowSettings`    |
+| Attribute               | Value                                                                |
+|-------------------------|----------------------------------------------------------------------|
+| `serviceImplementation` | `tibasic.ide.toolwindow.variables.TiBasicVariableToolWindowSettings` |
 
 Persists the Variables tool-window view option that toggles whether
 array-element constants are shown in the **Range** column. The state is stored in `editor.xml` so
@@ -393,9 +393,9 @@ of 10.
 
 ### `postStartupActivity` — ReformatCode override
 
-| Attribute        | Value                                                                |
-|------------------|----------------------------------------------------------------------|
-| `implementation` | `tibasic.action.format.TiBasicReformatCodeActionOverrideInitializer` |
+| Attribute        | Value                                                                     |
+|------------------|---------------------------------------------------------------------------|
+| `implementation` | `tibasic.ide.actions.format.TiBasicReformatCodeActionOverrideInitializer` |
 
 Replaces the platform `ReformatCode` action after project startup with
 `TiBasicReformatCodeAction` via the public `ActionManager.replaceAction()` API. The
@@ -447,16 +447,16 @@ The configurable persists `guidesEnabled` and `guidePreviewDistance` via
 
 ### `codeInsight.lineMarkerProvider` — CALL CHAR gutter preview
 
-| Attribute             | Value                                              |
-|-----------------------|----------------------------------------------------|
-| `language`            | `TI-Basic`                                         |
-| `implementationClass` | `tibasic.editor.TiBasicCallCharLineMarkerProvider` |
+| Attribute             | Value                                                          |
+|-----------------------|----------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                     |
+| `implementationClass` | `tibasic.ide.editor.markers.TiBasicCallCharLineMarkerProvider` |
 
 ```xml
 
 <codeInsight.lineMarkerProvider
         language="TI-Basic"
-        implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallCharLineMarkerProvider"
+        implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.markers.TiBasicCallCharLineMarkerProvider"
 />
 ```
 
@@ -474,10 +474,10 @@ preview for hexadecimal `DATA` items.
 
 ### `codeInsight.lineMarkerProvider` — CALL COLOR
 
-| Attribute             | Value                                               |
-|-----------------------|-----------------------------------------------------|
-| `language`            | `TI-Basic`                                          |
-| `implementationClass` | `tibasic.editor.TiBasicCallColorLineMarkerProvider` |
+| Attribute             | Value                                                           |
+|-----------------------|-----------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                      |
+| `implementationClass` | `tibasic.ide.editor.markers.TiBasicCallColorLineMarkerProvider` |
 
 Displays a split 16×16 color square in the gutter for every `CALL COLOR(set,fg,bg)` line.
 `fg` and `bg` may be integer literals, **constant numeric variables** (variables assigned exactly
@@ -493,10 +493,10 @@ with IntelliJ's theme system while keeping the fixed TI color palette.
 
 ### `codeInsight.lineMarkerProvider` — CALL SCREEN
 
-| Attribute             | Value                                                |
-|-----------------------|------------------------------------------------------|
-| `language`            | `TI-Basic`                                           |
-| `implementationClass` | `tibasic.editor.TiBasicCallScreenLineMarkerProvider` |
+| Attribute             | Value                                                            |
+|-----------------------|------------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                       |
+| `implementationClass` | `tibasic.ide.editor.markers.TiBasicCallScreenLineMarkerProvider` |
 
 Displays a solid 16×16 color square in the gutter for every `CALL SCREEN(colorCode)` line.
 `colorCode` may be an integer literal, a **constant numeric variable**, or another simple
@@ -516,10 +516,10 @@ Shared infrastructure:
 
 ### `codeInsight.lineMarkerProvider` — CALL SOUND
 
-| Attribute             | Value                                               |
-|-----------------------|-----------------------------------------------------|
-| `language`            | `TI-Basic`                                          |
-| `implementationClass` | `tibasic.editor.TiBasicCallSoundLineMarkerProvider` |
+| Attribute             | Value                                                           |
+|-----------------------|-----------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                      |
+| `implementationClass` | `tibasic.ide.editor.markers.TiBasicCallSoundLineMarkerProvider` |
 
 Displays a play icon in the gutter for every resolvable `CALL SOUND(dur,pitch1,vol1[,pitch2,vol2...])`
 line.
@@ -547,15 +547,15 @@ Shared infrastructure:
 
 ### `codeInsight.lineMarkerProvider` — inbound line references
 
-| Attribute             | Value                                                   |
-|-----------------------|---------------------------------------------------------|
-| `language`            | `TI-Basic`                                              |
-| `implementationClass` | `tibasic.editor.TiBasicLineReferenceLineMarkerProvider` |
+| Attribute             | Value                                                               |
+|-----------------------|---------------------------------------------------------------------|
+| `language`            | `TI-Basic`                                                          |
+| `implementationClass` | `tibasic.ide.editor.markers.TiBasicLineReferenceLineMarkerProvider` |
 
 ```xml
 <codeInsight.lineMarkerProvider
         language="TI-Basic"
-        implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicLineReferenceLineMarkerProvider"
+        implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.markers.TiBasicLineReferenceLineMarkerProvider"
 />
 ```
 
@@ -578,13 +578,13 @@ UX behavior:
 
 ### `gotoDeclarationHandler` — line-number declaration navigation
 
-| Attribute        | Value                                          |
-|------------------|------------------------------------------------|
-| `implementation` | `tibasic.editor.TiBasicGotoDeclarationHandler` |
+| Attribute        | Value                                                         |
+|------------------|---------------------------------------------------------------|
+| `implementation` | `tibasic.ide.editor.navigation.TiBasicGotoDeclarationHandler` |
 
 ```xml
 <gotoDeclarationHandler
-        implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicGotoDeclarationHandler"
+        implementation="com.github.mmrsic.idea.plugins.tibasic.ide.editor.navigation.TiBasicGotoDeclarationHandler"
 />
 ```
 
@@ -604,11 +604,11 @@ numbers yield no target, so they do not navigate anywhere.
 
 Both actions are added to the editor popup menu (`EditorPopupMenu`) and the `Code` menu (`CodeMenu`).
 
-| Action ID                         | Class                                             | Description                                                                                                                                                                                                                                                                                                                              |
-|-----------------------------------|---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TiBasic.ResequenceLineNumbers`   | `tibasic.action.resequence.ResequenceAction`      | Renumbers all lines with user-selected start and step                                                                                                                                                                                                                                                                                    |
-| `TiBasic.FormatCode`              | `tibasic.action.format.FormatAction`              | Uppercases keywords and removes extraneous whitespace                                                                                                                                                                                                                                                                                    |
-| `ReformatCode` (runtime override) | `tibasic.action.format.TiBasicReformatCodeAction` | Reuses the platform action ID so Ctrl+Alt+L routes to `FormatAction` for TI-Basic files while delegating to the standard IntelliJ action for all other file types. The runtime replacement is performed by `TiBasicReformatCodeActionOverrideInitializer`; localized text and description come from `action.ReformatCode.*` bundle keys. |
+| Action ID                         | Class                                                  | Description                                                                                                                                                                                                                                                                                                                              |
+|-----------------------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TiBasic.ResequenceLineNumbers`   | `tibasic.ide.actions.resequence.ResequenceAction`      | Renumbers all lines with user-selected start and step                                                                                                                                                                                                                                                                                    |
+| `TiBasic.FormatCode`              | `tibasic.ide.actions.format.FormatAction`              | Uppercases keywords and removes extraneous whitespace                                                                                                                                                                                                                                                                                    |
+| `ReformatCode` (runtime override) | `tibasic.ide.actions.format.TiBasicReformatCodeAction` | Reuses the platform action ID so Ctrl+Alt+L routes to `FormatAction` for TI-Basic files while delegating to the standard IntelliJ action for all other file types. The runtime replacement is performed by `TiBasicReformatCodeActionOverrideInitializer`; localized text and description come from `action.ReformatCode.*` bundle keys. |
 
 Both `TiBasic.*` actions extend `TiBasicFileAction`, which gates execution to TI-Basic files only.
 
@@ -616,10 +616,10 @@ Both `TiBasic.*` actions extend `TiBasicFileAction`, which gates execution to TI
 
 ### `lang.findUsagesProvider`
 
-| Attribute             | Value                                          |
-|-----------------------|------------------------------------------------|
-| `language`            | `TI-Basic`                                     |
-| `implementationClass` | `tibasic.findusages.TiBasicFindUsagesProvider` |
+| Attribute             | Value                                              |
+|-----------------------|----------------------------------------------------|
+| `language`            | `TI-Basic`                                         |
+| `implementationClass` | `tibasic.ide.findusages.TiBasicFindUsagesProvider` |
 
 Enables **Alt+F7 Find Usages** for TI-Basic variables. Provides a `DefaultWordsScanner`
 backed by `TiBasicLexer` so IDEA can find candidate files. `getNodeText` returns the
@@ -635,9 +635,9 @@ variable finds all occurrences symmetrically.
 
 ### `findUsagesHandlerFactory`
 
-| Attribute        | Value                                                |
-|------------------|------------------------------------------------------|
-| `implementation` | `tibasic.findusages.TiBasicFindUsagesHandlerFactory` |
+| Attribute        | Value                                                    |
+|------------------|----------------------------------------------------------|
+| `implementation` | `tibasic.ide.findusages.TiBasicFindUsagesHandlerFactory` |
 
 Creates a `TiBasicFindUsagesHandler` for any `TiBasicVariableAccess` element, enabling IDEA
 to resolve usages through the plugin's semantic reference model rather than the default
@@ -647,10 +647,10 @@ text-search fallback.
 
 ### `targetElementEvaluator`
 
-| Attribute             | Value                                              |
-|-----------------------|----------------------------------------------------|
-| `language`            | `TI-Basic`                                         |
-| `implementationClass` | `tibasic.findusages.TiBasicTargetElementEvaluator` |
+| Attribute             | Value                                                  |
+|-----------------------|--------------------------------------------------------|
+| `language`            | `TI-Basic`                                             |
+| `implementationClass` | `tibasic.ide.findusages.TiBasicTargetElementEvaluator` |
 
 Refines which PSI element IDEA treats as the "target" when the user invokes Find Usages
 (Alt+F7) or Navigate → Declaration. Ensures that the caret position resolves to the correct
@@ -660,24 +660,24 @@ Refines which PSI element IDEA treats as the "target" when the user invokes Find
 
 ### `readWriteAccessDetector`
 
-| Attribute        | Value                                               |
-|------------------|-----------------------------------------------------|
-| `implementation` | `tibasic.findusages.TiBasicReadWriteAccessDetector` |
+| Attribute        | Value                                                   |
+|------------------|---------------------------------------------------------|
+| `implementation` | `tibasic.ide.findusages.TiBasicReadWriteAccessDetector` |
 
 Classifies each usage in the Find Usages panel as read (blue) or write (orange/red).
-Delegates to `TiBasicVariableCollector.determineAccessType` for the classification logic
+Delegates to `tibasic.language.analysis.variables.TiBasicVariableCollector.determineAccessType` for the classification logic
 (same rules as the Variables tool window).
 
 ---
 
 ### `toolWindow` — TI Basic Variables
 
-| Attribute      | Value                                                 |
-|----------------|-------------------------------------------------------|
-| `id`           | `TI Basic Variables`                                  |
-| `anchor`       | `bottom`                                              |
-| `icon`         | `/icons/ti99_4a_icon_small.svg`                       |
-| `factoryClass` | `tibasic.toolwindow.TiBasicVariableToolWindowFactory` |
+| Attribute      | Value                                                               |
+|----------------|---------------------------------------------------------------------|
+| `id`           | `TI Basic Variables`                                                |
+| `anchor`       | `bottom`                                                            |
+| `icon`         | `/icons/ti99_4a_icon_small.svg`                                     |
+| `factoryClass` | `tibasic.ide.toolwindow.variables.TiBasicVariableToolWindowFactory` |
 
 Provides a dockable bottom panel that lists all variables in the currently active TI-Basic
 file in a sortable table (columns: Name, Type, Writes, Reads, Range, plus the conditional
@@ -700,12 +700,12 @@ row heights adjusted to the available width.
 
 ### `toolWindow` — TI Basic Character Definitions
 
-| Attribute      | Value                                                             |
-|----------------|-------------------------------------------------------------------|
-| `id`           | `TI Basic Character Definitions`                                  |
-| `anchor`       | `bottom`                                                          |
-| `icon`         | `/icons/ti99_4a_icon_small.svg`                                   |
-| `factoryClass` | `tibasic.toolwindow.TiBasicCharacterDefinitionsToolWindowFactory` |
+| Attribute      | Value                                                                            |
+|----------------|----------------------------------------------------------------------------------|
+| `id`           | `TI Basic Character Definitions`                                                 |
+| `anchor`       | `bottom`                                                                         |
+| `icon`         | `/icons/ti99_4a_icon_small.svg`                                                  |
+| `factoryClass` | `tibasic.ide.toolwindow.characters.TiBasicCharacterDefinitionsToolWindowFactory` |
 
 Provides a dockable bottom panel that lists all statically resolvable `CALL CHAR`
 definitions in the currently active TI-Basic file in a sortable table (columns: Code,
@@ -731,10 +731,11 @@ and whenever the active file changes.
    (`com.intellij.*` namespace or a plugin-provided namespace).
 
 2. **Implement the required interface or abstract class** in the appropriate sub-package:
-    - Language features → `tibasic.lang`
-    - Highlighting / inspection → `tibasic.highlight`
-    - Editor assistance → `tibasic.editor`
-    - Code actions → `tibasic.action` (or a sub-package)
+    - Language registration / parser definition → `tibasic.ide.language`
+    - TI-Basic syntax and model code → `tibasic.language.*`
+    - Highlighting adapter → `tibasic.highlight`; TI-Basic analysis → `tibasic.language.analysis`
+    - Editor assistance entry points → `tibasic.ide.editor.*`; shared editor utilities remain in `tibasic.editor`
+    - Code actions → `tibasic.ide.actions.*`; pure formatting/runtime logic belongs under `tibasic.language.*`
 
 3. **Register in `plugin.xml`** under `<extensions defaultExtensionNs="com.intellij">`:
    ```xml
@@ -753,14 +754,14 @@ and whenever the active file changes.
 ## Kotlin extensions on framework classes
 
 The plugin follows a convention of wrapping verbose IntelliJ API calls in Kotlin extension
-properties and functions. These are collected in `tibasic.ext`:
+properties and functions. These are collected in `tibasic.common.ext`:
 
 | File                            | Type extended      | Extensions                                                                                                                                                                                                                                                                                                                 |
 |---------------------------------|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ASTNodeExtensions.kt`          | `ASTNode`          | `allChildren` — all child nodes; `nonWhitespaceChildren` — children excluding whitespace; `firstChildType` — element type of first child; `childrenOfType(type)` — children matching a type; `firstChildOfType(type)` — first child matching a type; `childrenAfter(type)` — children after the first node of a given type |
 | `AnnotationHolderExtensions.kt` | `AnnotationHolder` | `error(message, element)`, `error(message, range)` — create error annotations; `warning(message, element)`, `warning(message, range)` — create warning annotations                                                                                                                                                         |
-| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type; `lineNumberReferenceNodes()` — all NUMERIC_LITERAL AST nodes that are branch-target line number references (covers GOTO, GOSUB, ON GOTO, ON GOSUB, IF-THEN/ELSE, RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) (**`tibasic.ext`**)                             |
-| `PsiElementExtensions.kt`       | `PsiElement`       | `containingTiBasicFile` — casts `containingFile` to `TiBasicFile?` (**`tibasic.psi`** — lives alongside the PSI types it returns)                                                                                                                                                                                          |
+| `PsiElementExtensions.kt`       | `PsiElement`       | `firstChildOfType<T>()` — first direct child of the given PSI type; `lineNumberReferenceNodes()` — all NUMERIC_LITERAL AST nodes that are branch-target line number references (covers GOTO, GOSUB, ON GOTO, ON GOSUB, IF-THEN/ELSE, RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) (**`tibasic.common.ext`**)                      |
+| `PsiElementExtensions.kt`       | `PsiElement`       | `containingTiBasicFile` — casts `containingFile` to `TiBasicFile?` (**`tibasic.language.syntax.psi`** — lives alongside the PSI types it returns)                                                                                                                                                                          |
 
 When you find yourself calling a raw framework method that is verbose or obscures intent,
-add an extension to the appropriate file in `tibasic.ext` and use it everywhere.
+add an extension to the appropriate file in `tibasic.common.ext` and use it everywhere.

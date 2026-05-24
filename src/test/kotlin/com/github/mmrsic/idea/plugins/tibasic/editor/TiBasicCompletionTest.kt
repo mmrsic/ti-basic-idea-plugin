@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicKeywords
+import com.github.mmrsic.idea.plugins.tibasic.language.model.TiBasicKeywords
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 
 class TiBasicCompletionTest : TiBasicTestBase() {

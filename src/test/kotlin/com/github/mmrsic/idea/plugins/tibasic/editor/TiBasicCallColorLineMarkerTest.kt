@@ -1,7 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiColor
+import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
 import java.awt.Color
 import java.awt.image.BufferedImage
 

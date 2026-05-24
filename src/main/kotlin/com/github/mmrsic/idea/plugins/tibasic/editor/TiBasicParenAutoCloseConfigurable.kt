@@ -1,6 +1,6 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicBundle
+import com.github.mmrsic.idea.plugins.tibasic.common.bundle.TiBasicBundle
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel

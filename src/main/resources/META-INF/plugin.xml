@@ -46,22 +46,22 @@
         <fileType
                 name="TI-Basic File"
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicFileType"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.language.TiBasicFileType"
                 fieldName="INSTANCE"
                 extensions="ti-basic;tibasic;ti.bas"
         />
-        <fileIconProvider implementation="com.github.mmrsic.idea.plugins.tibasic.lang.TiBasicFileIconProvider"/>
+        <fileIconProvider implementation="com.github.mmrsic.idea.plugins.tibasic.ide.language.TiBasicFileIconProvider"/>
         <lang.syntaxHighlighterFactory
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.highlight.TiBasicSyntaxHighlighterFactory"
                 language="TI-Basic"
         />
         <lang.documentationProvider
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCharacterCodeDocumentationProvider"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.documentation.TiBasicCharacterCodeDocumentationProvider"
         />
         <completion.contributor
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCompletionContributor"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.completion.TiBasicCompletionContributor"
         />
         <typedHandler
                 implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicPairedCharacterTypedHandler"/>
@@ -69,7 +69,7 @@
                 implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicPairedCharacterBackspaceHandler"/>
         <lang.parserDefinition
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicParserDefinition"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.language.TiBasicParserDefinition"
         />
         <annotator
                 language="TI-Basic"
@@ -77,23 +77,23 @@
         />
         <codeInsight.lineMarkerProvider
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallCharLineMarkerProvider"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.markers.TiBasicCallCharLineMarkerProvider"
         />
         <codeInsight.lineMarkerProvider
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallColorLineMarkerProvider"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.markers.TiBasicCallColorLineMarkerProvider"
         />
         <codeInsight.lineMarkerProvider
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallScreenLineMarkerProvider"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.markers.TiBasicCallScreenLineMarkerProvider"
         />
         <codeInsight.lineMarkerProvider
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicCallSoundLineMarkerProvider"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.markers.TiBasicCallSoundLineMarkerProvider"
         />
         <codeInsight.lineMarkerProvider
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicLineReferenceLineMarkerProvider"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.editor.markers.TiBasicLineReferenceLineMarkerProvider"
         />
         <applicationService
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicColumnHintSettings"
@@ -124,13 +124,13 @@
                 serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicAutoLineNumberSettings"
         />
         <applicationService
-                serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableToolWindowSettings"
+                serviceImplementation="com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.variables.TiBasicVariableToolWindowSettings"
         />
         <postStartupActivity
                 implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicDisplayColumnGuideInitializer"
         />
         <postStartupActivity
-                implementation="com.github.mmrsic.idea.plugins.tibasic.action.format.TiBasicReformatCodeActionOverrideInitializer"
+                implementation="com.github.mmrsic.idea.plugins.tibasic.ide.actions.format.TiBasicReformatCodeActionOverrideInitializer"
         />
         <applicationConfigurable
                 parentId="editor"
@@ -155,61 +155,61 @@
         />
         <lang.findUsagesProvider
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesProvider"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.findusages.TiBasicFindUsagesProvider"
         />
-        <configurationType implementation="com.github.mmrsic.idea.plugins.tibasic.debug.run.TiBasicDebugConfigurationType"/>
-        <runConfigurationProducer implementation="com.github.mmrsic.idea.plugins.tibasic.debug.run.TiBasicDebugRunConfigurationProducer"/>
-        <programRunner implementation="com.github.mmrsic.idea.plugins.tibasic.debug.run.TiBasicDebugProgramRunner"/>
+        <configurationType implementation="com.github.mmrsic.idea.plugins.tibasic.ide.debug.run.TiBasicDebugConfigurationType"/>
+        <runConfigurationProducer implementation="com.github.mmrsic.idea.plugins.tibasic.ide.debug.run.TiBasicDebugRunConfigurationProducer"/>
+        <programRunner implementation="com.github.mmrsic.idea.plugins.tibasic.ide.debug.run.TiBasicDebugProgramRunner"/>
         <findUsagesHandlerFactory
-                implementation="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesHandlerFactory"
+                implementation="com.github.mmrsic.idea.plugins.tibasic.ide.findusages.TiBasicFindUsagesHandlerFactory"
         />
         <gotoDeclarationHandler
-                implementation="com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicGotoDeclarationHandler"/>
+                implementation="com.github.mmrsic.idea.plugins.tibasic.ide.editor.navigation.TiBasicGotoDeclarationHandler"/>
         <targetElementEvaluator
                 language="TI-Basic"
-                implementationClass="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicTargetElementEvaluator"
+                implementationClass="com.github.mmrsic.idea.plugins.tibasic.ide.findusages.TiBasicTargetElementEvaluator"
         />
         <readWriteAccessDetector
-                implementation="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicReadWriteAccessDetector"
+                implementation="com.github.mmrsic.idea.plugins.tibasic.ide.findusages.TiBasicReadWriteAccessDetector"
         />
         <!--suppress PluginXmlValidity -->
         <toolWindow
                 id="TI Basic Variables"
                 anchor="bottom"
                 icon="icons/ti99_4a_icon_small.svg"
-                factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableToolWindowFactory"
+                factoryClass="com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.variables.TiBasicVariableToolWindowFactory"
         />
         <!--suppress PluginXmlValidity -->
         <toolWindow
                 id="TI Basic Character Definitions"
                 anchor="bottom"
                 icon="icons/ti99_4a_icon_small.svg"
-                factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicCharacterDefinitionsToolWindowFactory"
+                factoryClass="com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.characters.TiBasicCharacterDefinitionsToolWindowFactory"
         />
         <!--suppress PluginXmlValidity -->
         <toolWindow
                 id="TI Basic Debug"
                 anchor="bottom"
                 icon="icons/ti99_4a_icon_small.svg"
-                factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicDebugToolWindowFactory"
+                factoryClass="com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.debug.TiBasicDebugToolWindowFactory"
         />
     </extensions>
     <actions>
         <action
                 id="TiBasic.ResequenceLineNumbers"
-                class="com.github.mmrsic.idea.plugins.tibasic.action.resequence.ResequenceAction">
+                class="com.github.mmrsic.idea.plugins.tibasic.ide.actions.resequence.ResequenceAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
         <action
                 id="TiBasic.FormatCode"
-                class="com.github.mmrsic.idea.plugins.tibasic.action.format.FormatAction">
+                class="com.github.mmrsic.idea.plugins.tibasic.ide.actions.format.FormatAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>
         <action
                 id="TiBasic.ShowScreenPreview"
-                class="com.github.mmrsic.idea.plugins.tibasic.action.preview.TiBasicScreenPreviewAction">
+                class="com.github.mmrsic.idea.plugins.tibasic.ide.actions.preview.TiBasicScreenPreviewAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="CodeMenu" anchor="last"/>
         </action>

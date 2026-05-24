@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.calls.collectStaticallyTraceableCallStatements
 
 class TiBasicSoundToneTest : TiBasicTestBase() {
 

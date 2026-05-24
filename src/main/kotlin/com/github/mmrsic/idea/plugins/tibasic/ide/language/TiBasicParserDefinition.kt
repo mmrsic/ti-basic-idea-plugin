@@ -1,0 +1,110 @@
+package com.github.mmrsic.idea.plugins.tibasic.ide.language
+
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicLexer
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.parser.TiBasicNodeTypes
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.parser.TiBasicParser
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicCallStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicExpression
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicFunctionCall
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicTabFunction
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicVariableAccess
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicCloseStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicDataStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicDefStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicDeleteStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicDimStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicDisplayStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicEndStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicForStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicIfStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicInputStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicInvalidLine
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLineNumberListStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicNextStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicOnGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicOnGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicOpenOption
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicOpenStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicOptionBaseStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRandomizeStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicReadStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRemStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRestoreStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicReturnStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicStopStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicUnknownStatement
+import com.intellij.lang.ASTNode
+import com.intellij.lang.ParserDefinition
+import com.intellij.lang.PsiParser
+import com.intellij.lexer.Lexer
+import com.intellij.openapi.project.Project
+import com.intellij.psi.FileViewProvider
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.TokenType
+import com.intellij.psi.tree.IFileElementType
+import com.intellij.psi.tree.TokenSet
+
+class TiBasicParserDefinition : ParserDefinition {
+
+    override fun createLexer(project: Project): Lexer = TiBasicLexer()
+
+    override fun createParser(project: Project): PsiParser = TiBasicParser()
+
+    override fun getFileNodeType(): IFileElementType = TiBasicNodeTypes.FILE
+
+    override fun getWhitespaceTokens(): TokenSet = TokenSet.create(TokenType.WHITE_SPACE)
+
+    override fun getCommentTokens(): TokenSet = TokenSet.EMPTY
+
+    override fun getStringLiteralElements(): TokenSet = TokenSet.create(TiBasicTokenTypes.STRING_LITERAL)
+
+    override fun createElement(node: ASTNode): PsiElement =
+        when (node.elementType) {
+            TiBasicNodeTypes.LINE -> TiBasicLine(node)
+            TiBasicNodeTypes.LET_STATEMENT -> TiBasicLetStatement(node)
+            TiBasicNodeTypes.PRINT_STATEMENT -> TiBasicPrintStatement(node)
+            TiBasicNodeTypes.DISPLAY_STATEMENT -> TiBasicDisplayStatement(node)
+            TiBasicNodeTypes.LINE_NUMBER_LIST_STATEMENT -> TiBasicLineNumberListStatement(node)
+            TiBasicNodeTypes.DELETE_STATEMENT -> TiBasicDeleteStatement(node)
+            TiBasicNodeTypes.REM_STATEMENT -> TiBasicRemStatement(node)
+            TiBasicNodeTypes.END_STATEMENT -> TiBasicEndStatement(node)
+            TiBasicNodeTypes.STOP_STATEMENT -> TiBasicStopStatement(node)
+            TiBasicNodeTypes.RANDOMIZE_STATEMENT -> TiBasicRandomizeStatement(node)
+            TiBasicNodeTypes.GOTO_STATEMENT -> TiBasicGotoStatement(node)
+            TiBasicNodeTypes.GOSUB_STATEMENT -> TiBasicGosubStatement(node)
+            TiBasicNodeTypes.RETURN_STATEMENT -> TiBasicReturnStatement(node)
+            TiBasicNodeTypes.ON_GOTO_STATEMENT -> TiBasicOnGotoStatement(node)
+            TiBasicNodeTypes.ON_GOSUB_STATEMENT -> TiBasicOnGosubStatement(node)
+            TiBasicNodeTypes.IF_STATEMENT -> TiBasicIfStatement(node)
+            TiBasicNodeTypes.FOR_STATEMENT -> TiBasicForStatement(node)
+            TiBasicNodeTypes.NEXT_STATEMENT -> TiBasicNextStatement(node)
+            TiBasicNodeTypes.INPUT_STATEMENT -> TiBasicInputStatement(node)
+            TiBasicNodeTypes.READ_STATEMENT -> TiBasicReadStatement(node)
+            TiBasicNodeTypes.DATA_STATEMENT -> TiBasicDataStatement(node)
+            TiBasicNodeTypes.RESTORE_STATEMENT -> TiBasicRestoreStatement(node)
+            TiBasicNodeTypes.CALL_STATEMENT -> TiBasicCallStatement(node)
+            TiBasicNodeTypes.DEF_STATEMENT -> TiBasicDefStatement(node)
+            TiBasicNodeTypes.DIM_STATEMENT -> TiBasicDimStatement(node)
+            TiBasicNodeTypes.OPTION_BASE_STATEMENT -> TiBasicOptionBaseStatement(node)
+            TiBasicNodeTypes.OPEN_STATEMENT -> TiBasicOpenStatement(node)
+            TiBasicNodeTypes.CLOSE_STATEMENT -> TiBasicCloseStatement(node)
+            TiBasicNodeTypes.OPEN_OPTION -> TiBasicOpenOption(node)
+            TiBasicNodeTypes.UNKNOWN_STATEMENT -> TiBasicUnknownStatement(node)
+            TiBasicNodeTypes.INVALID_LINE -> TiBasicInvalidLine(node)
+            TiBasicNodeTypes.EXPRESSION -> TiBasicExpression(node)
+            TiBasicNodeTypes.VARIABLE_ACCESS -> TiBasicVariableAccess(node)
+            TiBasicNodeTypes.FUNCTION_CALL -> TiBasicFunctionCall(node)
+            TiBasicNodeTypes.TAB_FUNCTION -> TiBasicTabFunction(node)
+            else -> throw IllegalArgumentException("Unknown element type: ${node.elementType}")
+        }
+
+    override fun createFile(viewProvider: FileViewProvider): PsiFile = TiBasicFile(viewProvider)
+}

@@ -1,0 +1,106 @@
+package com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow
+
+import com.github.mmrsic.idea.plugins.tibasic.ide.language.fileTypeExtensions
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
+import com.intellij.openapi.fileEditor.FileEditorManagerListener.FILE_EDITOR_MANAGER
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.table.JBTable
+import java.awt.BorderLayout
+import javax.swing.JComponent
+import javax.swing.JLabel
+import javax.swing.JPanel
+import javax.swing.JToolBar
+
+abstract class TiBasicFileToolWindowContent(
+    protected val project: Project,
+) : JPanel(BorderLayout()), Disposable {
+
+    protected val fileLabel = JLabel(" ")
+    protected var currentFile: TiBasicFile? = null
+
+    protected fun initializeToolWindow(table: JBTable) {
+        add(JBScrollPane(table), BorderLayout.CENTER)
+        setupToolbar()
+        installDocumentListener()
+        installFileEditorListener()
+        refresh()
+    }
+
+    protected abstract fun refreshForFile(file: TiBasicFile?)
+
+    protected open fun toolbarComponents(): List<JComponent> = emptyList()
+
+    protected fun <T> computeReadAction(action: () -> T): T =
+        ReadAction.compute<T, RuntimeException> { action() }
+
+    protected fun navigateToOffset(offset: Int) {
+        val file = currentFile ?: return
+        val vFile = file.virtualFile ?: return
+        com.intellij.openapi.fileEditor.OpenFileDescriptor(project, vFile, offset).navigate(true)
+    }
+
+    protected fun currentTiBasicFile(): TiBasicFile? {
+        val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return null
+        val document = editor.document
+        return PsiDocumentManager.getInstance(project).getPsiFile(document) as? TiBasicFile
+    }
+
+    override fun dispose() = Unit
+
+    private fun setupToolbar() {
+        val toolbar = JToolBar().also { it.isFloatable = false }
+        toolbar.add(fileLabel)
+        toolbarComponents().forEach { component ->
+            toolbar.addSeparator()
+            toolbar.add(component)
+        }
+        add(toolbar, BorderLayout.NORTH)
+    }
+
+    private fun refresh() {
+        val (psiFile, fileLabelText) = computeReadAction {
+            val activeFile = currentTiBasicFile()
+            activeFile to if (activeFile != null) " ${activeFile.name}" else " (no TI-Basic file active)"
+        }
+        currentFile = psiFile
+        fileLabel.text = fileLabelText
+        refreshForFile(psiFile)
+    }
+
+    private fun installDocumentListener() {
+        val psiDocumentManager = PsiDocumentManager.getInstance(project)
+        com.intellij.openapi.editor.EditorFactory.getInstance().eventMulticaster
+            .addDocumentListener(object : com.intellij.openapi.editor.event.DocumentListener {
+                override fun documentChanged(event: com.intellij.openapi.editor.event.DocumentEvent) {
+                    val currentVirtualFile = currentFile?.virtualFile ?: return
+                    val changedVirtualFile = FileDocumentManager.getInstance().getFile(event.document) ?: return
+                    if (changedVirtualFile != currentVirtualFile || changedVirtualFile.extension !in fileTypeExtensions) {
+                        return
+                    }
+                    psiDocumentManager.performWhenAllCommitted {
+                        if (!project.isDisposed && currentFile?.virtualFile == changedVirtualFile) {
+                            refresh()
+                        }
+                    }
+                }
+            }, this)
+    }
+
+    private fun installFileEditorListener() {
+        project.messageBus.connect(this).subscribe(
+            FILE_EDITOR_MANAGER,
+            object : FileEditorManagerListener {
+                override fun fileOpened(source: FileEditorManager, file: VirtualFile) = refresh()
+                override fun selectionChanged(event: com.intellij.openapi.fileEditor.FileEditorManagerEvent) = refresh()
+            },
+        )
+    }
+}

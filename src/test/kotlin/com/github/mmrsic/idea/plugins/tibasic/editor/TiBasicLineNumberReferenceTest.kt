@@ -1,8 +1,8 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
-import com.github.mmrsic.idea.plugins.tibasic.ext.resolveReferencedLine
-import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.common.ext.resolveReferencedLine
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLine
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.psi.PsiElement
 

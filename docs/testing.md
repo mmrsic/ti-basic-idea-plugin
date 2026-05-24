@@ -45,23 +45,30 @@ Test files mirror the main source package structure and live at:
 ```
 src/test/kotlin/com/github/mmrsic/idea/plugins/tibasic/
 ├── TiBasicTestBase.kt                  (stays at root — shared by all sub-packages)
-├── action/
-│   ├── format/
-│   │   ├── FormatActionTest.kt
-│   │   ├── FormatCallCodeTest.kt
-│   │   └── FormatCodeTest.kt
-│   └── resequence/
-│       ├── ResequenceLineNumbersTest.kt
-│       └── ResequenceQuickFixTest.kt
+├── ide/
+│   ├── actions/
+│   │   ├── format/
+│   │   │   └── FormatActionTest.kt
+│   │   ├── preview/
+│   │   │   └── TiBasicScreenPreviewActionTest.kt
+│   │   └── resequence/
+│   │       └── ResequenceQuickFixTest.kt
+│   ├── editor/
+│   │   └── documentation/
+│   │       └── TiBasicCharacterCodeDocumentationTest.kt
+│   ├── debug/
+│   │   └── TiBasicDebugSessionTest.kt
+│   ├── findusages/
+│   │   ├── TiBasicFindUsagesHandlerTest.kt
+│   │   └── TiBasicFindUsagesTest.kt
+│   └── language/
+│       └── IconLoadTest.kt
 ├── editor/
 │   ├── TiBasicCallCharLineMarkerTest.kt
 │   ├── TiBasicCallColorLineMarkerTest.kt
 │   ├── TiBasicCallScreenLineMarkerTest.kt
 │   ├── TiBasicCompletionTest.kt
 │   └── TiBasicShiftEnterHandlerTest.kt
-├── findusages/
-│   ├── TiBasicFindUsagesHandlerTest.kt
-│   └── TiBasicFindUsagesTest.kt
 ├── highlight/
 │   ├── TiBasicAnnotatorTest.kt
 │   ├── TiBasicCallAnnotatorTest.kt
@@ -70,18 +77,40 @@ src/test/kotlin/com/github/mmrsic/idea/plugins/tibasic/
 │   ├── TiBasicFunctionCallAnnotatorTest.kt
 │   ├── TiBasicOpenCloseAnnotatorTest.kt
 │   └── TiBasicSyntaxHighlightingTest.kt
-├── lang/
-│   └── IconLoadTest.kt
-├── parser/
-│   ├── TiBasicCallParserTest.kt
-│   ├── TiBasicDefParserTest.kt
-│   ├── TiBasicDimParserTest.kt
-│   ├── TiBasicFunctionCallParserTest.kt
-│   ├── TiBasicOpenCloseParserTest.kt
-│   └── TiBasicParserTest.kt
-└── toolwindow/
-    ├── TiBasicVariableCollectorTest.kt
-    └── TiBasicVariableToolWindowContentTest.kt
+├── language/
+│   ├── format/
+│   │   ├── FormatCallCodeTest.kt
+│   │   ├── FormatCodeTest.kt
+│   │   └── ResequenceLineNumbersTest.kt
+│   ├── analysis/
+│   │   ├── calls/
+│   │   │   ├── TiBasicCallColorAssignmentCollectorTest.kt
+│   │   │   └── TiBasicCharacterDefinitionCollectorTest.kt
+│   │   └── variables/
+│   │       └── TiBasicVariableCollectorTest.kt
+│   ├── runtime/
+│   │   └── screen/
+│   │       └── TiBasicScreenPreviewEvaluatorTest.kt
+│   ├── syntax/
+│   │   ├── ParenUtilsTest.kt
+│   │   └── parser/
+│   │       ├── TiBasicCallParserTest.kt
+│   │       ├── TiBasicDefParserTest.kt
+│   │       ├── TiBasicDimParserTest.kt
+│   │       ├── TiBasicFunctionCallParserTest.kt
+│   │       ├── TiBasicOpenCloseParserTest.kt
+│   │       └── TiBasicParserTest.kt
+│   └── values/
+│       └── TiBasicRadix100Test.kt
+└── ide/
+    └── toolwindow/
+        ├── characters/
+        │   └── TiBasicCharacterDefinitionsToolWindowContentTest.kt
+        ├── debug/
+        │   └── TiBasicDebugToolWindowContentTest.kt
+        └── variables/
+            ├── TiBasicVariableCellRendererTest.kt
+            └── TiBasicVariableToolWindowContentTest.kt
 ```
 
 Each test file is in the same package as the class(es) it tests. `TiBasicTestBase` stays
@@ -89,7 +118,7 @@ at the root because it is imported by tests in multiple sub-packages.
 
 ## Writing tests
 
-### Parser tests (`parser/TiBasicParserTest`)
+### Parser tests (`language/syntax/parser/TiBasicParserTest`)
 
 Call `configureFile(text)` and then inspect the PSI tree structure:
 

@@ -2,7 +2,7 @@ package com.github.mmrsic.idea.plugins.tibasic.editor
 
 import com.intellij.lang.BracePair
 import junit.framework.TestCase
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
 
 class TiBasicBraceMatcherTest : TestCase() {
 

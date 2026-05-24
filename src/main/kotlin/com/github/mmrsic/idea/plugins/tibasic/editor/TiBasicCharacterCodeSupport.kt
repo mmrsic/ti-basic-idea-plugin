@@ -1,20 +1,24 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
-import com.github.mmrsic.idea.plugins.tibasic.ext.nonWhitespaceChildren
-import com.github.mmrsic.idea.plugins.tibasic.lexer.TiBasicTokenTypes
-import com.github.mmrsic.idea.plugins.tibasic.parser.TiBasicNodeTypes
-import com.github.mmrsic.idea.plugins.tibasic.psi.TiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.containingTiBasicFile
-import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicCallStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicExpression
-import com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicFunctionCall
-import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicDataStatement
-import com.github.mmrsic.idea.plugins.tibasic.psi.statement.TiBasicLine
-import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableCollector
-import com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicVariableType
-import com.github.mmrsic.idea.plugins.tibasic.util.parseTiBasicDecimalLiteral
-import com.github.mmrsic.idea.plugins.tibasic.util.tiBasicDecimalString
-import com.github.mmrsic.idea.plugins.tibasic.util.tiBasicRadix100Number
+import com.github.mmrsic.idea.plugins.tibasic.common.ext.nonWhitespaceChildren
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.UNARY_EXPRESSION_OPERATOR_TYPES
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.calls.TiBasicCallCharDefinition
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.calls.collectCallCharDefinitions
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.resolveNumericExpressionValue
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.parser.TiBasicNodeTypes
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.containingTiBasicFile
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicCallStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicExpression
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicFunctionCall
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicDataStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLine
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.variables.TiBasicVariableCollector
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.variables.TiBasicVariableType
+import com.github.mmrsic.idea.plugins.tibasic.language.values.parseTiBasicDecimalLiteral
+import com.github.mmrsic.idea.plugins.tibasic.language.values.tiBasicDecimalString
+import com.github.mmrsic.idea.plugins.tibasic.language.values.tiBasicRadix100Number
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
@@ -156,7 +160,7 @@ internal fun resolveConstantStringValue(expression: TiBasicExpression?, file: Ti
     val child = children.first()
     return when (child.elementType) {
         TiBasicTokenTypes.STRING_LITERAL -> child.text.removePrefix("\"").removeSuffix("\"")
-        TiBasicNodeTypes.VARIABLE_ACCESS -> (child.psi as? com.github.mmrsic.idea.plugins.tibasic.psi.expression.TiBasicVariableAccess)
+        TiBasicNodeTypes.VARIABLE_ACCESS -> (child.psi as? com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicVariableAccess)
             ?.takeIf { variableAccess -> variableAccess.name?.endsWith('$') == true }
             ?.let { variableAccess -> file?.let { currentFile -> TiBasicVariableCollector.constantValueOf(variableAccess, currentFile) } }
             ?.removePrefix("\"")
