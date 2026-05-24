@@ -112,6 +112,51 @@ class TiBasicScreenPreviewEvaluatorTest : TiBasicTestBase() {
         assertEquals(TiColor.DarkBlue, preview.cellAt(1, 1).bg)
     }
 
+    fun `test CALL SCREEN rounds decimal colors before applying the screen background`() {
+        val file = configureFile(
+            """
+            100 CALL HCHAR(1,1,65)
+            110 CALL SCREEN(4.6)
+            """.trimIndent(),
+        )
+
+        val preview = evaluateSelectedScreenPreview(file.lines())
+
+        assertEquals(TiColor.DarkBlue, preview.cellAt(1, 1).bg)
+    }
+
+    fun `test transparent CALL COLOR entries use the current CALL SCREEN background`() {
+        val file = configureFile(
+            """
+            100 CALL SCREEN(5)
+            110 CALL COLOR(5,1,1)
+            120 CALL HCHAR(1,1,65)
+            """.trimIndent(),
+        )
+
+        val preview = evaluateSelectedScreenPreview(file.lines())
+        val cell = preview.cellAt(1, 1)
+
+        assertEquals(TiColor.DarkBlue, cell.fg)
+        assertEquals(TiColor.DarkBlue, cell.bg)
+    }
+
+    fun `test transparent CALL SCREEN is treated like black for transparent CALL COLOR entries`() {
+        val file = configureFile(
+            """
+            100 CALL SCREEN(1)
+            110 CALL COLOR(5,1,3)
+            120 CALL HCHAR(1,1,65)
+            """.trimIndent(),
+        )
+
+        val preview = evaluateSelectedScreenPreview(file.lines())
+        val cell = preview.cellAt(1, 1)
+
+        assertEquals(TiColor.Black, cell.fg)
+        assertEquals(TiColor.MediumGreen, cell.bg)
+    }
+
     fun `test CALL CLEAR resets screen contents and preview state`() {
         val file = configureFile(
             """

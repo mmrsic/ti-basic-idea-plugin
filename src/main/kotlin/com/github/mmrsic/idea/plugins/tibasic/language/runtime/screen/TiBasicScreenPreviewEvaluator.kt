@@ -2,9 +2,11 @@ package com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen
 
 import com.github.mmrsic.idea.plugins.tibasic.editor.asciiCharacterName
 import com.github.mmrsic.idea.plugins.tibasic.editor.callColorCharacterSetRange
+import com.github.mmrsic.idea.plugins.tibasic.editor.displayedScreenBackground
 import com.github.mmrsic.idea.plugins.tibasic.editor.normalizeHexPattern
+import com.github.mmrsic.idea.plugins.tibasic.editor.roundedScreenColorAt
 import com.github.mmrsic.idea.plugins.tibasic.editor.tiColorAt
-import com.github.mmrsic.idea.plugins.tibasic.language.analysis.resolveNumericExpressionValue
+import com.github.mmrsic.idea.plugins.tibasic.language.analysis.resolveDecimalExpressionValue
 import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicCallStatement
@@ -17,6 +19,7 @@ import com.github.mmrsic.idea.plugins.tibasic.language.analysis.variables.TiBasi
 import com.intellij.openapi.editor.SelectionModel
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import java.math.BigDecimal
 
 internal const val TI_BASIC_SCREEN_COLUMNS = 32
 internal const val TI_BASIC_SCREEN_ROWS = 24
@@ -100,7 +103,7 @@ private data class TiBasicMutableScreenState(
 }
 
 private data class TiBasicPreviewEvaluationContext(
-    val numericVariables: MutableMap<String, Int> = mutableMapOf(),
+    val numericVariables: MutableMap<String, BigDecimal> = mutableMapOf(),
     val stringVariables: MutableMap<String, String> = mutableMapOf(),
     val warnings: MutableList<String> = mutableListOf(),
     val screenState: TiBasicMutableScreenState = TiBasicMutableScreenState(),
@@ -155,10 +158,14 @@ private fun buildPreviewCells(screenState: TiBasicMutableScreenState): List<List
     }
 
 private fun colorsForCode(code: Int, screenState: TiBasicMutableScreenState): TiBasicScreenColors {
-    return screenState.characterSetColors.entries
+    val colors = screenState.characterSetColors.entries
         .firstOrNull { (set, _) -> code in (callColorCharacterSetRange(set) ?: IntRange.EMPTY) }
         ?.value
         ?: DEFAULT_SCREEN_COLORS.copy(bg = screenState.screenColor)
+    return TiBasicScreenColors(
+        fg = colors.fg.takeUnless { color -> color == TiColor.Transparent } ?: screenState.screenColor,
+        bg = colors.bg.takeUnless { color -> color == TiColor.Transparent } ?: screenState.screenColor,
+    )
 }
 
 private fun printableAsciiCharacter(code: Int): String? =
@@ -182,7 +189,7 @@ private fun applySelectedLetStatement(
             context.stringVariables[variableName] = resolved
         } ?: context.stringVariables.remove(variableName)
     } else {
-        resolveSelectedNumericValue(rhs, context)?.let { resolved ->
+        resolveSelectedDecimalValue(rhs, context)?.let { resolved ->
             context.numericVariables[variableName] = resolved
         } ?: context.numericVariables.remove(variableName)
     }
@@ -304,22 +311,33 @@ private fun applyCallScreen(
 ) {
     val color = statement.arguments()
         .getOrNull(0)
-        ?.let { expr -> resolveSelectedNumericValue(expr, context) }
-        ?.let(::tiColorAt)
+        ?.let { expr -> resolveSelectedScreenColor(expr, context) }
     if (color == null) {
         context.warning(line, "skipped CALL SCREEN because the color is not statically resolvable in the selection")
         return
     }
-    context.screenState.screenColor = color
+    context.screenState.screenColor = displayedScreenBackground(color)
 }
 
 private fun resolveSelectedNumericValue(
     expression: TiBasicExpression?,
     context: TiBasicPreviewEvaluationContext,
 ): Int? =
-    resolveNumericExpressionValue(expression) { variableAccess ->
+    resolveSelectedDecimalValue(expression, context)?.toIntExactOrNull()
+
+private fun resolveSelectedDecimalValue(
+    expression: TiBasicExpression?,
+    context: TiBasicPreviewEvaluationContext,
+): BigDecimal? =
+    resolveDecimalExpressionValue(expression) { variableAccess ->
         variableAccess.name?.let(context.numericVariables::get)
     }
+
+private fun resolveSelectedScreenColor(
+    expression: TiBasicExpression,
+    context: TiBasicPreviewEvaluationContext,
+): TiColor? =
+    roundedScreenColorAt(resolveSelectedDecimalValue(expression, context))
 
 private fun resolveSelectedStringValue(
     expression: TiBasicExpression?,
@@ -337,6 +355,9 @@ private fun resolveSelectedStringValue(
             ?.removeSuffix("\"")
     }
 }
+
+private fun BigDecimal.toIntExactOrNull(): Int? =
+    runCatching { intValueExact() }.getOrNull()
 
 private fun invalidateWrittenVariables(
     statement: PsiElement?,

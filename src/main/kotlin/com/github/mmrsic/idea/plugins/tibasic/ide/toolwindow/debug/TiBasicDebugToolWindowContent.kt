@@ -128,6 +128,11 @@ class TiBasicDebugToolWindowContent(
         statusLabel.text = " ${TiBasicDebugMetadata.message(session.status.bundleKey)}"
         messageLabel.text = session.statusMessage ?: " "
         currentSourceLineIndex = session.currentSourceLineIndex
+        screenComponent.state = screenComponent.state.copy(
+            screenBackground = session.screenContents.screenBackground,
+            characterCodes = session.screenContents.characterCodes,
+            characterPatterns = session.screenContents.characterPatterns,
+        )
         stepButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         stopButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         inspectButton.isEnabled = true

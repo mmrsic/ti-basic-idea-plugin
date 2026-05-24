@@ -97,6 +97,38 @@ class TiBasicCharacterDefinitionsToolWindowContentTest : TiBasicTestBase() {
         )
     }
 
+    fun `test transparent CALL COLOR variants use the active CALL SCREEN background color`() {
+        val content = TiBasicCharacterDefinitionsToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+
+        myFixture.configureByText(
+            "test.tibasic",
+            """
+            100 CALL SCREEN(5)
+            110 CALL CHAR(65,"FF")
+            120 CALL COLOR(5,1,16)
+            130 CALL SCREEN(1)
+            140 CALL COLOR(5,1,1)
+            """.trimIndent(),
+        )
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val icons = tableModel(content).getValueAt(0, CHARACTER_ICON_COLUMN) as TiBasicCharacterIcons
+        assertEquals(
+            listOf(
+                TiBasicCharacterColorVariant(
+                    fg = com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor.DarkBlue,
+                    bg = com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor.White,
+                ),
+                TiBasicCharacterColorVariant(
+                    fg = com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor.Black,
+                    bg = com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor.Black,
+                ),
+            ),
+            icons.colorVariants,
+        )
+    }
+
     fun `test repeated visual character definitions keep separate codes`() {
         val content = TiBasicCharacterDefinitionsToolWindowContent(project)
         Disposer.register(testRootDisposable, content)

@@ -42,6 +42,21 @@ class TiBasicCallColorAssignmentCollectorTest : TiBasicTestBase() {
         assertEquals(120, assignments.single().lineNumber)
     }
 
+    fun `test collector tracks the active CALL SCREEN background for transparent CALL COLOR values`() {
+        val file = configureFile(
+            """
+            100 CALL SCREEN(5)
+            110 CALL COLOR(5,1,16)
+            120 CALL SCREEN(1)
+            130 CALL COLOR(5,1,1)
+            """.trimIndent(),
+        )
+
+        val assignments = collectCallColorAssignments(file)
+
+        assertEquals(listOf(TiColor.DarkBlue, TiColor.Black), assignments.map { it.screenBackground })
+    }
+
     fun `test collector omits invalid or unresolved CALL COLOR assignments`() {
         val file = configureFile(
             """

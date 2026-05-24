@@ -43,6 +43,23 @@ class TiBasicCallScreenLineMarkerTest : TiBasicTestBase() {
         assertTrue("Out-of-range color must show Transparent", tooltip.contains("Transparent"))
     }
 
+    fun `test gutter icon rounds CALL SCREEN numeric literals to the nearest TI color`() {
+        configureFile("100 CALL SCREEN(4.6)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals(1, gutters.size)
+        val tooltip = gutters[0].tooltipText ?: ""
+        assertTrue("Rounded CALL SCREEN value 4.6 must resolve to DarkBlue", tooltip.contains("DarkBlue"))
+    }
+
+    fun `test gutter icon treats transparent CALL SCREEN as black background`() {
+        configureFile("100 CALL SCREEN(1)")
+        val gutters = myFixture.findAllGutters()
+        assertEquals(1, gutters.size)
+        val tooltip = gutters[0].tooltipText ?: ""
+        assertTrue("CALL SCREEN(1) must display Black as the effective background", tooltip.contains("Black"))
+        assertFalse("CALL SCREEN(1) must not display Transparent as the effective background", tooltip.contains("Transparent"))
+    }
+
     fun `test gutter icon does not appear for CALL CHAR`() {
         configureFile("100 CALL CHAR(96,\"0000000000000000\")")
         val gutters = myFixture.findAllGutters()

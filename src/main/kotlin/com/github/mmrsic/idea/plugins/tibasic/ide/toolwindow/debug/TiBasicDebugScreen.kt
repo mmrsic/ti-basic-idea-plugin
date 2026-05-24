@@ -2,6 +2,8 @@ package com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.debug
 
 import com.github.mmrsic.idea.plugins.tibasic.editor.asciiCharacterName
 import com.github.mmrsic.idea.plugins.tibasic.editor.paintTiBasicCharPattern
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.INITIAL_SCREEN_BACKGROUND
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.initialDebugScreenCharacterCodes
 import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
 import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_COLUMNS
 import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_ROWS
@@ -31,22 +33,10 @@ internal data class TiBasicDebugScreenState(
                 screenBackground = INITIAL_SCREEN_BACKGROUND,
                 characterForeground = INITIAL_CHARACTER_FOREGROUND,
                 characterBackground = INITIAL_CHARACTER_BACKGROUND,
-                characterCodes = initialCharacterCodes(),
+                characterCodes = initialDebugScreenCharacterCodes(),
             )
     }
 }
-
-private fun initialCharacterCodes(): List<List<Int>> =
-    List(TI_BASIC_SCREEN_ROWS) { rowIndex ->
-        MutableList(TI_BASIC_SCREEN_COLUMNS) { TI_BASIC_SPACE_CHARACTER_CODE }
-            .also { row ->
-                if (rowIndex == INITIAL_RUN_PROMPT_ROW_INDEX) {
-                    INITIAL_RUN_PROMPT.forEachIndexed { offset, character ->
-                        row[INITIAL_RUN_PROMPT_COLUMN_INDEX + offset] = character.code
-                    }
-                }
-            }
-    }
 
 internal class TiBasicDebugScreenComponent(
     internal var state: TiBasicDebugScreenState = TiBasicDebugScreenState.initial(),
@@ -165,11 +155,7 @@ private const val DEBUG_SCREEN_HEIGHT = TI_BASIC_SCREEN_ROWS * DEBUG_SCREEN_CELL
 private const val DEBUG_SCREEN_FONT_SIZE = 8
 private const val DEBUG_SCREEN_HEX_WIDTH = 2
 private const val DEBUG_SCREEN_TEXT_BASELINE_ADJUSTMENT = 1
-private const val INITIAL_RUN_PROMPT_ROW_INDEX = 22
-private const val INITIAL_RUN_PROMPT_COLUMN_INDEX = 2
-private const val INITIAL_RUN_PROMPT = "> run"
 private const val DEBUG_SCREEN_SHADE_LIGHT = 0xD3D3D3
 private const val DEBUG_SCREEN_SHADE_DARK = 0x8C8C8C
-private val INITIAL_SCREEN_BACKGROUND = TiColor.LightGreen
 private val INITIAL_CHARACTER_FOREGROUND = TiColor.Black
 private val INITIAL_CHARACTER_BACKGROUND = TiColor.Transparent

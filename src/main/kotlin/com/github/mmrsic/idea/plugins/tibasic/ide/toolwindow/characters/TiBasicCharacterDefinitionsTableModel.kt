@@ -107,7 +107,12 @@ internal fun buildCharacterDefinitionEntries(
                     colorVariants = colorAssignments
                         .asSequence()
                         .filter { assignment -> representativeDefinition.code in assignment.codeRange }
-                        .map { assignment -> TiBasicCharacterColorVariant(assignment.fg, assignment.bg) }
+                        .map { assignment ->
+                            TiBasicCharacterColorVariant(
+                                fg = assignment.fg.takeUnless { color -> color == TiColor.Transparent } ?: assignment.screenBackground,
+                                bg = assignment.bg.takeUnless { color -> color == TiColor.Transparent } ?: assignment.screenBackground,
+                            )
+                        }
                         .filterNot { variant -> variant.fg == TiColor.Black && variant.bg == TiColor.White }
                         .distinctBy { variant -> variant.fg to variant.bg }
                         .toList(),

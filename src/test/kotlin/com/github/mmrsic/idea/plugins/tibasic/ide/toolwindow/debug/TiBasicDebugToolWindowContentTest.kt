@@ -257,6 +257,70 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertTrue(shadedAreaRgb != insideScreenRgb)
     }
 
+    fun `test debug tool window shows cleared screen after CALL CLEAR step`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 CALL CLEAR
+            110 PRINT "HELLO"
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(content.screenComponent.state.characterCodes.flatten().all { code -> code == 32 })
+    }
+
+    fun `test debug tool window updates screen background after CALL SCREEN step`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 CALL SCREEN(2)
+            110 PRINT "HELLO"
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("Black", content.screenComponent.state.screenBackground.name)
+    }
+
+    fun `test debug tool window renders PRINT output in the screen area`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 PRINT "HI"
+            110 PRINT "NEXT"
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals('H'.code, content.screenComponent.state.characterCodes[22][2])
+        assertEquals('I'.code, content.screenComponent.state.characterCodes[22][3])
+        assertEquals('N'.code, content.screenComponent.state.characterCodes[23][2])
+        assertEquals('E'.code, content.screenComponent.state.characterCodes[23][3])
+        assertEquals('X'.code, content.screenComponent.state.characterCodes[23][4])
+        assertEquals('T'.code, content.screenComponent.state.characterCodes[23][5])
+    }
+
     fun `test debug tool window scales screen to available space while keeping aspect ratio`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)

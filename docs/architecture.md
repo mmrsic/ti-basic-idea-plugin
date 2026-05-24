@@ -342,7 +342,7 @@ Recommended structure:
 - a keyboard-input pane appears for supported `CALL KEY` modes and feeds rounded scan-result input
   back into the paused debug session before the next step; the pane also shows the effective mode's
   allowed code ranges directly next to the mode label
-- a TI screen pane sits to the right of the listing and starts as a 24x32 grid of ASCII space characters with screen background color `4` and default character colors `2` on `1`; cells render through the shared TI character-pattern registry, so built-in glyphs and `CALL CHAR` overrides use the same 8x8 pixel patterns as other screen previews
+- a TI screen pane sits to the right of the listing and starts as a 24x32 grid of ASCII space characters with screen background color `4` and default character colors `2` on `1`; screen `PRINT` output is written into the 28-column text window from columns `3..30`, wraps after 28 characters, treats `:` as a line-feed separator, and applies an implicit trailing `:` when the `PRINT` statement ends without a separator; cells render through the shared TI character-pattern registry, so built-in glyphs and `CALL CHAR` overrides use the same 8x8 pixel patterns as other screen previews
 - dedicated numeric- and string-variable panes show all known scalar debugger variables together
   with their TI-Basic internal encodings and normal display values
 - a dedicated string-variable pane shows all known scalar string variables in TI-Basic internal storage format (
@@ -497,22 +497,25 @@ the tool window:
 
 Resolution reuses the existing helpers `resolveConstantNumericValue`,
 `resolveConstantStringValue`, `normalizeHexPattern`, `asciiCharacterName`,
-`callColorCharacterSetRange`, and `tiColorAt`. This lets the tool window collect both
+`callColorCharacterSetRange`, `tiColorAt`, and the rounded `CALL SCREEN` color resolver. This lets the tool window collect both
 direct literal/constant-variable definitions, simple statically resolvable numeric code
 expressions, array-element aliases such as `F$(I)` after a statically known `LET F$(I)=...`,
 and color assignments that can be traced conservatively through the same static control flow.
+Each collected `CALL COLOR` assignment also carries the active screen background at that point so
+transparent foreground/background colors can render against the same background the TI screen would
+use, with `SCREEN(1)` normalized to black.
 Definitions or color assignments whose required values are still not statically determinable
 are omitted.
 
 ### Tool-window table
 
-| Index                          | Name    | Content                                                                                                |
-|--------------------------------|---------|--------------------------------------------------------------------------------------------------------|
-| 0 (`CHARACTER_CODE_COLUMN`)    | Code    | Integer character code                                                                                 |
-| 1 (`CHARACTER_ASCII_COLUMN`)   | ASCII   | ASCII name/character or empty                                                                          |
-| 2 (`CHARACTER_PATTERN_COLUMN`) | Pattern | Normalized 16-digit hex pattern                                                                        |
-| 3 (`CHARACTER_ICON_COLUMN`)    | Icon    | Base `TiBasicCharPatternIcon` plus distinct `TiBasicColoredCharPatternIcon` variants from `CALL COLOR` |
-| 4 (`CHARACTER_LINE_COLUMN`)    | Lines   | Sorted `List<TiBasicCharacterDefinitionOccurrence>`; rendered as clickable line-number list            |
+| Index                          | Name    | Content                                                                                                                                                                             |
+|--------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0 (`CHARACTER_CODE_COLUMN`)    | Code    | Integer character code                                                                                                                                                              |
+| 1 (`CHARACTER_ASCII_COLUMN`)   | ASCII   | ASCII name/character or empty                                                                                                                                                       |
+| 2 (`CHARACTER_PATTERN_COLUMN`) | Pattern | Normalized 16-digit hex pattern                                                                                                                                                     |
+| 3 (`CHARACTER_ICON_COLUMN`)    | Icon    | Base `TiBasicCharPatternIcon` plus distinct `TiBasicColoredCharPatternIcon` variants from `CALL COLOR`, resolved against the active `CALL SCREEN` background for transparent colors |
+| 4 (`CHARACTER_LINE_COLUMN`)    | Lines   | Sorted `List<TiBasicCharacterDefinitionOccurrence>`; rendered as clickable line-number list                                                                                         |
 
 ## Annotator checks
 

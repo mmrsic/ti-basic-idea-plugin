@@ -503,7 +503,9 @@ with IntelliJ's theme system while keeping the fixed TI color palette.
 Displays a solid 16×16 color square in the gutter for every `CALL SCREEN(colorCode)` line.
 `colorCode` may be an integer literal, a **constant numeric variable**, or another simple
 statically resolvable numeric expression. The square is filled with the single TI color the screen
-background is set to. If the argument cannot be resolved to a valid color index, the square is
+background is set to. Decimal results are rounded with `HALF_UP` before mapping through
+`TiColor.at(index)`, and `SCREEN(1)` is displayed as black because transparent screen backgrounds
+behave like TI color `2`. If the argument cannot be resolved to a valid color index, the square is
 rendered as a checkerboard (Transparent). Colors map via `TiColor.at(index)`
 (1-based, same as CALL COLOR). Rendering uses `TiBasicScreenColorIcon`.
 

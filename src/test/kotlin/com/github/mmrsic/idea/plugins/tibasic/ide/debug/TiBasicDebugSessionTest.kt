@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.ide.debug
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
+import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
 
 class TiBasicDebugSessionTest : TiBasicTestBase() {
 
@@ -60,6 +61,117 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         session = session.step()
 
         assertEquals(120, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test CALL CLEAR sets all screen positions to code 32`() {
+        var session = startSession(
+            """
+            100 CALL CLEAR
+            110 PRINT "A"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertTrue(session.screenContents.characterCodes.flatten().all { code -> code == 32 })
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test CALL SCREEN updates debug screen background`() {
+        var session = startSession(
+            """
+            100 CALL SCREEN(2)
+            110 PRINT "A"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals(TiColor.Black, session.screenContents.screenBackground)
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test CALL SCREEN treats transparent color as black in debugger`() {
+        var session = startSession(
+            """
+            100 CALL SCREEN(1)
+            110 PRINT "A"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals(TiColor.Black, session.screenContents.screenBackground)
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test PRINT writes evaluated string output into row 24 from column 3`() {
+        var session = startSession("100 PRINT \"HI\"")
+
+        session = session.step()
+
+        assertEquals(72, session.screenContents.characterCodes[23][2])
+        assertEquals(73, session.screenContents.characterCodes[23][3])
+        assertEquals(32, session.screenContents.characterCodes[23][0])
+        assertEquals(32, session.screenContents.characterCodes[23][1])
+        assertEquals(32, session.screenContents.characterCodes[23][30])
+        assertEquals(32, session.screenContents.characterCodes[23][31])
+    }
+
+    fun `test PRINT wraps after twenty eight characters and leaves outer columns unchanged`() {
+        var session = startSession("100 PRINT \"ABCDEFGHIJKLMNOPQRSTUVWXYZ12!\"")
+
+        session = session.step()
+
+        assertEquals("ABCDEFGHIJKLMNOPQRSTUVWXYZ12", screenText(session, 23, 3, 28))
+        assertEquals("!", session.screenContents.characterCodes[23][2].toChar().toString())
+        assertEquals(32, session.screenContents.characterCodes[23][0])
+        assertEquals(32, session.screenContents.characterCodes[23][1])
+        assertEquals(32, session.screenContents.characterCodes[23][30])
+        assertEquals(32, session.screenContents.characterCodes[23][31])
+    }
+
+    fun `test PRINT colon separator performs a line feed`() {
+        var session = startSession("100 PRINT \"A\":\"B\"")
+
+        session = session.step()
+
+        assertEquals('A'.code, session.screenContents.characterCodes[22][2])
+        assertEquals('B'.code, session.screenContents.characterCodes[23][2])
+    }
+
+    fun `test PRINT without trailing separator performs implicit line feed before next print`() {
+        var session = startSession(
+            """
+            100 PRINT "A"
+            110 PRINT "B"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals('A'.code, session.screenContents.characterCodes[22][2])
+        assertEquals('B'.code, session.screenContents.characterCodes[23][2])
+    }
+
+    fun `test PRINT with two trailing colons leaves one blank bottom line`() {
+        var session = startSession("100 PRINT \"HELLO\"::")
+
+        session = session.step()
+
+        assertEquals("HELLO", screenText(session, 23, 3, 5))
+        assertEquals("     ", screenText(session, 24, 3, 5))
+    }
+
+    fun `test PRINT with three trailing colons leaves two blank bottom lines`() {
+        var session = startSession("100 PRINT \"HELLO\":::")
+
+        session = session.step()
+
+        assertEquals("HELLO", screenText(session, 22, 3, 5))
+        assertEquals("     ", screenText(session, 23, 3, 5))
+        assertEquals("     ", screenText(session, 24, 3, 5))
     }
 
     fun `test GOTO jumps to target line`() {
@@ -593,4 +705,9 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         val snapshot = TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document)
         return snapshot.initialSession()
     }
+
+    private fun screenText(session: TiBasicDebugSession, row: Int, column: Int, length: Int): String =
+        (column - 1 until column - 1 + length)
+            .map { index -> session.screenContents.characterCodes[row - 1][index].toChar() }
+            .joinToString(separator = "")
 }

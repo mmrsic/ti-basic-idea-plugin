@@ -2,6 +2,8 @@ package com.github.mmrsic.idea.plugins.tibasic.ide.debug
 
 import com.github.mmrsic.idea.plugins.tibasic.common.ext.allChildren
 import com.github.mmrsic.idea.plugins.tibasic.common.ext.nonWhitespaceChildren
+import com.github.mmrsic.idea.plugins.tibasic.editor.displayedScreenBackground
+import com.github.mmrsic.idea.plugins.tibasic.editor.roundedScreenColorAt
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.UNARY_EXPRESSION_OPERATOR_TYPES
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.firstTopLevelBinaryOperatorIndex
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.isFullyParenthesized
@@ -16,11 +18,15 @@ import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiB
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicEndStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGosubStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGotoStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicPrintStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRemStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicReturnStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicStopStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicUnknownStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_COLUMNS
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_ROWS
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SPACE_CHARACTER_CODE
 import com.github.mmrsic.idea.plugins.tibasic.language.values.parseTiBasicDecimalLiteral
 import com.github.mmrsic.idea.plugins.tibasic.language.values.tiBasicDecimalString
 import com.github.mmrsic.idea.plugins.tibasic.language.values.tiBasicRadix100Number
@@ -60,6 +66,7 @@ internal data class TiBasicDebugProgramSnapshot(
                 status = TiBasicDebugSessionStatus.Paused,
                 currentProgramIndex = FIRST_PROGRAM_INDEX,
                 keyboardScanInput = defaultKeyboardScanInput(programLines[FIRST_PROGRAM_INDEX].semantics),
+                screenContents = TiBasicDebugScreenContents(),
             )
         }
 
@@ -104,15 +111,31 @@ internal data class TiBasicDebugProgramSnapshot(
             is TiBasicEndStatement -> TiBasicDebugLineSemantics.End(isStandaloneKeyword(statement.node, TiBasicTokenTypes.END_KEYWORD))
             is TiBasicStopStatement -> TiBasicDebugLineSemantics.Stop(isStandaloneKeyword(statement.node, TiBasicTokenTypes.STOP_KEYWORD))
             is TiBasicRemStatement -> TiBasicDebugLineSemantics.Rem
+            is TiBasicPrintStatement -> createPrintSemantics(statement)
             is TiBasicLetStatement -> createLetSemantics(statement)
             is TiBasicCallStatement -> createCallSemantics(statement)
             else -> TiBasicDebugLineSemantics.Sequential
         }
 
         private fun createCallSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
-            if (statement.subprogramName() != KEY_SUBPROGRAM_NAME) {
-                return TiBasicDebugLineSemantics.Sequential
+            return when (statement.subprogramName()) {
+                KEY_SUBPROGRAM_NAME -> createCallKeySemantics(statement)
+                CLEAR_SUBPROGRAM_NAME -> if (statement.arguments().isEmpty()) TiBasicDebugLineSemantics.CallClear else TiBasicDebugLineSemantics.IncorrectStatement
+                SCREEN_SUBPROGRAM_NAME -> createCallScreenSemantics(statement)
+                else -> TiBasicDebugLineSemantics.Sequential
             }
+        }
+
+        private fun createCallScreenSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
+            if (!statement.hasArgumentParens() || !statement.hasClosingArgumentParen()) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val argument = statement.arguments().singleOrNull() ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val colorAssignment = createNumericAssignmentFromExpression(argument.node) ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            return TiBasicDebugLineSemantics.CallScreen(colorAssignment)
+        }
+
+        private fun createCallKeySemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
             if (!statement.hasArgumentParens() || !statement.hasClosingArgumentParen()) {
                 return TiBasicDebugLineSemantics.IncorrectStatement
             }
@@ -155,6 +178,26 @@ internal data class TiBasicDebugProgramSnapshot(
                 TiBasicDebugLineSemantics.LetNumeric(targetName, assignment)
             }
         }
+
+        private fun createPrintSemantics(statement: TiBasicPrintStatement): TiBasicDebugLineSemantics {
+            if (statement.isFileOutput()) return TiBasicDebugLineSemantics.Sequential
+            val items = statement.node.nonWhitespaceChildren
+                .drop(1)
+                .mapNotNull(::createPrintItem)
+            return TiBasicDebugLineSemantics.Print(items)
+        }
+
+        private fun createPrintItem(node: ASTNode): TiBasicDebugPrintItem? =
+            when {
+                node.elementType in TiBasicTokenTypes.PRINT_SEPARATORS ->
+                    TiBasicDebugPrintItem.Separator(node.elementType)
+
+                node.elementType == TiBasicNodeTypes.EXPRESSION ->
+                    createStringAssignmentFromExpression(node)?.let(TiBasicDebugPrintItem::StringValue)
+                        ?: createNumericAssignmentFromExpression(node)?.let(TiBasicDebugPrintItem::NumericValue)
+
+                else -> null
+            }
 
         private fun createStringAssignmentFromExpression(expressionNode: ASTNode): TiBasicDebugStringAssignment? {
             val children = expressionNode.nonWhitespaceChildren
@@ -403,6 +446,7 @@ internal data class TiBasicDebugSession(
     val statusMessage: String? = null,
     val keyboardScanInput: String = EMPTY_STRING,
     val lastKeyboardMode: Int? = null,
+    val screenContents: TiBasicDebugScreenContents = TiBasicDebugScreenContents(),
 ) {
     val currentProgramLine: TiBasicDebugProgramLine?
         get() = currentProgramIndex?.let(snapshot.programLines::get)
@@ -450,7 +494,10 @@ internal data class TiBasicDebugSession(
             is TiBasicDebugLineSemantics.Stop -> sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword)
             is TiBasicDebugLineSemantics.LetString -> sessionWithInitializedNumericVariables.applyStringLet(programLine.lineNumber, semantics)
             is TiBasicDebugLineSemantics.LetNumeric -> sessionWithInitializedNumericVariables.applyNumericLet(programLine.lineNumber, semantics)
+            is TiBasicDebugLineSemantics.Print -> sessionWithInitializedNumericVariables.applyPrint(programLine.lineNumber, semantics)
             is TiBasicDebugLineSemantics.CallKey -> sessionWithInitializedNumericVariables.applyCallKey(programLine.lineNumber, semantics)
+            TiBasicDebugLineSemantics.CallClear -> sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber)
+            is TiBasicDebugLineSemantics.CallScreen -> sessionWithInitializedNumericVariables.applyCallScreen(programLine.lineNumber, semantics)
             TiBasicDebugLineSemantics.IncorrectStatement -> incorrectStatement()
         }
     }
@@ -531,6 +578,42 @@ internal data class TiBasicDebugSession(
         )
     }
 
+    private fun applyPrint(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.Print,
+    ): TiBasicDebugSession {
+        var currentSession = this
+        var trailingSeparator: IElementType? = null
+        semantics.items.forEach { item ->
+            when (item) {
+                is TiBasicDebugPrintItem.StringValue -> {
+                    val evaluation = currentSession.evaluateStringAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
+                    currentSession = currentSession
+                        .mergeEvaluations(evaluation)
+                        .writePrintText(evaluation.value.text)
+                    trailingSeparator = null
+                }
+
+                is TiBasicDebugPrintItem.NumericValue -> {
+                    val evaluation = currentSession.evaluateNumericAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
+                    currentSession = currentSession
+                        .mergeEvaluations(evaluation)
+                        .writePrintText(evaluation.value.usualDisplay)
+                    trailingSeparator = null
+                }
+
+                is TiBasicDebugPrintItem.Separator -> {
+                    currentSession = currentSession.applyPrintSeparator(item.tokenType)
+                    trailingSeparator = item.tokenType
+                }
+            }
+        }
+        if (trailingSeparator !in TiBasicTokenTypes.PRINT_SEPARATORS) {
+            currentSession = currentSession.applyPrintSeparator(TiBasicTokenTypes.COLON)
+        }
+        return currentSession.continueAfter(currentLineNumber)
+    }
+
     private fun applyCallKey(
         currentLineNumber: Int,
         semantics: TiBasicDebugLineSemantics.CallKey,
@@ -571,6 +654,72 @@ internal data class TiBasicDebugSession(
             stringVariables = updatedStringVariables,
             lastKeyboardMode = resolvedMode,
         )
+    }
+
+    private fun applyCallClear(currentLineNumber: Int): TiBasicDebugSession =
+        continueAfter(currentLineNumber).copy(
+            screenContents = screenContents.copy(
+                screenBackground = INITIAL_SCREEN_BACKGROUND,
+                characterCodes = blankDebugScreenCharacterCodes(),
+                printCursorRow = INITIAL_PRINT_CURSOR_ROW,
+                printCursorColumn = INITIAL_PRINT_CURSOR_COLUMN,
+            ),
+        )
+
+    private fun applyCallScreen(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.CallScreen,
+    ): TiBasicDebugSession {
+        val evaluation = evaluateNumericAssignment(semantics.colorAssignment) ?: return incorrectStatement()
+        val updatedNumericVariables = numericVariables + evaluation.initializedNumericVariables
+        val updatedStringVariables = stringVariables + evaluation.initializedStringVariables
+        val screenBackground = roundedScreenColorAt(evaluation.value.value)
+            ?.let(::displayedScreenBackground)
+            ?: return badValue(evaluation.value.usualDisplay).copy(
+                numericVariables = updatedNumericVariables,
+                stringVariables = updatedStringVariables,
+            )
+        return continueAfter(currentLineNumber).copy(
+            numericVariables = updatedNumericVariables,
+            stringVariables = updatedStringVariables,
+            screenContents = screenContents.copy(screenBackground = screenBackground),
+        )
+    }
+
+    private fun mergeEvaluations(evaluation: TiBasicDebugStringEvaluation): TiBasicDebugSession =
+        copy(
+            numericVariables = numericVariables + evaluation.initializedNumericVariables,
+            stringVariables = stringVariables + evaluation.initializedStringVariables,
+            statusMessage = evaluation.warningMessage ?: statusMessage,
+        )
+
+    private fun mergeEvaluations(evaluation: TiBasicDebugNumericEvaluation): TiBasicDebugSession =
+        copy(
+            numericVariables = numericVariables + evaluation.initializedNumericVariables,
+            stringVariables = stringVariables + evaluation.initializedStringVariables,
+            statusMessage = evaluation.warningMessage ?: statusMessage,
+        )
+
+    private fun applyPrintSeparator(tokenType: IElementType): TiBasicDebugSession =
+        when (tokenType) {
+            TiBasicTokenTypes.COLON -> copy(screenContents = screenContents.lineFeed())
+            TiBasicTokenTypes.SEMICOLON, TiBasicTokenTypes.COMMA -> this
+            else -> this
+        }
+
+    private fun writePrintText(text: String): TiBasicDebugSession =
+        text.fold(this) { session, character -> session.writePrintCharacter(character) }
+
+    private fun writePrintCharacter(character: Char): TiBasicDebugSession {
+        val normalizedContents = screenContents.normalizePrintCursor()
+        val updatedCodes = normalizedContents.characterCodes.map(List<Int>::toMutableList)
+        val rowIndex = normalizedContents.printCursorRow - 1
+        val columnIndex = normalizedContents.printCursorColumn - 1
+        updatedCodes[rowIndex][columnIndex] = printableScreenCode(character)
+        val updatedContents = normalizedContents.copy(
+            characterCodes = updatedCodes.map(List<Int>::toList),
+        ).advancePrintCursor()
+        return copy(screenContents = updatedContents)
     }
 
     private fun resolveCallKeyMode(roundedMode: Int): Int? =
@@ -781,6 +930,7 @@ internal data class TiBasicDebugSession(
 internal sealed interface TiBasicDebugLineSemantics {
     data object Sequential : TiBasicDebugLineSemantics
     data object Rem : TiBasicDebugLineSemantics
+    data object CallClear : TiBasicDebugLineSemantics
     data object IncorrectStatement : TiBasicDebugLineSemantics
     data class Goto(val target: TiBasicJumpTarget) : TiBasicDebugLineSemantics
     data class Gosub(val target: TiBasicJumpTarget) : TiBasicDebugLineSemantics
@@ -797,11 +947,25 @@ internal sealed interface TiBasicDebugLineSemantics {
         val assignment: TiBasicDebugNumericAssignment,
     ) : TiBasicDebugLineSemantics
 
+    data class Print(
+        val items: List<TiBasicDebugPrintItem>,
+    ) : TiBasicDebugLineSemantics
+
     data class CallKey(
         val modeAssignment: TiBasicDebugNumericAssignment,
         val keyCodeVariableName: String,
         val statusVariableName: String,
     ) : TiBasicDebugLineSemantics
+
+    data class CallScreen(
+        val colorAssignment: TiBasicDebugNumericAssignment,
+    ) : TiBasicDebugLineSemantics
+}
+
+internal sealed interface TiBasicDebugPrintItem {
+    data class StringValue(val assignment: TiBasicDebugStringAssignment) : TiBasicDebugPrintItem
+    data class NumericValue(val assignment: TiBasicDebugNumericAssignment) : TiBasicDebugPrintItem
+    data class Separator(val tokenType: IElementType) : TiBasicDebugPrintItem
 }
 
 internal sealed interface TiBasicJumpTarget {
@@ -1071,6 +1235,8 @@ private const val STRING_VARIABLE_SUFFIX = "$"
 private const val NUMERIC_BYTE_PREFIX = ">"
 private const val CHR_DOLLAR_FUNCTION = "CHR$"
 private const val KEY_SUBPROGRAM_NAME = "KEY"
+private const val CLEAR_SUBPROGRAM_NAME = "CLEAR"
+private const val SCREEN_SUBPROGRAM_NAME = "SCREEN"
 private const val SEG_DOLLAR_FUNCTION = "SEG$"
 private const val STR_DOLLAR_FUNCTION = "STR$"
 private const val ASC_FUNCTION = "ASC"
@@ -1093,6 +1259,7 @@ private const val DEFAULT_CALL_KEY_SCAN_INPUT = "-1"
 private const val DEFAULT_KEYBOARD_MODE = 5
 private const val NO_KEY_CODE = -1
 private const val REUSE_LAST_KEYBOARD_MODE = 0
+private const val PRINT_AREA_END_COLUMN = 30
 private const val WARNING_SEPARATOR = " | "
 private val ZERO_NUMERIC_BYTES = List(8) { 0 }
 private val PRINTABLE_ASCII_RANGE = 32..126
@@ -1146,6 +1313,53 @@ private fun String.segment(start: Int, length: Int): String =
         EMPTY_STRING
     } else {
         drop(start - 1).take(length)
+    }
+
+private fun printableScreenCode(character: Char): Int =
+    character.code.takeIf { it in PRINTABLE_ASCII_RANGE } ?: TI_BASIC_SPACE_CHARACTER_CODE
+
+private fun TiBasicDebugScreenContents.normalizePrintCursor(): TiBasicDebugScreenContents {
+    var normalized = this
+    while (normalized.printCursorRow > TI_BASIC_SCREEN_ROWS) {
+        normalized = normalized.scrollPrintArea()
+    }
+    return normalized
+}
+
+private fun TiBasicDebugScreenContents.advancePrintCursor(): TiBasicDebugScreenContents =
+    if (printCursorColumn < PRINT_AREA_END_COLUMN) {
+        copy(printCursorColumn = printCursorColumn + 1)
+    } else {
+        lineFeed()
+    }
+
+private fun TiBasicDebugScreenContents.lineFeed(): TiBasicDebugScreenContents =
+    if (printCursorRow <= TI_BASIC_SCREEN_ROWS) {
+        copy(
+            printCursorRow = printCursorRow + 1,
+            printCursorColumn = INITIAL_PRINT_CURSOR_COLUMN,
+        )
+    } else {
+        scrollPrintArea().copy(
+            printCursorRow = TI_BASIC_SCREEN_ROWS + 1,
+            printCursorColumn = INITIAL_PRINT_CURSOR_COLUMN,
+        )
+    }
+
+private fun TiBasicDebugScreenContents.scrollPrintArea(): TiBasicDebugScreenContents =
+    copy(
+        characterCodes = characterCodes
+            .drop(1) + listOf(blankPrintRow()),
+        printCursorRow = TI_BASIC_SCREEN_ROWS,
+        printCursorColumn = INITIAL_PRINT_CURSOR_COLUMN,
+    )
+
+private fun blankPrintRow(): List<Int> =
+    List(TI_BASIC_SCREEN_COLUMNS) { columnIndex ->
+        when (columnIndex + 1) {
+            1, 2, 31, 32 -> TI_BASIC_SPACE_CHARACTER_CODE
+            else -> TI_BASIC_SPACE_CHARACTER_CODE
+        }
     }
 
 private fun String.pos(target: String, start: Int): Int {
