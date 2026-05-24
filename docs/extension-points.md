@@ -164,6 +164,53 @@ See [`architecture.md`](architecture.md) for the full list of checks.
 
 ---
 
+### `projectService` — TI-Basic debugger session service
+
+| Attribute               | Value                                         |
+|-------------------------|-----------------------------------------------|
+| `serviceImplementation` | `tibasic.debug.TiBasicDebugSessionService`    |
+
+Project-level session holder for the TI-Basic debugger. It keeps the active frozen
+debug snapshot, current program-counter position, GOSUB return stack, and pending stop
+state, and notifies the dedicated debugger tool window when the session changes.
+
+---
+
+### `configurationType` — TI-Basic Debug
+
+| Attribute        | Value                                             |
+|------------------|---------------------------------------------------|
+| `implementation` | `tibasic.debug.run.TiBasicDebugConfigurationType` |
+
+Registers the TI-Basic debug run-configuration type. Configurations of this type are
+file-based and launch the debugger via the normal IntelliJ **Debug** action.
+
+---
+
+### `runConfigurationProducer` — TI-Basic Debug producer
+
+| Attribute        | Value                                                    |
+|------------------|----------------------------------------------------------|
+| `implementation` | `tibasic.debug.run.TiBasicDebugRunConfigurationProducer` |
+
+Creates TI-Basic debug configurations from context for TI-Basic files in the editor and
+project view. This enables the standard IDE debug entry points to target the current
+TI-Basic file without a custom action.
+
+---
+
+### `programRunner` — TI-Basic Debug runner
+
+| Attribute        | Value                                         |
+|------------------|-----------------------------------------------|
+| `implementation` | `tibasic.debug.run.TiBasicDebugProgramRunner` |
+
+Handles execution of TI-Basic debug configurations for the default IntelliJ **Debug**
+executor. The runner starts the TI-Basic debug session and opens the dedicated TI-Basic
+debug tool window instead of creating a standard process-backed debug tab.
+
+---
+
 ## Registered actions
 
 ### `action` — `TiBasic.ShowScreenPreview`
@@ -198,6 +245,23 @@ Line number references within statements (GOTO, GOSUB, ON GOTO, ON GOSUB, IF-THE
 RESTORE, BREAK/UNBREAK/TRACE/UNTRACE) are shifted by the same delta as their containing line.
 Lines in the pasted text without a valid TI-Basic line number are left unchanged.
 Has no effect when pasting into the middle of the file or into non-TI-Basic files.
+
+---
+
+### `toolWindow` — `TI Basic Debug`
+
+| Attribute      | Value                                              |
+|----------------|----------------------------------------------------|
+| `id`           | `TI Basic Debug`                                   |
+| `factoryClass` | `tibasic.toolwindow.TiBasicDebugToolWindowFactory` |
+| `anchor`       | `bottom`                                           |
+
+Shows the dedicated debugger UI for TI-Basic programs. The content renders the frozen
+listing captured at debug start, marks the current program-counter line, exposes **Step**
+and **Stop** controls, shows runtime messages such as `Bad Line Number`,
+`Can't do that`, and `Incorrect Statement`, and contains a dedicated pane for known
+string variables in TI-Basic internal storage format, with printable ASCII bytes shown as
+characters and overlong string assignments reported as a debugger warning.
 
 ---
 

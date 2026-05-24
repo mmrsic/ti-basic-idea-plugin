@@ -18,6 +18,7 @@ All source code lives under `com.github.mmrsic.idea.plugins.tibasic` (abbreviate
 | `tibasic.psi.common`        | Shared PSI constants (`VALID_LINE_NUMBER_RANGE`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `tibasic.highlight`         | Syntax colours (`TiBasicSyntaxHighlighter`, `TiBasicSyntaxHighlighterFactory`) and semantic annotations (`TiBasicAnnotator`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `tibasic.editor`            | Editor assistance: keyword completion (`TiBasicCompletionContributor`), quick documentation for numeric constants, character-code positions, and `DATA`/`CALL CHAR` hex patterns (`TiBasicCharacterCodeDocumentationProvider`), paired-character typing for parentheses and string quotes plus auto-spacing after line numbers and numeric literals when a typed character would not continue the number (`TiBasicPairedCharacterTypedHandler`), Shift+Enter handling (`TiBasicShiftEnterHandler`), Ctrl+D duplicate-line renumbering (`TiBasicDuplicateLineHandler`), paste line-number renumbering (`TiBasicPastePreProcessor`), TI-99/4A display column guides (`TiBasicDisplayColumnGuideController`, `TiBasicDisplayColumnGuideRenderer`), line-number declaration navigation (`TiBasicGotoDeclarationHandler`), CALL CHAR/COLOR/SCREEN gutter previews, CALL SOUND gutter playback, and inbound line-reference markers (`TiBasicLineReferenceLineMarkerProvider`) |
+| `tibasic.debug`             | Debugger integration: Debug-action entry, TI-Basic run/debug configuration, frozen program snapshot, line-by-line stepping runtime, session state, and debugger-specific validation for supported control-flow statements                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `tibasic.action.format`     | Format action and formatting logic (`FormatAction`, `FormatCode`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `tibasic.action.resequence` | Resequence action, logic, options dialog, and quick-fix (`ResequenceAction`, `ResequenceLineNumbers`, `ResequenceOptionsDialog`, `ResequenceQuickFix`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `tibasic.action.preview`    | Selection-based screen preview action, evaluator, and dialog (`TiBasicScreenPreviewAction`, `TiBasicScreenPreviewDialog`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -176,6 +177,166 @@ PSI tree              (tibasic.psi + subpackages)
             Both actions modify the PSI document inside a WriteAction.
 ```
 
+## TI-Basic debugger architecture (V1)
+
+The upcoming TI-Basic debugger is intentionally a **line-flow simulator**, not a general
+interpreter. It starts via the normal IntelliJ **Debug** action, but renders into a
+dedicated **TI-Basic Debug** tool window so later stories can add keyboard, joystick, and
+other runtime interaction without being constrained by the standard debugger UI.
+
+### Story review
+
+Architecturally, the story fits the existing plugin well:
+
+- The source model is already line-oriented through `TiBasicFile.lines()` and `TiBasicLine.lineNumber()`.
+- Existing line-reference helpers already resolve numeric jump targets in the current file.
+- The plugin already uses conservative PSI-based traversals for static features, so a small
+  dedicated runtime layer is consistent with the current design style.
+
+The main architectural constraint is that the debugger must **not** reuse annotator output as
+its execution contract. The current annotator deliberately reports some situations as warnings
+that are terminal in debugger V1, for example undefined `GOTO`/`GOSUB` targets and trailing
+content after `RETURN`, `END`, or `STOP`. The debugger therefore needs its own runtime
+validation rules for the supported statements.
+
+### Entry flow and ownership
+
+```text
+IDE Debug action
+    -> TI-Basic run/debug configuration producer
+    -> TI-Basic run configuration / profile state
+    -> ReadAction snapshot of the current file content + PSI
+    -> project-level debug session service
+    -> TI-Basic Debug tool window
+    -> Step / Stop commands against the in-memory session
+```
+
+V1 should keep the ownership boundaries small and explicit:
+
+| Component group         | Responsibility                                                                                                         |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `tibasic.debug.run`     | Hooks the standard IntelliJ Debug entry points to the active TI-Basic file and creates the debug session start request |
+| `tibasic.debug.model`   | Immutable program snapshot and value objects such as line snapshots, session status, pending error, and step result    |
+| `tibasic.debug.runtime` | Pure stepping engine for `GOTO`, `GOSUB`, `RETURN`, `END`, and `STOP`, plus sequential fall-through                    |
+| `tibasic.debug`         | Project-level session coordination and lifecycle API used by UI and actions                                            |
+| `tibasic.toolwindow`    | Dedicated debugger tool-window content that renders the frozen listing and exposes Step/Stop controls                  |
+
+The standard IntelliJ Debug action is therefore the **entry mechanism**, not the long-term UI
+host. V1 does not need XDebugger-specific concepts such as stack frames, variable views, or
+breakpoint handling.
+
+### Frozen snapshot model
+
+The debugger must execute against the **program state at start time**, not against the live
+editor after startup. The start operation should therefore build one immutable snapshot with:
+
+- the exact listing text shown in the debugger window
+- all program lines sorted by line number
+- a `lineNumber -> index` lookup for fast target resolution
+- the initial PC pointing to the smallest existing line number
+- the PSI-derived classification for the V1-supported statements
+
+The tool window renders only this snapshot. Later edits in the editor must not mutate the
+running session. A restart creates a fresh snapshot.
+
+### Session lifecycle
+
+V1 needs a two-phase session model because terminal states do not close immediately:
+
+| Session state | Meaning                                                                                                                                           |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Paused`      | Session is active and currently stopped on exactly one program line                                                                               |
+| `PendingStop` | The current line has just produced a terminal outcome (`END`, `STOP`, natural end, or runtime error message) and the next Step closes the session |
+| `Stopped`     | Session has ended and the tool window shows the finished state until a new session starts                                                         |
+
+The initial session state is `Paused` on the smallest line number. Every **Step** executes the
+currently marked line and either:
+
+1. moves the PC to the next paused line,
+2. enters `PendingStop`, or
+3. closes a previously pending stop.
+
+### Step semantics
+
+V1 step behavior is intentionally narrow and must not infer unsupported TI-Basic control flow.
+
+| Current line kind                                                                                               | Step result                                                                                                                                                                                                                                                                                                                                                                                                  |
+|-----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GOTO` with one valid existing target line                                                                      | Jump to target line and pause there                                                                                                                                                                                                                                                                                                                                                                          |
+| `GOSUB` with one valid existing target line                                                                     | Push the current line number as return origin, jump to target line, and pause there                                                                                                                                                                                                                                                                                                                          |
+| string `LET` with debugger-supported string expressions (`"TEXT"`, `A$`, concatenation, `CHR$`, `SEG$`, `STR$`) | Update the known string-variable map and continue to the next higher line; unknown RHS string references are initialized as `""`, and every intermediate string result is truncated to 255 characters before further reuse, with a debugger warning                                                                                                                                                          |
+| `CALL KEY(mode,key,status)` with valid debugger-supported effective mode `1..5`                                 | Evaluate the numeric mode expression, resolve mode `0` to the last used keyboard mode or `5` if none exists yet, show a keyboard-input pane while paused on the line, round the entered scan result, validate it against the effective mode's allowed code set, write `key` to the rounded scan code or `-1`, write `status` to `1` for a key press or `0` for no key, then continue to the next higher line |
+| `CALL KEY(mode,key,status)` with rounded mode outside `0..5`                                                    | Show `Bad Value: <value>` and enter `PendingStop`                                                                                                                                                                                                                                                                                                                                                            |
+| bare `RETURN` with non-empty GOSUB stack                                                                        | Pop the most recent GOSUB origin and continue at the smallest line number greater than that origin                                                                                                                                                                                                                                                                                                           |
+| bare `RETURN` with empty GOSUB stack                                                                            | Show `Can't do that` and enter `PendingStop`                                                                                                                                                                                                                                                                                                                                                                 |
+| bare `END` or `STOP`                                                                                            | Enter `PendingStop` without changing the PC                                                                                                                                                                                                                                                                                                                                                                  |
+| `GOTO`/`GOSUB` with missing or non-existing target line                                                         | Show `Bad Line Number` and enter `PendingStop`                                                                                                                                                                                                                                                                                                                                                               |
+| malformed or unknown statement                                                                                  | Show `Incorrect Statement` and enter `PendingStop`                                                                                                                                                                                                                                                                                                                                                           |
+| any other valid but unsupported statement or invalid line                                                       | Ignore the content and continue to the next higher line number                                                                                                                                                                                                                                                                                                                                               |
+| no higher line exists after sequential continuation or return continuation                                      | Enter `PendingStop` as natural program end                                                                                                                                                                                                                                                                                                                                                                   |
+
+For `RETURN`, the continuation line is defined by the story as the smallest line number greater
+than the line number of the most recently executed `GOSUB`. V1 therefore stores **origin line
+numbers**, not arbitrary resume offsets or statement pointers.
+
+### Runtime validation boundary
+
+The debugger should validate only the statements that V1 actively interprets:
+
+- `GOTO`
+- `GOSUB`
+- simple scalar string `LET`
+- `CALL KEY`
+- `RETURN`
+- `END`
+- `STOP`
+
+All other statements are execution-transparent in V1 and must be ignored regardless of whether
+they parse cleanly, produce annotator warnings, or are completely unknown.
+
+This implies a dedicated runtime validator that works from the snapshot/PSI shape rather than
+from editor highlighting. In particular:
+
+- undefined `GOTO`/`GOSUB` targets are **fatal in the debugger** even though the annotator only warns
+- malformed `CALL KEY` statements become **`Incorrect Statement`**
+- debugger-supported `CALL KEY` effective modes are `1..5`; rounded mode `0` reuses the last
+  successful keyboard mode and falls back to `5` initially, mode `3` accepts only `1..15` and
+  `32..95`, mode `4` accepts `1..143`, mode `5` accepts `1..15`, `32..159`, and `187`, and
+  values outside `0..5` raise **`Bad Value: <value>`**
+- trailing content after `RETURN`, `END`, or `STOP` becomes **`Incorrect Statement`** for debugger V1
+- malformed `LET` statements also become **`Incorrect Statement`** and enter the same pending-stop flow
+- parser permissiveness remains useful, because the runtime can still inspect malformed supported
+  statements and map them to the correct TI-Basic error message instead of silently skipping them
+
+### Tool-window architecture
+
+The debugger UI should reuse the existing tool-window style but not the live-file refresh
+mechanics of `TiBasicFileToolWindowContent` because debugger content is snapshot-based, not
+editor-driven.
+
+Recommended structure:
+
+- `TiBasicDebugToolWindowFactory` creates one debugger content component per project
+- `TiBasicDebugToolWindowContent` subscribes to the session service and renders the current session
+- a listing component (`JBList`, `JBTable`, or equivalent) shows the frozen source lines
+- an Inspect input parses temporary TI-Basic expressions via PSI and evaluates them against the
+  current debugger state, independent of later live-editor changes
+- a keyboard-input pane appears for supported `CALL KEY` modes and feeds rounded scan-result input
+  back into the paused debug session before the next step; the pane also shows the effective mode's
+  allowed code ranges directly next to the mode label
+- dedicated numeric- and string-variable panes show all known scalar debugger variables together
+  with their TI-Basic internal encodings and normal display values
+- a dedicated string-variable pane shows all known scalar string variables in TI-Basic internal storage format (
+  `length byte + character bytes`), rendering printable ASCII bytes `32..126` directly as characters
+- the current PC is expressed as exactly one highlighted row
+- toolbar actions expose **Step** and **Stop**
+- an inline status area shows pending runtime messages such as `Can't do that`, `Bad Line Number`,
+  or `Incorrect Statement`
+
+Because future stories will add interactive runtime devices, the tool window should reserve a
+clear separation between the **listing pane** and future **runtime input/output panes** instead of
+hardwiring the entire UI into a single flat table component.
+
 ## Variables tool window (tibasic.toolwindow)
 
 The Variables tool window lists all scalar and array variables plus user-defined functions
@@ -211,7 +372,8 @@ the single row for each array:
   `valueRange = null` on the row itself).
 - **Never written** (`writes == 0`): `valueRange = ["0"]` (NUMERIC) or `["\"\""]` (STRING).
 - **Direct literal writes** contribute that literal to the range.
-- **Simple alias writes** such as `G$=E$` inherit the referenced scalar variable's full finite range, with cycle protection.
+- **Simple alias writes** such as `G$=E$` inherit the referenced scalar variable's full finite range, with cycle
+  protection.
 - **Resolvable `FOR` loop writes** contribute the loop variable's iteration values, including explicit `STEP` values and
   singleton numeric aliases in the start/end/step expressions.
 - **Statically traceable scalar writes** can also contribute a finite range when the lightweight statement traversal can
@@ -379,6 +541,8 @@ are omitted.
 | Annotator, SyntaxHighlighter, CompletionContributor | Read-only PSI access — always on a read-allowed thread; no explicit `ReadAction` needed because IntelliJ provides the read lock.                                            |
 | Actions (`FormatAction`, `ResequenceAction`)        | All PSI modifications happen inside `WriteAction` (via `PsiFileUtils.withWriteCommand`). Menu actions execute on the EDT; the write action must be called from there.       |
 | Dialogs (`ResequenceOptionsDialog`)                 | Created and shown on the EDT.                                                                                                                                               |
+| Debugger startup                                    | Build the immutable program snapshot inside a `ReadAction`, then hand only snapshot/model objects to the running debug session and tool window.                             |
+| Debugger Step/Stop UI                               | Tool-window interactions run on the EDT; the actual step calculation should remain pure in-memory and fast enough to execute without PSI or document writes.                |
 | No background tasks yet                             | All current operations are fast enough for the EDT. Use `ProgressManager.runBackgroundableTask` if any future operation is potentially slow (e.g., multi-file refactoring). |
 
 ## Key design decisions
@@ -397,6 +561,10 @@ are omitted.
 - **Kotlin extensions on framework types.** Verbose framework calls (e.g., `node.getChildren(null)`) are wrapped in
   extensions (`node.allChildren`) collected in `tibasic.ext`. See [`extension-points.md`](extension-points.md) and
   the coding conventions in `.github/copilot-instructions.md`.
+- **Debugger runs on a frozen snapshot.** Debugger V1 must not observe live file edits after startup; restart is
+  the synchronization point.
+- **Debugger validation is separate from the annotator.** The annotator optimizes for editing feedback, whereas
+  the debugger must reproduce V1 execution outcomes and runtime messages for the supported statements.
 
 ## Built-in expression functions
 

@@ -26,6 +26,8 @@
             <li><b>Resequence Line Numbers</b> action: renumbers all lines with configurable start and step</li>
             <li><b>Selection screen preview</b> action: renders a 32x24 TI-Basic screen preview for selected
                 CALL HCHAR/VCHAR statements, taking selected CALL CHAR/COLOR/SCREEN/CLEAR context into account</li>
+            <li><b>Debug TI-Basic Program</b> via the standard IntelliJ Debug action: opens a dedicated tool window
+                with a frozen program listing, current program-counter marker, and step/stop controls</li>
             <li>Full statement set: LET, DEF, PRINT (incl. file output), INPUT (incl. file), DISPLAY,
                 READ, DATA, RESTORE (incl. file), CALL, GOTO, GOSUB/RETURN, ON GOTO/GOSUB,
                 IF/THEN/ELSE, FOR/NEXT, DIM, OPTION BASE, RANDOMIZE, OPEN, CLOSE, REM, END, STOP, and more</li>
@@ -155,6 +157,9 @@
                 language="TI-Basic"
                 implementationClass="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesProvider"
         />
+        <configurationType implementation="com.github.mmrsic.idea.plugins.tibasic.debug.run.TiBasicDebugConfigurationType"/>
+        <runConfigurationProducer implementation="com.github.mmrsic.idea.plugins.tibasic.debug.run.TiBasicDebugRunConfigurationProducer"/>
+        <programRunner implementation="com.github.mmrsic.idea.plugins.tibasic.debug.run.TiBasicDebugProgramRunner"/>
         <findUsagesHandlerFactory
                 implementation="com.github.mmrsic.idea.plugins.tibasic.findusages.TiBasicFindUsagesHandlerFactory"
         />
@@ -180,6 +185,13 @@
                 anchor="bottom"
                 icon="icons/ti99_4a_icon_small.svg"
                 factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicCharacterDefinitionsToolWindowFactory"
+        />
+        <!--suppress PluginXmlValidity -->
+        <toolWindow
+                id="TI Basic Debug"
+                anchor="bottom"
+                icon="icons/ti99_4a_icon_small.svg"
+                factoryClass="com.github.mmrsic.idea.plugins.tibasic.toolwindow.TiBasicDebugToolWindowFactory"
         />
     </extensions>
     <actions>
