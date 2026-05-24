@@ -33,6 +33,35 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(140, session.currentProgramLine?.lineNumber)
     }
 
+    fun `test sequential stepping skips REM lines`() {
+        var session = startSession(
+            """
+            100 PRINT "A"
+            110 REM comment
+            120 REM more
+            130 PRINT "B"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals(130, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test stepping on REM line continues to next non REM line`() {
+        var session = startSession(
+            """
+            100 REM comment
+            110 REM more
+            120 PRINT "B"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals(120, session.currentProgramLine?.lineNumber)
+    }
+
     fun `test GOTO jumps to target line`() {
         var session = startSession(
             """

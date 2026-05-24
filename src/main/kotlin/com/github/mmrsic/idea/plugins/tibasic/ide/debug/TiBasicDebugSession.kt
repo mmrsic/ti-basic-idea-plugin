@@ -17,6 +17,7 @@ import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBa
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGosubStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRemStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicReturnStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicStopStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicUnknownStatement
@@ -66,6 +67,11 @@ internal data class TiBasicDebugProgramSnapshot(
         programLines.indexOfFirst { it.lineNumber > afterLineNumber }
             .takeIf { it >= 0 }
 
+    fun nextHigherNonRemProgramIndex(afterLineNumber: Int): Int? =
+        programLines.indexOfFirst { line ->
+            line.lineNumber > afterLineNumber && line.semantics != TiBasicDebugLineSemantics.Rem
+        }.takeIf { it >= 0 }
+
     companion object {
         fun create(file: TiBasicFile, document: Document?): TiBasicDebugProgramSnapshot {
             val text = document?.text ?: file.text
@@ -97,6 +103,7 @@ internal data class TiBasicDebugProgramSnapshot(
             is TiBasicReturnStatement -> TiBasicDebugLineSemantics.Return(isStandaloneKeyword(statement.node, TiBasicTokenTypes.RETURN_KEYWORD))
             is TiBasicEndStatement -> TiBasicDebugLineSemantics.End(isStandaloneKeyword(statement.node, TiBasicTokenTypes.END_KEYWORD))
             is TiBasicStopStatement -> TiBasicDebugLineSemantics.Stop(isStandaloneKeyword(statement.node, TiBasicTokenTypes.STOP_KEYWORD))
+            is TiBasicRemStatement -> TiBasicDebugLineSemantics.Rem
             is TiBasicLetStatement -> createLetSemantics(statement)
             is TiBasicCallStatement -> createCallSemantics(statement)
             else -> TiBasicDebugLineSemantics.Sequential
@@ -435,6 +442,7 @@ internal data class TiBasicDebugSession(
         val sessionWithInitializedNumericVariables = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
         return when (val semantics = programLine.semantics) {
             TiBasicDebugLineSemantics.Sequential -> sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber)
+            TiBasicDebugLineSemantics.Rem -> sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber)
             is TiBasicDebugLineSemantics.Goto -> sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target)
             is TiBasicDebugLineSemantics.Gosub -> sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target, rememberOrigin = true)
             is TiBasicDebugLineSemantics.Return -> sessionWithInitializedNumericVariables.returnFrom(semantics.isStandaloneKeyword)
@@ -456,7 +464,7 @@ internal data class TiBasicDebugSession(
     }
 
     private fun continueAfter(currentLineNumber: Int, statusMessage: String? = null): TiBasicDebugSession =
-        snapshot.nextHigherProgramIndex(currentLineNumber)?.let { nextIndex ->
+        snapshot.nextHigherNonRemProgramIndex(currentLineNumber)?.let { nextIndex ->
             moveTo(nextIndex, statusMessage)
         } ?: copy(
             status = TiBasicDebugSessionStatus.PendingStop,
@@ -723,7 +731,7 @@ internal data class TiBasicDebugSession(
             status = TiBasicDebugSessionStatus.PendingStop,
             statusMessage = TiBasicDebugMetadata.message(TiBasicDebugMetadata.cantDoThatKey),
         )
-        val nextIndex = snapshot.nextHigherProgramIndex(originLineNumber)
+        val nextIndex = snapshot.nextHigherNonRemProgramIndex(originLineNumber)
         return if (nextIndex == null) {
             copy(
                 status = TiBasicDebugSessionStatus.PendingStop,
@@ -772,6 +780,7 @@ internal data class TiBasicDebugSession(
 
 internal sealed interface TiBasicDebugLineSemantics {
     data object Sequential : TiBasicDebugLineSemantics
+    data object Rem : TiBasicDebugLineSemantics
     data object IncorrectStatement : TiBasicDebugLineSemantics
     data class Goto(val target: TiBasicJumpTarget) : TiBasicDebugLineSemantics
     data class Gosub(val target: TiBasicJumpTarget) : TiBasicDebugLineSemantics
