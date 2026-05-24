@@ -2,7 +2,15 @@ package com.github.mmrsic.idea.plugins.tibasic.ide.debug
 
 import com.github.mmrsic.idea.plugins.tibasic.common.ext.allChildren
 import com.github.mmrsic.idea.plugins.tibasic.common.ext.nonWhitespaceChildren
+import com.github.mmrsic.idea.plugins.tibasic.editor.CALL_SOUND_SUBPROGRAM
+import com.github.mmrsic.idea.plugins.tibasic.editor.MAX_SOUND_VOLUME
+import com.github.mmrsic.idea.plugins.tibasic.editor.SOUND_TONE3_CHANNEL_INDEX
+import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicNoiseShiftRate
+import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundNoise
+import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundPlayback
+import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundTone
 import com.github.mmrsic.idea.plugins.tibasic.editor.displayedScreenBackground
+import com.github.mmrsic.idea.plugins.tibasic.editor.isPlayableSoundPlayback
 import com.github.mmrsic.idea.plugins.tibasic.editor.roundedScreenColorAt
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.UNARY_EXPRESSION_OPERATOR_TYPES
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.firstTopLevelBinaryOperatorIndex
@@ -40,6 +48,7 @@ import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
 import java.util.regex.Pattern
+import kotlin.math.abs
 
 internal data class TiBasicDebugProgramSnapshot(
     val fileName: String,
@@ -122,6 +131,7 @@ internal data class TiBasicDebugProgramSnapshot(
                 KEY_SUBPROGRAM_NAME -> createCallKeySemantics(statement)
                 CLEAR_SUBPROGRAM_NAME -> if (statement.arguments().isEmpty()) TiBasicDebugLineSemantics.CallClear else TiBasicDebugLineSemantics.IncorrectStatement
                 SCREEN_SUBPROGRAM_NAME -> createCallScreenSemantics(statement)
+                CALL_SOUND_SUBPROGRAM -> createCallSoundSemantics(statement)
                 else -> TiBasicDebugLineSemantics.Sequential
             }
         }
@@ -133,6 +143,39 @@ internal data class TiBasicDebugProgramSnapshot(
             val argument = statement.arguments().singleOrNull() ?: return TiBasicDebugLineSemantics.IncorrectStatement
             val colorAssignment = createNumericAssignmentFromExpression(argument.node) ?: return TiBasicDebugLineSemantics.IncorrectStatement
             return TiBasicDebugLineSemantics.CallScreen(colorAssignment)
+        }
+
+        private fun createCallSoundSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
+            if (!statement.hasArgumentParens() || !statement.hasClosingArgumentParen()) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val arguments = statement.arguments()
+            if (arguments.size !in VALID_SOUND_ARGUMENT_COUNTS) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val durationAssignment = createNumericAssignmentFromExpression(arguments[CALL_SOUND_DURATION_ARG_INDEX].node)
+                ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val channels = arguments
+                .drop(CALL_SOUND_CHANNEL_ARGS_START_INDEX)
+                .chunked(CALL_SOUND_CHANNEL_ARGUMENT_COUNT)
+                .map { channelArgs ->
+                    val pitchAssignment = channelArgs.getOrNull(CALL_SOUND_PITCH_ARG_OFFSET)
+                        ?.node
+                        ?.let(::createNumericAssignmentFromExpression)
+                        ?: return TiBasicDebugLineSemantics.IncorrectStatement
+                    val volumeAssignment = channelArgs.getOrNull(CALL_SOUND_VOLUME_ARG_OFFSET)
+                        ?.node
+                        ?.let(::createNumericAssignmentFromExpression)
+                        ?: return TiBasicDebugLineSemantics.IncorrectStatement
+                    TiBasicDebugSoundChannelAssignment(
+                        pitchAssignment = pitchAssignment,
+                        volumeAssignment = volumeAssignment,
+                    )
+                }
+            return TiBasicDebugLineSemantics.CallSound(
+                durationAssignment = durationAssignment,
+                channels = channels,
+            )
         }
 
         private fun createCallKeySemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
@@ -446,6 +489,7 @@ internal data class TiBasicDebugSession(
     val statusMessage: String? = null,
     val keyboardScanInput: String = EMPTY_STRING,
     val lastKeyboardMode: Int? = null,
+    val lastSoundTone3Pitch: Int? = null,
     val screenContents: TiBasicDebugScreenContents = TiBasicDebugScreenContents(),
 ) {
     val currentProgramLine: TiBasicDebugProgramLine?
@@ -470,35 +514,41 @@ internal data class TiBasicDebugSession(
             )
         }
 
-    fun step(): TiBasicDebugSession = when (status) {
+    fun step(): TiBasicDebugSession = stepWithEffects().session
+
+    internal fun stepWithEffects(): TiBasicDebugStepResult = when (status) {
         TiBasicDebugSessionStatus.Paused -> stepPaused()
         TiBasicDebugSessionStatus.PendingStop ->
-            copy(status = TiBasicDebugSessionStatus.Stopped, currentProgramIndex = null, keyboardScanInput = EMPTY_STRING)
+            TiBasicDebugStepResult(
+                copy(status = TiBasicDebugSessionStatus.Stopped, currentProgramIndex = null, keyboardScanInput = EMPTY_STRING),
+            )
 
-        TiBasicDebugSessionStatus.Stopped -> this
+        TiBasicDebugSessionStatus.Stopped -> TiBasicDebugStepResult(this)
     }
 
     fun stop(): TiBasicDebugSession =
         copy(status = TiBasicDebugSessionStatus.Stopped, currentProgramIndex = null, keyboardScanInput = EMPTY_STRING)
 
-    private fun stepPaused(): TiBasicDebugSession {
+    private fun stepPaused(): TiBasicDebugStepResult {
         val programLine = currentProgramLine ?: return stop()
+            .let(::TiBasicDebugStepResult)
         val sessionWithInitializedNumericVariables = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
         return when (val semantics = programLine.semantics) {
-            TiBasicDebugLineSemantics.Sequential -> sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber)
-            TiBasicDebugLineSemantics.Rem -> sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber)
-            is TiBasicDebugLineSemantics.Goto -> sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target)
-            is TiBasicDebugLineSemantics.Gosub -> sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target, rememberOrigin = true)
-            is TiBasicDebugLineSemantics.Return -> sessionWithInitializedNumericVariables.returnFrom(semantics.isStandaloneKeyword)
-            is TiBasicDebugLineSemantics.End -> sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword)
-            is TiBasicDebugLineSemantics.Stop -> sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword)
-            is TiBasicDebugLineSemantics.LetString -> sessionWithInitializedNumericVariables.applyStringLet(programLine.lineNumber, semantics)
-            is TiBasicDebugLineSemantics.LetNumeric -> sessionWithInitializedNumericVariables.applyNumericLet(programLine.lineNumber, semantics)
-            is TiBasicDebugLineSemantics.Print -> sessionWithInitializedNumericVariables.applyPrint(programLine.lineNumber, semantics)
-            is TiBasicDebugLineSemantics.CallKey -> sessionWithInitializedNumericVariables.applyCallKey(programLine.lineNumber, semantics)
-            TiBasicDebugLineSemantics.CallClear -> sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber)
-            is TiBasicDebugLineSemantics.CallScreen -> sessionWithInitializedNumericVariables.applyCallScreen(programLine.lineNumber, semantics)
-            TiBasicDebugLineSemantics.IncorrectStatement -> incorrectStatement()
+            TiBasicDebugLineSemantics.Sequential -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber))
+            TiBasicDebugLineSemantics.Rem -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber))
+            is TiBasicDebugLineSemantics.Goto -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target))
+            is TiBasicDebugLineSemantics.Gosub -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target, rememberOrigin = true))
+            is TiBasicDebugLineSemantics.Return -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.returnFrom(semantics.isStandaloneKeyword))
+            is TiBasicDebugLineSemantics.End -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
+            is TiBasicDebugLineSemantics.Stop -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
+            is TiBasicDebugLineSemantics.LetString -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyStringLet(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.LetNumeric -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyNumericLet(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.Print -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyPrint(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.CallKey -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallKey(programLine.lineNumber, semantics))
+            TiBasicDebugLineSemantics.CallClear -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber))
+            is TiBasicDebugLineSemantics.CallScreen -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallScreen(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.CallSound -> sessionWithInitializedNumericVariables.applyCallSound(programLine.lineNumber, semantics)
+            TiBasicDebugLineSemantics.IncorrectStatement -> TiBasicDebugStepResult(incorrectStatement())
         }
     }
 
@@ -683,6 +733,77 @@ internal data class TiBasicDebugSession(
             numericVariables = updatedNumericVariables,
             stringVariables = updatedStringVariables,
             screenContents = screenContents.copy(screenBackground = screenBackground),
+        )
+    }
+
+    private fun applyCallSound(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.CallSound,
+    ): TiBasicDebugStepResult {
+        var currentSession = this
+        val durationEvaluation = currentSession.evaluateNumericAssignment(semantics.durationAssignment)
+            ?: return TiBasicDebugStepResult(currentSession.incorrectStatement())
+        currentSession = currentSession.mergeEvaluations(durationEvaluation)
+        val duration = durationEvaluation.value.value.roundToWholeNumberIntOrNull()
+            ?: return TiBasicDebugStepResult(currentSession.badValue(durationEvaluation.value.usualDisplay))
+        if (abs(duration) < MIN_SOUND_DURATION) {
+            return TiBasicDebugStepResult(currentSession.badValue(durationEvaluation.value.usualDisplay))
+        }
+
+        val tones = mutableListOf<TiBasicSoundTone>()
+        var explicitTone3Pitch: Int? = null
+        var noise: TiBasicSoundNoise? = null
+        semantics.channels.forEach { channel ->
+            val pitchEvaluation = currentSession.evaluateNumericAssignment(channel.pitchAssignment)
+                ?: return TiBasicDebugStepResult(currentSession.incorrectStatement())
+            currentSession = currentSession.mergeEvaluations(pitchEvaluation)
+            val pitch = pitchEvaluation.value.value.roundToWholeNumberIntOrNull()
+                ?: return TiBasicDebugStepResult(currentSession.badValue(pitchEvaluation.value.usualDisplay))
+
+            val volumeEvaluation = currentSession.evaluateNumericAssignment(channel.volumeAssignment)
+                ?: return TiBasicDebugStepResult(currentSession.incorrectStatement())
+            currentSession = currentSession.mergeEvaluations(volumeEvaluation)
+            val volume = volumeEvaluation.value.value.roundToWholeNumberIntOrNull()
+                ?: return TiBasicDebugStepResult(currentSession.badValue(volumeEvaluation.value.usualDisplay))
+            if (volume !in 0..MAX_SOUND_VOLUME) {
+                return TiBasicDebugStepResult(currentSession.badValue(volumeEvaluation.value.usualDisplay))
+            }
+
+            when {
+                pitch >= MIN_SOUND_PITCH -> {
+                    if (tones.size >= MAX_SOUND_TONE_CHANNEL_COUNT) {
+                        return TiBasicDebugStepResult(currentSession.badValue(pitchEvaluation.value.usualDisplay))
+                    }
+                    tones += TiBasicSoundTone(pitch, volume)
+                    if (tones.size - 1 == SOUND_TONE3_CHANNEL_INDEX) {
+                        explicitTone3Pitch = pitch
+                    }
+                }
+
+                pitch in MIN_SOUND_NOISE_SELECTOR..MAX_SOUND_NOISE_SELECTOR && noise == null -> {
+                    noise = TiBasicSoundNoise(pitch, volume)
+                }
+
+                else -> return TiBasicDebugStepResult(currentSession.badValue(pitchEvaluation.value.usualDisplay))
+            }
+        }
+
+        val resolvedNoise = noise?.let { currentNoise ->
+            if (currentNoise.shiftRate == TiBasicNoiseShiftRate.TONE3) {
+                currentNoise.copy(tone3Pitch = explicitTone3Pitch ?: currentSession.lastSoundTone3Pitch)
+            } else {
+                currentNoise
+            }
+        }
+        val playback = TiBasicSoundPlayback(duration = duration, tones = tones.toList(), noise = resolvedNoise)
+        if (!isPlayableSoundPlayback(playback)) {
+            return TiBasicDebugStepResult(currentSession.badValue(durationEvaluation.value.usualDisplay))
+        }
+        return TiBasicDebugStepResult(
+            session = currentSession.continueAfter(currentLineNumber).copy(
+                lastSoundTone3Pitch = explicitTone3Pitch ?: currentSession.lastSoundTone3Pitch,
+            ),
+            soundPlayback = playback,
         )
     }
 
@@ -960,6 +1081,11 @@ internal sealed interface TiBasicDebugLineSemantics {
     data class CallScreen(
         val colorAssignment: TiBasicDebugNumericAssignment,
     ) : TiBasicDebugLineSemantics
+
+    data class CallSound(
+        val durationAssignment: TiBasicDebugNumericAssignment,
+        val channels: List<TiBasicDebugSoundChannelAssignment>,
+    ) : TiBasicDebugLineSemantics
 }
 
 internal sealed interface TiBasicDebugPrintItem {
@@ -967,6 +1093,16 @@ internal sealed interface TiBasicDebugPrintItem {
     data class NumericValue(val assignment: TiBasicDebugNumericAssignment) : TiBasicDebugPrintItem
     data class Separator(val tokenType: IElementType) : TiBasicDebugPrintItem
 }
+
+internal data class TiBasicDebugSoundChannelAssignment(
+    val pitchAssignment: TiBasicDebugNumericAssignment,
+    val volumeAssignment: TiBasicDebugNumericAssignment,
+)
+
+internal data class TiBasicDebugStepResult(
+    val session: TiBasicDebugSession,
+    val soundPlayback: TiBasicSoundPlayback? = null,
+)
 
 internal sealed interface TiBasicJumpTarget {
     data object IncorrectStatement : TiBasicJumpTarget
@@ -1237,6 +1373,17 @@ private const val CHR_DOLLAR_FUNCTION = "CHR$"
 private const val KEY_SUBPROGRAM_NAME = "KEY"
 private const val CLEAR_SUBPROGRAM_NAME = "CLEAR"
 private const val SCREEN_SUBPROGRAM_NAME = "SCREEN"
+private const val CALL_SOUND_DURATION_ARG_INDEX = 0
+private const val CALL_SOUND_CHANNEL_ARGS_START_INDEX = 1
+private const val CALL_SOUND_CHANNEL_ARGUMENT_COUNT = 2
+private const val CALL_SOUND_PITCH_ARG_OFFSET = 0
+private const val CALL_SOUND_VOLUME_ARG_OFFSET = 1
+private const val MAX_SOUND_TONE_CHANNEL_COUNT = 3
+private val VALID_SOUND_ARGUMENT_COUNTS = setOf(3, 5, 7, 9)
+private const val MIN_SOUND_DURATION = 1
+private const val MIN_SOUND_PITCH = 1
+private const val MIN_SOUND_NOISE_SELECTOR = -8
+private const val MAX_SOUND_NOISE_SELECTOR = -1
 private const val SEG_DOLLAR_FUNCTION = "SEG$"
 private const val STR_DOLLAR_FUNCTION = "STR$"
 private const val ASC_FUNCTION = "ASC"

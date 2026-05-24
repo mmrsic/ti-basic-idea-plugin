@@ -285,6 +285,7 @@ V1 step behavior is intentionally narrow and must not infer unsupported TI-Basic
 | string `LET` with debugger-supported string expressions (`"TEXT"`, `A$`, concatenation, `CHR$`, `SEG$`, `STR$`) | Update the known string-variable map and continue to the next higher line; unknown RHS string references are initialized as `""`, and every intermediate string result is truncated to 255 characters before further reuse, with a debugger warning                                                                                                                                                          |
 | `CALL KEY(mode,key,status)` with valid debugger-supported effective mode `1..5`                                 | Evaluate the numeric mode expression, resolve mode `0` to the last used keyboard mode or `5` if none exists yet, show a keyboard-input pane while paused on the line, round the entered scan result, validate it against the effective mode's allowed code set, write `key` to the rounded scan code or `-1`, write `status` to `1` for a key press or `0` for no key, then continue to the next higher line |
 | `CALL KEY(mode,key,status)` with rounded mode outside `0..5`                                                    | Show `Bad Value: <value>` and enter `PendingStop`                                                                                                                                                                                                                                                                                                                                                            |
+| `CALL SOUND(dur,pitch,vol...)` with debugger-supported numeric expressions                                      | Evaluate all numeric arguments against the current debugger state, round them to TI-Basic sound parameters, reuse the last explicit tone-3 pitch for `-4`/`-8` noise selectors when needed, continue to the next higher line, and hand the resolved playback to the shared sound playback service                                                                                                         |
 | bare `RETURN` with non-empty GOSUB stack                                                                        | Pop the most recent GOSUB origin and continue at the smallest line number greater than that origin                                                                                                                                                                                                                                                                                                           |
 | bare `RETURN` with empty GOSUB stack                                                                            | Show `Can't do that` and enter `PendingStop`                                                                                                                                                                                                                                                                                                                                                                 |
 | bare `END` or `STOP`                                                                                            | Enter `PendingStop` without changing the PC                                                                                                                                                                                                                                                                                                                                                                  |
@@ -305,6 +306,7 @@ The debugger should validate only the statements that V1 actively interprets:
 - `GOSUB`
 - simple scalar string `LET`
 - `CALL KEY`
+- `CALL SOUND`
 - `RETURN`
 - `END`
 - `STOP`
@@ -321,6 +323,9 @@ from editor highlighting. In particular:
   successful keyboard mode and falls back to `5` initially, mode `3` accepts only `1..15` and
   `32..95`, mode `4` accepts `1..143`, mode `5` accepts `1..15`, `32..159`, and `187`, and
   values outside `0..5` raise **`Bad Value: <value>`**
+- debugger-supported `CALL SOUND` statements evaluate their numeric arguments from the current
+  debug state, round them to integer playback parameters, and reuse the most recent explicit
+  tone-3 pitch for noise selectors `-4` and `-8`
 - trailing content after `RETURN`, `END`, or `STOP` becomes **`Incorrect Statement`** for debugger V1
 - malformed `LET` statements also become **`Incorrect Statement`** and enter the same pending-stop flow
 - parser permissiveness remains useful, because the runtime can still inspect malformed supported
@@ -343,6 +348,7 @@ Recommended structure:
   back into the paused debug session before the next step; the pane also shows the effective mode's
   allowed code ranges directly next to the mode label
 - a TI screen pane sits to the right of the listing and starts as a 24x32 grid of ASCII space characters with screen background color `4` and default character colors `2` on `1`; screen `PRINT` output is written into the 28-column text window from columns `3..30`, wraps after 28 characters, treats `:` as a line-feed separator, and applies an implicit trailing `:` when the `PRINT` statement ends without a separator; cells render through the shared TI character-pattern registry, so built-in glyphs and `CALL CHAR` overrides use the same 8x8 pixel patterns as other screen previews
+- the session service also owns debugger-only side effects that should happen exactly once per step, currently the shared `CALL SOUND` playback trigger for resolved sound semantics
 - dedicated numeric- and string-variable panes show all known scalar debugger variables together
   with their TI-Basic internal encodings and normal display values
 - a dedicated string-variable pane shows all known scalar string variables in TI-Basic internal storage format (

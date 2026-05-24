@@ -1,5 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.ide.debug
 
+import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundPlayback
+import com.github.mmrsic.idea.plugins.tibasic.editor.tiBasicSoundPlaybackService
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.util.EventDispatcher
@@ -10,6 +12,8 @@ class TiBasicDebugSessionService(private val project: Project) {
 
     private val eventDispatcher = EventDispatcher.create(TiBasicDebugSessionListener::class.java)
     private var currentSession: TiBasicDebugSession? = null
+    internal var soundPlaybackHandler: (Project, TiBasicSoundPlayback) -> Unit =
+        { currentProject, playback -> tiBasicSoundPlaybackService.playSound(currentProject, playback) }
 
     internal fun addListener(listener: TiBasicDebugSessionListener, parentDisposable: com.intellij.openapi.Disposable) {
         eventDispatcher.addListener(listener, parentDisposable)
@@ -24,8 +28,9 @@ class TiBasicDebugSessionService(private val project: Project) {
     }
 
     internal fun step() {
-        val updatedSession = currentSession?.step() ?: return
-        currentSession = updatedSession
+        val stepResult = currentSession?.stepWithEffects() ?: return
+        currentSession = stepResult.session
+        stepResult.soundPlayback?.let { playback -> soundPlaybackHandler(project, playback) }
         notifyListeners()
     }
 
