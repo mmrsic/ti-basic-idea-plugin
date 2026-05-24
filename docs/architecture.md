@@ -336,12 +336,13 @@ Recommended structure:
 
 - `TiBasicDebugToolWindowFactory` creates one debugger content component per project
 - `TiBasicDebugToolWindowContent` subscribes to the session service and renders the current session
-- a listing component (`JBList`, `JBTable`, or equivalent) shows the frozen source lines
+- a listing component (`JBList`, `JBTable`, or equivalent) shows the frozen source lines, emphasizes actual program line numbers, and wraps the code portion after 28 characters to match the TI-99/4A listing width
 - an Inspect input parses temporary TI-Basic expressions via PSI and evaluates them against the
   current debugger state, independent of later live-editor changes
 - a keyboard-input pane appears for supported `CALL KEY` modes and feeds rounded scan-result input
   back into the paused debug session before the next step; the pane also shows the effective mode's
   allowed code ranges directly next to the mode label
+- a TI screen pane sits to the right of the listing and starts as a 24x32 grid of ASCII space characters with screen background color `4` and default character colors `2` on `1`; cells render through the shared TI character-pattern registry, so built-in glyphs and `CALL CHAR` overrides use the same 8x8 pixel patterns as other screen previews
 - dedicated numeric- and string-variable panes show all known scalar debugger variables together
   with their TI-Basic internal encodings and normal display values
 - a dedicated string-variable pane shows all known scalar string variables in TI-Basic internal storage format (

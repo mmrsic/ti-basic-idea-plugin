@@ -257,11 +257,13 @@ Has no effect when pasting into the middle of the file or into non-TI-Basic file
 | `anchor`       | `bottom`                                                     |
 
 Shows the dedicated debugger UI for TI-Basic programs. The content renders the frozen
-listing captured at debug start, marks the current program-counter line, exposes **Step**
-and **Stop** controls, shows runtime messages such as `Bad Line Number`,
-`Can't do that`, and `Incorrect Statement`, and contains a dedicated pane for known
-string variables in TI-Basic internal storage format, with printable ASCII bytes shown as
-characters and overlong string assignments reported as a debugger warning.
+listing captured at debug start, emphasizes actual source line numbers, wraps the code
+portion after 28 characters like the TI-99/4A listing, shows a 24x32 TI screen pane to
+the right, marks the current program-counter line, exposes **Step** and **Stop** controls,
+shows runtime messages such as `Bad Line Number`, `Can't do that`, and `Incorrect Statement`,
+and contains a dedicated pane for known string variables in TI-Basic internal storage
+format, with printable ASCII bytes shown as characters and overlong string assignments
+reported as a debugger warning.
 
 ---
 

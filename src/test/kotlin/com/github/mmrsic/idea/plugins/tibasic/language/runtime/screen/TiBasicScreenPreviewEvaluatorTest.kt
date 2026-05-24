@@ -126,7 +126,7 @@ class TiBasicScreenPreviewEvaluatorTest : TiBasicTestBase() {
         val preview = evaluateSelectedScreenPreview(file.lines())
         val cell = preview.cellAt(1, 1)
 
-        assertNull(cell.pattern)
+        assertEquals(tiBasicCharacterPattern(65), cell.pattern)
         assertEquals("A", cell.displayText)
         assertEquals(TiColor.Black, cell.fg)
         assertEquals(TiColor.White, cell.bg)

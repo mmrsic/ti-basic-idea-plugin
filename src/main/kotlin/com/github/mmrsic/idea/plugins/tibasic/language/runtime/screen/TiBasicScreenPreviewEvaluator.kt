@@ -18,10 +18,10 @@ import com.intellij.openapi.editor.SelectionModel
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 
-private const val SCREEN_COLUMNS = 32
-private const val SCREEN_ROWS = 24
-private const val SCREEN_CELLS = SCREEN_COLUMNS * SCREEN_ROWS
-private const val SPACE_CHARACTER_CODE = 32
+internal const val TI_BASIC_SCREEN_COLUMNS = 32
+internal const val TI_BASIC_SCREEN_ROWS = 24
+private const val SCREEN_CELLS = TI_BASIC_SCREEN_COLUMNS * TI_BASIC_SCREEN_ROWS
+internal const val TI_BASIC_SPACE_CHARACTER_CODE = 32
 private const val DEFAULT_REPEAT_COUNT = 1
 private val PREVIEWABLE_SUBPROGRAMS = setOf("HCHAR", "VCHAR", "CHAR", "COLOR", "SCREEN", "CLEAR")
 private val SCREEN_WRITER_SUBPROGRAMS = setOf("HCHAR", "VCHAR")
@@ -62,14 +62,14 @@ private data class TiBasicScreenColors(
 )
 
 private data class TiBasicMutableScreenState(
-    val codes: Array<IntArray> = Array(SCREEN_ROWS) { IntArray(SCREEN_COLUMNS) { SPACE_CHARACTER_CODE } },
+    val codes: Array<IntArray> = Array(TI_BASIC_SCREEN_ROWS) { IntArray(TI_BASIC_SCREEN_COLUMNS) { TI_BASIC_SPACE_CHARACTER_CODE } },
     val charOverrides: MutableMap<Int, String> = mutableMapOf(),
     val characterSetColors: MutableMap<Int, TiBasicScreenColors> = mutableMapOf(),
     var screenColor: TiColor = DEFAULT_SCREEN_COLORS.bg,
 ) {
     fun reset() {
         codes.indices.forEach { row ->
-            codes[row].fill(SPACE_CHARACTER_CODE)
+            codes[row].fill(TI_BASIC_SPACE_CHARACTER_CODE)
         }
         charOverrides.clear()
         characterSetColors.clear()
@@ -147,7 +147,7 @@ private fun buildPreviewCells(screenState: TiBasicMutableScreenState): List<List
             val colors = colorsForCode(code, screenState)
             TiBasicScreenPreviewCell(
                 code = code,
-                pattern = screenState.charOverrides[code],
+                pattern = tiBasicCharacterPattern(code, screenState.charOverrides),
                 fg = colors.fg,
                 bg = colors.bg,
             )
@@ -245,23 +245,23 @@ private fun screenPosition(
     offset: Int,
     horizontal: Boolean,
 ): TiBasicScreenPosition? {
-    if (row !in 1..SCREEN_ROWS || column !in 1..SCREEN_COLUMNS) {
+    if (row !in 1..TI_BASIC_SCREEN_ROWS || column !in 1..TI_BASIC_SCREEN_COLUMNS) {
         return null
     }
     val wrappedIndex = if (horizontal) {
-        ((row - 1) * SCREEN_COLUMNS + (column - 1) + offset) % SCREEN_CELLS
+        ((row - 1) * TI_BASIC_SCREEN_COLUMNS + (column - 1) + offset) % SCREEN_CELLS
     } else {
-        ((column - 1) * SCREEN_ROWS + (row - 1) + offset) % SCREEN_CELLS
+        ((column - 1) * TI_BASIC_SCREEN_ROWS + (row - 1) + offset) % SCREEN_CELLS
     }
     return if (horizontal) {
         TiBasicScreenPosition(
-            row = wrappedIndex / SCREEN_COLUMNS + 1,
-            column = wrappedIndex % SCREEN_COLUMNS + 1,
+            row = wrappedIndex / TI_BASIC_SCREEN_COLUMNS + 1,
+            column = wrappedIndex % TI_BASIC_SCREEN_COLUMNS + 1,
         )
     } else {
         TiBasicScreenPosition(
-            row = wrappedIndex % SCREEN_ROWS + 1,
-            column = wrappedIndex / SCREEN_ROWS + 1,
+            row = wrappedIndex % TI_BASIC_SCREEN_ROWS + 1,
+            column = wrappedIndex / TI_BASIC_SCREEN_ROWS + 1,
         )
     }
 }

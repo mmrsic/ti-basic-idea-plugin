@@ -12,14 +12,12 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import java.awt.BorderLayout
 import java.awt.CardLayout
-import java.awt.Component
 import java.awt.Font
-import javax.swing.DefaultListCellRenderer
 import javax.swing.DefaultListModel
 import javax.swing.JButton
+import javax.swing.JCheckBox
 import javax.swing.JComponent
 import javax.swing.JLabel
-import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.JToolBar
@@ -40,8 +38,10 @@ class TiBasicDebugToolWindowContent(
     internal val keyboardPanel = JPanel(BorderLayout())
     internal val keyboardModeLabel = JLabel(" ")
     internal val keyboardInputField = JBTextField()
-    internal val listModel = DefaultListModel<String>()
+    internal val listModel = DefaultListModel<TiBasicDebugListingRow>()
     internal val listing = JBList(listModel)
+    internal val screenComponent = TiBasicDebugScreenComponent()
+    internal val keepAspectRatioCheckBox = JCheckBox(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowScreenKeepRatioKey), true)
     internal val numericVariablesModel = DefaultListModel<String>()
     internal val numericVariablesList = JBList(numericVariablesModel)
     internal val stringVariablesModel = DefaultListModel<String>()
@@ -68,34 +68,16 @@ class TiBasicDebugToolWindowContent(
         listing.font = Font(Font.MONOSPACED, Font.PLAIN, listing.font.size)
         numericVariablesList.font = Font(Font.MONOSPACED, Font.PLAIN, numericVariablesList.font.size)
         stringVariablesList.font = Font(Font.MONOSPACED, Font.PLAIN, stringVariablesList.font.size)
-        listing.cellRenderer = object : DefaultListCellRenderer() {
-            override fun getListCellRendererComponent(
-                list: JList<*>?,
-                value: Any?,
-                index: Int,
-                isSelected: Boolean,
-                cellHasFocus: Boolean,
-            ): Component {
-                val component = super.getListCellRendererComponent(list, value, index, false, false) as JLabel
-                val isProgramCounter = index == currentSourceLineIndex
-                component.text = if (isProgramCounter) "$PROGRAM_COUNTER_PREFIX$value" else "$NO_PROGRAM_COUNTER_PREFIX$value"
-                component.isOpaque = true
-                component.background = if (isProgramCounter) list?.selectionBackground else list?.background
-                component.foreground = if (isProgramCounter) list?.selectionForeground else list?.foreground
-                return component
-            }
+        listing.cellRenderer = TiBasicDebugListingRenderer { currentSourceLineIndex }
+        keepAspectRatioCheckBox.addActionListener {
+            screenComponent.keepAspectRatio = keepAspectRatioCheckBox.isSelected
         }
         add(createToolbar(), BorderLayout.NORTH)
         centerPanel.add(emptyLabel, EMPTY_CARD)
         centerPanel.add(
             JPanel(BorderLayout()).also { panel ->
                 panel.add(createInteractionPanel(), BorderLayout.NORTH)
-                panel.add(
-                    JSplitPane(JSplitPane.VERTICAL_SPLIT, JBScrollPane(listing), createVariablesPanel()).also { splitPane ->
-                        splitPane.resizeWeight = LISTING_PANEL_WEIGHT
-                    },
-                    BorderLayout.CENTER,
-                )
+                panel.add(createMainContentPanel(), BorderLayout.CENTER)
             },
             LIST_CARD,
         )
@@ -149,9 +131,10 @@ class TiBasicDebugToolWindowContent(
         stepButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         stopButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         inspectButton.isEnabled = true
-        if (listModel.size != session.snapshot.sourceLines.size || session.snapshot.sourceLines.indices.any { listModel.get(it) != session.snapshot.sourceLines[it] }) {
+        val listingRows = buildDebugListingRows(session.snapshot.sourceLines)
+        if (listModel.size != listingRows.size || listingRows.indices.any { listModel.get(it) != listingRows[it] }) {
             listModel.clear()
-            session.snapshot.sourceLines.forEach(listModel::addElement)
+            listingRows.forEach(listModel::addElement)
         }
         updateNumericVariables(session)
         updateStringVariables(session)
@@ -159,15 +142,49 @@ class TiBasicDebugToolWindowContent(
         updateInspectResult(session)
         layout.show(centerPanel, LIST_CARD)
         currentSourceLineIndex?.let { sourceLineIndex ->
-            listing.selectedIndex = sourceLineIndex
-            listing.ensureIndexIsVisible(sourceLineIndex)
+            (0 until listModel.size)
+                .firstOrNull { index -> listModel.get(index).sourceLineIndex == sourceLineIndex }
+                ?.let { listingIndex ->
+                    listing.selectedIndex = listingIndex
+                    listing.ensureIndexIsVisible(listingIndex)
+                }
+                ?: listing.clearSelection()
         } ?: listing.clearSelection()
         listing.repaint()
+        screenComponent.repaint()
     }
 
     private fun createVariablesPanel(): JComponent =
         JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createNumericVariablesPanel(), createStringVariablesPanel()).also { splitPane ->
             splitPane.resizeWeight = VARIABLES_PANEL_WEIGHT
+        }
+
+    private fun createMainContentPanel(): JComponent =
+        JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createListingPanel(), createScreenAndVariablesPanel()).also { splitPane ->
+            splitPane.resizeWeight = MAIN_CONTENT_PANEL_WEIGHT
+        }
+
+    private fun createListingPanel(): JComponent =
+        JPanel(BorderLayout()).also { panel ->
+            panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowProgramTitleKey))
+            panel.add(JBScrollPane(listing), BorderLayout.CENTER)
+        }
+
+    private fun createScreenAndVariablesPanel(): JComponent =
+        JSplitPane(JSplitPane.VERTICAL_SPLIT, createScreenPanel(), createVariablesPanel()).also { splitPane ->
+            splitPane.resizeWeight = SCREEN_PANEL_WEIGHT
+        }
+
+    private fun createScreenPanel(): JComponent =
+        JPanel(BorderLayout()).also { panel ->
+            panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowScreenTitleKey))
+            panel.add(
+                JPanel(BorderLayout()).also { optionsPanel ->
+                    optionsPanel.add(keepAspectRatioCheckBox, BorderLayout.WEST)
+                },
+                BorderLayout.NORTH,
+            )
+            panel.add(screenComponent, BorderLayout.CENTER)
         }
 
     private fun createInteractionPanel(): JComponent =
@@ -267,7 +284,6 @@ class TiBasicDebugToolWindowContent(
 
 private const val EMPTY_CARD = "empty"
 private const val LIST_CARD = "list"
-private const val PROGRAM_COUNTER_PREFIX = "▶ "
-private const val NO_PROGRAM_COUNTER_PREFIX = "  "
-private const val LISTING_PANEL_WEIGHT = 0.75
+private const val MAIN_CONTENT_PANEL_WEIGHT = 0.55
+private const val SCREEN_PANEL_WEIGHT = 0.42
 private const val VARIABLES_PANEL_WEIGHT = 0.5
