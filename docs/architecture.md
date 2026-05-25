@@ -354,8 +354,10 @@ Recommended structure:
 - a listing component (`JBList`, `JBTable`, or equivalent) shows the frozen source lines, emphasizes actual program line numbers, wraps the code portion after 28 characters to match the TI-99/4A listing width, keeps the current line vertically centered when enough rows exist above and below, and otherwise scrolls to maximize visible source lines without introducing empty rows above the listing
 - a full-width footer arguments pane summarizes the current paused statement only when the current
   line has debugger-supported arguments; it grows vertically for multiple argument lines, currently
-  resolves `CALL SCREEN` to `color-code = XX (NAME)` against the current debugger state, traces `IF`
-  conditions through all evaluated subexpressions with variables substituted by their current values,
+  resolves `CALL SCREEN` to `color-code = XX (NAME)` against the current debugger state, resolves
+  `CALL HCHAR` and `CALL VCHAR` to evaluated `row`, `column`, `character-code`, and `repeat` lines,
+  traces `IF` conditions through all evaluated subexpressions with variables substituted by their
+  current values,
   shows `FOR` control values as evaluated `initial-value`, `limit`, and `increment` lines, assigns
   the evaluated initial value to the control variable when stepping the `FOR` line, adds a fourth
   parenthesized iteration-count line, defaults omitted `STEP` clauses to `1`, shows `NEXT` as the
@@ -364,7 +366,7 @@ Recommended structure:
 - a keyboard-input pane appears for supported `CALL KEY` modes and feeds rounded scan-result input
   back into the paused debug session before the next step; the pane also shows the effective mode's
   allowed code ranges directly next to the mode label
-- a TI screen pane sits to the right of the listing and starts as a 24x32 grid of ASCII space characters with screen background color `4` and default character colors `2` on `1`; screen `PRINT` output is written into the 28-column text window from columns `3..30`, wraps after 28 characters, treats `:` as a line-feed separator, and applies an implicit trailing `:` when the `PRINT` statement ends without a separator; cells render through the shared TI character-pattern registry, so built-in glyphs and `CALL CHAR` overrides use the same 8x8 pixel patterns as other screen previews
+- a TI screen pane sits to the right of the listing and starts as a 24x32 grid of ASCII space characters with screen background color `4` and default character colors `2` on `1`; screen `PRINT` output is written into the 28-column text window from columns `3..30`, wraps after 28 characters, treats `:` as a line-feed separator, and applies an implicit trailing `:` when the `PRINT` statement ends without a separator; stepped `CALL HCHAR` and `CALL VCHAR` writes reuse the shared screen-write helper from `tibasic.language.runtime.screen`, including row/column wrapping and the 768-cell overwrite cap; cells render through the shared TI character-pattern registry, so built-in glyphs and `CALL CHAR` overrides use the same 8x8 pixel patterns as other screen previews
 - a same-height character-set preview sits directly beside the TI screen pane and renders all debugger-managed characters `32..159` as a `16 x 8` grid using the current character patterns, the current `CALL COLOR` foreground/background assignments, and the active `CALL SCREEN` background whenever a character color is transparent; the preview scales with both the available height and width of its pane
 - the session service also owns debugger-only side effects that should happen exactly once per step, currently the shared `CALL SOUND` playback trigger for resolved sound semantics
 - dedicated numeric- and string-variable panes show all known scalar debugger variables together

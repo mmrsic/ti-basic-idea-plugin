@@ -363,6 +363,27 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals(3, content.argumentsTextArea.rows)
     }
 
+    fun `test debug tool window shows CALL HCHAR arguments in footer area`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 CALL HCHAR(2,3,65,4)")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(content.argumentsPanel.isVisible)
+        assertEquals(
+            """
+            row = 02
+            column = 03
+            character-code = 65
+            repeat = 04
+            """.trimIndent(),
+            content.argumentsTextArea.text,
+        )
+        assertEquals(4, content.argumentsTextArea.rows)
+    }
+
     fun `test debug tool window wraps program code after twenty eight characters`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
@@ -609,6 +630,27 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals('E'.code, content.screenComponent.state.characterCodes[23][3])
         assertEquals('X'.code, content.screenComponent.state.characterCodes[23][4])
         assertEquals('T'.code, content.screenComponent.state.characterCodes[23][5])
+    }
+
+    fun `test debug tool window updates screen codes after CALL VCHAR step`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 CALL VCHAR(24,32,66,3)
+            110 PRINT "A"
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(66, content.screenComponent.state.characterCodes[23][31])
+        assertEquals(66, content.screenComponent.state.characterCodes[0][0])
+        assertEquals(66, content.screenComponent.state.characterCodes[1][0])
     }
 
     fun `test debug tool window scales screen to available space while keeping aspect ratio`() {

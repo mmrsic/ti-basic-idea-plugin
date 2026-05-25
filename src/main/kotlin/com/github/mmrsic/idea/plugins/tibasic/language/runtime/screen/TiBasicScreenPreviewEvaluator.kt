@@ -23,7 +23,6 @@ import java.math.BigDecimal
 
 internal const val TI_BASIC_SCREEN_COLUMNS = 32
 internal const val TI_BASIC_SCREEN_ROWS = 24
-private const val SCREEN_CELLS = TI_BASIC_SCREEN_COLUMNS * TI_BASIC_SCREEN_ROWS
 internal const val TI_BASIC_SPACE_CHARACTER_CODE = 32
 private const val DEFAULT_REPEAT_COUNT = 1
 private val PREVIEWABLE_SUBPROGRAMS = setOf("HCHAR", "VCHAR", "CHAR", "COLOR", "SCREEN", "CLEAR")
@@ -53,11 +52,6 @@ data class TiBasicScreenPreviewCell(
     val displayText: String?
         get() = printableAsciiCharacter(code)
 }
-
-private data class TiBasicScreenPosition(
-    val row: Int,
-    val column: Int,
-)
 
 private data class TiBasicScreenColors(
     val fg: TiColor,
@@ -239,37 +233,8 @@ private fun applyScreenWrite(
         context.warning(line, "skipped CALL ${statement.subprogramName()} because repeat count $resolvedRepeatCount is negative")
         return
     }
-    repeat(resolvedRepeatCount) { offset ->
-        screenPosition(row, column, offset, horizontal)?.let { target ->
-            context.screenState.codes[target.row - 1][target.column - 1] = code
-        }
-    }
-}
-
-private fun screenPosition(
-    row: Int,
-    column: Int,
-    offset: Int,
-    horizontal: Boolean,
-): TiBasicScreenPosition? {
-    if (row !in 1..TI_BASIC_SCREEN_ROWS || column !in 1..TI_BASIC_SCREEN_COLUMNS) {
-        return null
-    }
-    val wrappedIndex = if (horizontal) {
-        ((row - 1) * TI_BASIC_SCREEN_COLUMNS + (column - 1) + offset) % SCREEN_CELLS
-    } else {
-        ((column - 1) * TI_BASIC_SCREEN_ROWS + (row - 1) + offset) % SCREEN_CELLS
-    }
-    return if (horizontal) {
-        TiBasicScreenPosition(
-            row = wrappedIndex / TI_BASIC_SCREEN_COLUMNS + 1,
-            column = wrappedIndex % TI_BASIC_SCREEN_COLUMNS + 1,
-        )
-    } else {
-        TiBasicScreenPosition(
-            row = wrappedIndex % TI_BASIC_SCREEN_ROWS + 1,
-            column = wrappedIndex / TI_BASIC_SCREEN_ROWS + 1,
-        )
+    tiBasicScreenWritePositions(row, column, resolvedRepeatCount, horizontal).forEach { target ->
+        context.screenState.codes[target.row - 1][target.column - 1] = code
     }
 }
 

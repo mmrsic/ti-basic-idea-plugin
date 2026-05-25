@@ -40,6 +40,7 @@ import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBa
 import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_COLUMNS
 import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_ROWS
 import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SPACE_CHARACTER_CODE
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.tiBasicScreenWritePositions
 import com.github.mmrsic.idea.plugins.tibasic.language.values.parseTiBasicDecimalLiteral
 import com.github.mmrsic.idea.plugins.tibasic.language.values.tiBasicDecimalString
 import com.github.mmrsic.idea.plugins.tibasic.language.values.tiBasicRadix100Number
@@ -140,6 +141,8 @@ internal data class TiBasicDebugProgramSnapshot(
                 CLEAR_SUBPROGRAM_NAME -> if (statement.arguments().isEmpty()) TiBasicDebugLineSemantics.CallClear else TiBasicDebugLineSemantics.IncorrectStatement
                 COLOR_SUBPROGRAM_NAME -> createCallColorSemantics(statement)
                 SCREEN_SUBPROGRAM_NAME -> createCallScreenSemantics(statement)
+                HCHAR_SUBPROGRAM_NAME -> createCallScreenWriteSemantics(statement, horizontal = true)
+                VCHAR_SUBPROGRAM_NAME -> createCallScreenWriteSemantics(statement, horizontal = false)
                 CALL_SOUND_SUBPROGRAM -> createCallSoundSemantics(statement)
                 else -> TiBasicDebugLineSemantics.Sequential
             }
@@ -185,6 +188,49 @@ internal data class TiBasicDebugProgramSnapshot(
                 characterSetAssignment = characterSetAssignment,
                 foregroundAssignment = foregroundAssignment,
                 backgroundAssignment = backgroundAssignment,
+            )
+        }
+
+        private fun createCallScreenWriteSemantics(
+            statement: TiBasicCallStatement,
+            horizontal: Boolean,
+        ): TiBasicDebugLineSemantics {
+            if (!statement.hasArgumentParens() || !statement.hasClosingArgumentParen()) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val arguments = statement.arguments()
+            if (arguments.size !in VALID_SCREEN_WRITE_ARGUMENT_COUNTS) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val rowAssignment = when (val result = createRequiredNumericAssignment(arguments[SCREEN_WRITE_ROW_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val columnAssignment = when (val result = createRequiredNumericAssignment(arguments[SCREEN_WRITE_COLUMN_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val codeAssignment = when (val result = createRequiredNumericAssignment(arguments[SCREEN_WRITE_CODE_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val repeatAssignment = when (val repeatArgument = arguments.getOrNull(SCREEN_WRITE_REPEAT_ARG_INDEX)) {
+                null -> TiBasicDebugNumericAssignment.Literal(BigDecimal.ONE)
+                else -> when (val result = createRequiredNumericAssignment(repeatArgument.node)) {
+                    is TiBasicDebugParseResult.Valid -> result.value
+                    TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                    TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+                }
+            }
+            return TiBasicDebugLineSemantics.CallScreenWrite(
+                horizontal = horizontal,
+                rowAssignment = rowAssignment,
+                columnAssignment = columnAssignment,
+                codeAssignment = codeAssignment,
+                repeatAssignment = repeatAssignment,
             )
         }
 
@@ -730,6 +776,8 @@ internal data class TiBasicDebugSession(
         when {
             programLine.isCallScreenLine() -> callScreenArgumentDisplays(programLine)
             programLine.isCallColorLine() -> callColorArgumentDisplays(programLine)
+            programLine.isCallHcharLine() -> callScreenWriteArgumentDisplays(programLine)
+            programLine.isCallVcharLine() -> callScreenWriteArgumentDisplays(programLine)
             programLine.isIfLine() -> ifArgumentDisplays(programLine)
             programLine.isForLine() -> forArgumentDisplays(programLine)
             programLine.isNextLine() -> nextArgumentDisplays(programLine)
@@ -827,6 +875,37 @@ internal data class TiBasicDebugSession(
                         label = BACKGROUND_COLOR_ARGUMENT_NAME,
                         assignment = semantics.backgroundAssignment,
                         showsColorName = true,
+                    ),
+                )
+            }
+
+            TiBasicDebugLineSemantics.StringNumberMismatch ->
+                listOf("$INCORRECT_EXPRESSION_DISPLAY ($STRING_NUMBER_MISMATCH_DISPLAY)")
+
+            TiBasicDebugLineSemantics.IncorrectStatement -> listOf(INCORRECT_EXPRESSION_DISPLAY)
+            else -> emptyList()
+        }
+
+    private fun callScreenWriteArgumentDisplays(programLine: TiBasicDebugProgramLine): List<String> =
+        when (val semantics = programLine.semantics) {
+            is TiBasicDebugLineSemantics.CallScreenWrite -> {
+                val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+                listOf(
+                    preparedSession.numericArgumentDisplay(
+                        label = SCREEN_WRITE_ROW_ARGUMENT_NAME,
+                        assignment = semantics.rowAssignment,
+                    ),
+                    preparedSession.numericArgumentDisplay(
+                        label = SCREEN_WRITE_COLUMN_ARGUMENT_NAME,
+                        assignment = semantics.columnAssignment,
+                    ),
+                    preparedSession.numericArgumentDisplay(
+                        label = SCREEN_WRITE_CHARACTER_CODE_ARGUMENT_NAME,
+                        assignment = semantics.codeAssignment,
+                    ),
+                    preparedSession.numericArgumentDisplay(
+                        label = SCREEN_WRITE_REPEAT_ARGUMENT_NAME,
+                        assignment = semantics.repeatAssignment,
                     ),
                 )
             }
@@ -1190,6 +1269,7 @@ internal data class TiBasicDebugSession(
             TiBasicDebugLineSemantics.CallClear -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber))
             is TiBasicDebugLineSemantics.CallColor -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallColor(programLine.lineNumber, semantics))
             is TiBasicDebugLineSemantics.CallScreen -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallScreen(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.CallScreenWrite -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallScreenWrite(programLine.lineNumber, semantics))
             is TiBasicDebugLineSemantics.CallSound -> sessionWithInitializedNumericVariables.applyCallSound(programLine.lineNumber, semantics)
             TiBasicDebugLineSemantics.StringNumberMismatch -> TiBasicDebugStepResult(stringNumberMismatch())
             TiBasicDebugLineSemantics.IncorrectStatement -> TiBasicDebugStepResult(incorrectStatement())
@@ -1471,6 +1551,53 @@ internal data class TiBasicDebugSession(
         )
     }
 
+    private fun applyCallScreenWrite(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.CallScreenWrite,
+    ): TiBasicDebugSession {
+        var currentSession = this
+        val row = currentSession.evaluateValidatedIntArgument(
+            argumentName = SCREEN_WRITE_ROW_ARGUMENT_NAME,
+            assignment = semantics.rowAssignment,
+            allowedValues = VALID_SCREEN_WRITE_ROWS,
+        )
+        if (row.session.status == TiBasicDebugSessionStatus.PendingStop) return row.session
+        currentSession = row.session
+        val column = currentSession.evaluateValidatedIntArgument(
+            argumentName = SCREEN_WRITE_COLUMN_ARGUMENT_NAME,
+            assignment = semantics.columnAssignment,
+            allowedValues = VALID_SCREEN_WRITE_COLUMNS,
+        )
+        if (column.session.status == TiBasicDebugSessionStatus.PendingStop) return column.session
+        currentSession = column.session
+        val code = currentSession.evaluateRoundedIntArgument(
+            argumentName = SCREEN_WRITE_CHARACTER_CODE_ARGUMENT_NAME,
+            assignment = semantics.codeAssignment,
+        )
+        if (code.session.status == TiBasicDebugSessionStatus.PendingStop) return code.session
+        currentSession = code.session
+        val repeat = currentSession.evaluateValidatedIntArgument(
+            argumentName = SCREEN_WRITE_REPEAT_ARGUMENT_NAME,
+            assignment = semantics.repeatAssignment,
+            allowedValues = VALID_SCREEN_WRITE_REPEATS,
+        )
+        if (repeat.session.status == TiBasicDebugSessionStatus.PendingStop) return repeat.session
+        val updatedCodes = currentSession.screenContents.characterCodes.map(List<Int>::toMutableList)
+        tiBasicScreenWritePositions(
+            row = row.value,
+            column = column.value,
+            repeatCount = repeat.value,
+            horizontal = semantics.horizontal,
+        ).forEach { target ->
+            updatedCodes[target.row - 1][target.column - 1] = code.value
+        }
+        return currentSession.continueAfter(currentLineNumber).copy(
+            screenContents = currentSession.screenContents.copy(
+                characterCodes = updatedCodes.map(List<Int>::toList),
+            ),
+        )
+    }
+
     private fun applyCallSound(
         currentLineNumber: Int,
         semantics: TiBasicDebugLineSemantics.CallSound,
@@ -1628,21 +1755,40 @@ internal data class TiBasicDebugSession(
             }
         }
 
-    private fun evaluateColorArgument(
+    private fun evaluateRoundedIntArgument(
         argumentName: String,
         assignment: TiBasicDebugNumericAssignment,
-        allowedValues: IntRange,
     ): TiBasicDebugValidatedInt {
         val evaluation = evaluateNumericAssignment(assignment)
             ?: return TiBasicDebugValidatedInt(incorrectStatement(), Int.MIN_VALUE)
         val sessionAfterEvaluation = mergeEvaluations(evaluation)
         val roundedValue = evaluation.value.value.roundToWholeNumberIntOrNull()
             ?: return TiBasicDebugValidatedInt(sessionAfterEvaluation.badValue(argumentName, evaluation.value.usualDisplay), Int.MIN_VALUE)
-        if (roundedValue !in allowedValues) {
-            return TiBasicDebugValidatedInt(sessionAfterEvaluation.badValue(argumentName, roundedValue), roundedValue)
-        }
         return TiBasicDebugValidatedInt(sessionAfterEvaluation, roundedValue)
     }
+
+    private fun evaluateValidatedIntArgument(
+        argumentName: String,
+        assignment: TiBasicDebugNumericAssignment,
+        allowedValues: IntRange,
+    ): TiBasicDebugValidatedInt {
+        val roundedArgument = evaluateRoundedIntArgument(argumentName, assignment)
+        if (roundedArgument.session.status == TiBasicDebugSessionStatus.PendingStop) {
+            return roundedArgument
+        }
+        val roundedValue = roundedArgument.value
+        if (roundedValue !in allowedValues) {
+            return TiBasicDebugValidatedInt(roundedArgument.session.badValue(argumentName, roundedValue), roundedValue)
+        }
+        return roundedArgument
+    }
+
+    private fun evaluateColorArgument(
+        argumentName: String,
+        assignment: TiBasicDebugNumericAssignment,
+        allowedValues: IntRange,
+    ): TiBasicDebugValidatedInt =
+        evaluateValidatedIntArgument(argumentName, assignment, allowedValues)
 
     private fun evaluateStringAssignment(assignment: TiBasicDebugStringAssignment): TiBasicDebugStringEvaluation? =
         (when (assignment) {
@@ -1919,6 +2065,14 @@ internal sealed interface TiBasicDebugLineSemantics {
         val colorAssignment: TiBasicDebugNumericAssignment,
     ) : TiBasicDebugLineSemantics
 
+    data class CallScreenWrite(
+        val horizontal: Boolean,
+        val rowAssignment: TiBasicDebugNumericAssignment,
+        val columnAssignment: TiBasicDebugNumericAssignment,
+        val codeAssignment: TiBasicDebugNumericAssignment,
+        val repeatAssignment: TiBasicDebugNumericAssignment,
+    ) : TiBasicDebugLineSemantics
+
     data class CallSound(
         val durationAssignment: TiBasicDebugNumericAssignment,
         val channels: List<TiBasicDebugSoundChannelAssignment>,
@@ -1930,6 +2084,12 @@ private fun TiBasicDebugProgramLine.isCallScreenLine(): Boolean =
 
 private fun TiBasicDebugProgramLine.isCallColorLine(): Boolean =
     sourceText.contains(CALL_COLOR_LINE_MARKER, ignoreCase = true)
+
+private fun TiBasicDebugProgramLine.isCallHcharLine(): Boolean =
+    sourceText.contains(CALL_HCHAR_LINE_MARKER, ignoreCase = true)
+
+private fun TiBasicDebugProgramLine.isCallVcharLine(): Boolean =
+    sourceText.contains(CALL_VCHAR_LINE_MARKER, ignoreCase = true)
 
 private fun TiBasicDebugProgramLine.isIfLine(): Boolean =
     IF_LINE_REGEX.containsMatchIn(sourceText)
@@ -2327,11 +2487,18 @@ private const val CHR_DOLLAR_FUNCTION = "CHR$"
 private const val KEY_SUBPROGRAM_NAME = "KEY"
 private const val CLEAR_SUBPROGRAM_NAME = "CLEAR"
 private const val COLOR_SUBPROGRAM_NAME = "COLOR"
+private const val HCHAR_SUBPROGRAM_NAME = "HCHAR"
 private const val SCREEN_SUBPROGRAM_NAME = "SCREEN"
+private const val VCHAR_SUBPROGRAM_NAME = "VCHAR"
 private const val CALL_COLOR_ARG_COUNT = 3
 private const val CALL_COLOR_SET_ARG_INDEX = 0
 private const val CALL_COLOR_FOREGROUND_ARG_INDEX = 1
 private const val CALL_COLOR_BACKGROUND_ARG_INDEX = 2
+private val VALID_SCREEN_WRITE_ARGUMENT_COUNTS = setOf(3, 4)
+private const val SCREEN_WRITE_ROW_ARG_INDEX = 0
+private const val SCREEN_WRITE_COLUMN_ARG_INDEX = 1
+private const val SCREEN_WRITE_CODE_ARG_INDEX = 2
+private const val SCREEN_WRITE_REPEAT_ARG_INDEX = 3
 private const val CALL_SOUND_DURATION_ARG_INDEX = 0
 private const val CALL_SOUND_CHANNEL_ARGS_START_INDEX = 1
 private const val CALL_SOUND_CHANNEL_ARGUMENT_COUNT = 2
@@ -2351,6 +2518,8 @@ private const val POS_FUNCTION = "POS"
 private const val VAL_FUNCTION = "VAL"
 private const val CALL_SCREEN_LINE_MARKER = "CALL SCREEN"
 private const val CALL_COLOR_LINE_MARKER = "CALL COLOR"
+private const val CALL_HCHAR_LINE_MARKER = "CALL HCHAR"
+private const val CALL_VCHAR_LINE_MARKER = "CALL VCHAR"
 private const val INCORRECT_EXPRESSION_DISPLAY = "<incorrect expression>"
 private const val STRING_NUMBER_MISMATCH_DISPLAY = "string-number-mismatch"
 private const val INVALID_COLOR_CODE_DISPLAY = "<invalid color code>"
@@ -2372,6 +2541,10 @@ private const val BYTE_SEPARATOR = " "
 private const val TWO_DIGIT_DISPLAY_WIDTH = 2
 private const val EMPTY_STRING = ""
 private const val SCREEN_COLOR_ARGUMENT_NAME = "color-code"
+private const val SCREEN_WRITE_ROW_ARGUMENT_NAME = "row"
+private const val SCREEN_WRITE_COLUMN_ARGUMENT_NAME = "column"
+private const val SCREEN_WRITE_CHARACTER_CODE_ARGUMENT_NAME = "character-code"
+private const val SCREEN_WRITE_REPEAT_ARGUMENT_NAME = "repeat"
 private const val DEFAULT_CALL_KEY_SCAN_INPUT = "-1"
 private const val DEFAULT_KEYBOARD_MODE = 5
 private const val UNKNOWN_KEYBOARD_STATUS_DISPLAY = "?"
@@ -2418,6 +2591,9 @@ private val RELATIONAL_OPERATOR_TYPES = setOf(
 private val VALID_CALL_KEY_MODES = 0..5
 private val VALID_CALL_COLOR_CHARACTER_SETS = 1..16
 private val VALID_CALL_COLOR_COLOR_CODES = 1..16
+private val VALID_SCREEN_WRITE_ROWS = 1..TI_BASIC_SCREEN_ROWS
+private val VALID_SCREEN_WRITE_COLUMNS = 1..TI_BASIC_SCREEN_COLUMNS
+private val VALID_SCREEN_WRITE_REPEATS = 0..Int.MAX_VALUE
 private val CALL_KEY_MODE_1_AND_2_CODES = 0..19
 private val CALL_KEY_MODE_3_CODES = (1..15) + (32..95)
 private val CALL_KEY_MODE_4_CODES = 1..143
