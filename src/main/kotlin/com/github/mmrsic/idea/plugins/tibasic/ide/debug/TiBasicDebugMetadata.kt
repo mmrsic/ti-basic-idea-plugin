@@ -35,6 +35,7 @@ internal object TiBasicDebugMetadata {
     const val badValueKey = "debug.runtime.bad.value"
     const val cantDoThatKey = "debug.runtime.cant.do.that"
     const val incorrectStatementKey = "debug.runtime.incorrect.statement"
+    const val stringNumberMismatchKey = "debug.runtime.string.number.mismatch"
     const val stringCutTo255CharactersKey = "debug.runtime.string.cut.to.255.characters"
 
     fun message(key: String, vararg params: Any): String = TiBasicBundle.message(key, *params)

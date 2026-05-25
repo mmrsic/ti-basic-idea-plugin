@@ -122,6 +122,66 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(110, session.currentProgramLine?.lineNumber)
     }
 
+    fun `test debug session initializes sixteen CALL COLOR character sets`() {
+        val session = startSession("100 PRINT \"A\"")
+
+        assertEquals((1..16).toSet(), session.screenContents.characterSetColors.keys)
+        assertTrue(session.screenContents.characterSetColors.values.all { colors ->
+            colors.fg == TiColor.Black && colors.bg == TiColor.Transparent
+        })
+    }
+
+    fun `test CALL COLOR updates rounded character set colors`() {
+        var session = startSession(
+            """
+            100 CALL COLOR(5.4,3.2,1.2)
+            110 PRINT "A"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals(TiColor.MediumGreen, session.screenContents.characterSetColors[5]?.fg)
+        assertEquals(TiColor.Transparent, session.screenContents.characterSetColors[5]?.bg)
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test CALL COLOR with invalid rounded character set shows bad value`() {
+        var session = startSession("100 CALL COLOR(16.6,2,1)")
+
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.PendingStop, session.status)
+        assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.badValueKey, "character set=17"), session.statusMessage)
+    }
+
+    fun `test CALL COLOR with string argument shows string number mismatch`() {
+        var session = startSession("100 CALL COLOR(\"A\",2,1)")
+
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.PendingStop, session.status)
+        assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.stringNumberMismatchKey), session.statusMessage)
+    }
+
+    fun `test numeric LET with string expression shows string number mismatch`() {
+        var session = startSession("100 LET A=\"HELLO\"")
+
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.PendingStop, session.status)
+        assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.stringNumberMismatchKey), session.statusMessage)
+    }
+
+    fun `test string LET with numeric expression shows string number mismatch`() {
+        var session = startSession("100 LET A$=5")
+
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.PendingStop, session.status)
+        assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.stringNumberMismatchKey), session.statusMessage)
+    }
+
     fun `test CALL SOUND step resolves playback from current debugger variables`() {
         var session = startSession(
             """

@@ -9,9 +9,11 @@ import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicNoiseShiftRate
 import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundNoise
 import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundPlayback
 import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundTone
+import com.github.mmrsic.idea.plugins.tibasic.editor.callColorCharacterSetRange
 import com.github.mmrsic.idea.plugins.tibasic.editor.displayedScreenBackground
 import com.github.mmrsic.idea.plugins.tibasic.editor.isPlayableSoundPlayback
 import com.github.mmrsic.idea.plugins.tibasic.editor.roundedScreenColorAt
+import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.UNARY_EXPRESSION_OPERATOR_TYPES
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.firstTopLevelBinaryOperatorIndex
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.isFullyParenthesized
@@ -132,6 +134,7 @@ internal data class TiBasicDebugProgramSnapshot(
             return when (statement.subprogramName()) {
                 KEY_SUBPROGRAM_NAME -> createCallKeySemantics(statement)
                 CLEAR_SUBPROGRAM_NAME -> if (statement.arguments().isEmpty()) TiBasicDebugLineSemantics.CallClear else TiBasicDebugLineSemantics.IncorrectStatement
+                COLOR_SUBPROGRAM_NAME -> createCallColorSemantics(statement)
                 SCREEN_SUBPROGRAM_NAME -> createCallScreenSemantics(statement)
                 CALL_SOUND_SUBPROGRAM -> createCallSoundSemantics(statement)
                 else -> TiBasicDebugLineSemantics.Sequential
@@ -143,8 +146,42 @@ internal data class TiBasicDebugProgramSnapshot(
                 return TiBasicDebugLineSemantics.IncorrectStatement
             }
             val argument = statement.arguments().singleOrNull() ?: return TiBasicDebugLineSemantics.IncorrectStatement
-            val colorAssignment = createNumericAssignmentFromExpression(argument.node) ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val colorAssignment = when (val result = createRequiredNumericAssignment(argument.node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
             return TiBasicDebugLineSemantics.CallScreen(colorAssignment)
+        }
+
+        private fun createCallColorSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
+            if (!statement.hasArgumentParens() || !statement.hasClosingArgumentParen()) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val arguments = statement.arguments()
+            if (arguments.size != CALL_COLOR_ARG_COUNT) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val characterSetAssignment = when (val result = createRequiredNumericAssignment(arguments[CALL_COLOR_SET_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val foregroundAssignment = when (val result = createRequiredNumericAssignment(arguments[CALL_COLOR_FOREGROUND_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val backgroundAssignment = when (val result = createRequiredNumericAssignment(arguments[CALL_COLOR_BACKGROUND_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            return TiBasicDebugLineSemantics.CallColor(
+                characterSetAssignment = characterSetAssignment,
+                foregroundAssignment = foregroundAssignment,
+                backgroundAssignment = backgroundAssignment,
+            )
         }
 
         private fun createCallSoundSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
@@ -155,20 +192,25 @@ internal data class TiBasicDebugProgramSnapshot(
             if (arguments.size !in VALID_SOUND_ARGUMENT_COUNTS) {
                 return TiBasicDebugLineSemantics.IncorrectStatement
             }
-            val durationAssignment = createNumericAssignmentFromExpression(arguments[CALL_SOUND_DURATION_ARG_INDEX].node)
-                ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val durationAssignment = when (val result = createRequiredNumericAssignment(arguments[CALL_SOUND_DURATION_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
             val channels = arguments
                 .drop(CALL_SOUND_CHANNEL_ARGS_START_INDEX)
                 .chunked(CALL_SOUND_CHANNEL_ARGUMENT_COUNT)
                 .map { channelArgs ->
-                    val pitchAssignment = channelArgs.getOrNull(CALL_SOUND_PITCH_ARG_OFFSET)
-                        ?.node
-                        ?.let(::createNumericAssignmentFromExpression)
-                        ?: return TiBasicDebugLineSemantics.IncorrectStatement
-                    val volumeAssignment = channelArgs.getOrNull(CALL_SOUND_VOLUME_ARG_OFFSET)
-                        ?.node
-                        ?.let(::createNumericAssignmentFromExpression)
-                        ?: return TiBasicDebugLineSemantics.IncorrectStatement
+                    val pitchAssignment = when (val result = channelArgs.getOrNull(CALL_SOUND_PITCH_ARG_OFFSET)?.node?.let(::createRequiredNumericAssignment)) {
+                        is TiBasicDebugParseResult.Valid -> result.value
+                        TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                        else -> return TiBasicDebugLineSemantics.IncorrectStatement
+                    }
+                    val volumeAssignment = when (val result = channelArgs.getOrNull(CALL_SOUND_VOLUME_ARG_OFFSET)?.node?.let(::createRequiredNumericAssignment)) {
+                        is TiBasicDebugParseResult.Valid -> result.value
+                        TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                        else -> return TiBasicDebugLineSemantics.IncorrectStatement
+                    }
                     TiBasicDebugSoundChannelAssignment(
                         pitchAssignment = pitchAssignment,
                         volumeAssignment = volumeAssignment,
@@ -188,8 +230,11 @@ internal data class TiBasicDebugProgramSnapshot(
             if (arguments.size != CALL_KEY_ARG_COUNT) {
                 return TiBasicDebugLineSemantics.IncorrectStatement
             }
-            val modeAssignment = createNumericAssignmentFromExpression(arguments[KEYBOARD_MODE_ARG_INDEX].node)
-                ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val modeAssignment = when (val result = createRequiredNumericAssignment(arguments[KEYBOARD_MODE_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
             val keyCodeVariableName = arguments[KEY_CODE_ARG_INDEX]
                 .numericVariableTarget()
                 ?.takeUnless(TiBasicVariableAccess::hasSubscriptParens)
@@ -216,10 +261,18 @@ internal data class TiBasicDebugProgramSnapshot(
             val targetName = targetVariable.name ?: return TiBasicDebugLineSemantics.IncorrectStatement
             val expression = statement.assignedExpression() ?: return TiBasicDebugLineSemantics.IncorrectStatement
             return if (targetName.endsWith(STRING_VARIABLE_SUFFIX)) {
-                val assignment = createStringAssignmentFromExpression(expression.node) ?: return TiBasicDebugLineSemantics.Sequential
+                val assignment = when (val result = createRequiredStringAssignment(expression.node)) {
+                    is TiBasicDebugParseResult.Valid -> result.value
+                    TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                    TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.Sequential
+                }
                 TiBasicDebugLineSemantics.LetString(targetName, assignment)
             } else {
-                val assignment = createNumericAssignmentFromExpression(expression.node) ?: return TiBasicDebugLineSemantics.IncorrectStatement
+                val assignment = when (val result = createRequiredNumericAssignment(expression.node)) {
+                    is TiBasicDebugParseResult.Valid -> result.value
+                    TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                    TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+                }
                 TiBasicDebugLineSemantics.LetNumeric(targetName, assignment)
             }
         }
@@ -232,7 +285,11 @@ internal data class TiBasicDebugProgramSnapshot(
             if (elseKeywordPresent && elseLineNumber == null) {
                 return TiBasicDebugLineSemantics.IncorrectStatement
             }
-            val condition = createCondition(conditionExpression.node) ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val condition = when (val result = createCondition(conditionExpression.node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
             return TiBasicDebugLineSemantics.If(
                 condition = condition,
                 thenLineNumber = thenLineNumber,
@@ -248,9 +305,9 @@ internal data class TiBasicDebugProgramSnapshot(
             return TiBasicDebugLineSemantics.Print(items)
         }
 
-        private fun createCondition(expressionNode: ASTNode): TiBasicDebugCondition? {
+        private fun createCondition(expressionNode: ASTNode): TiBasicDebugParseResult<TiBasicDebugCondition> {
             val children = expressionNode.nonWhitespaceChildren
-            if (children.isEmpty()) return null
+            if (children.isEmpty()) return TiBasicDebugParseResult.Invalid
             firstTopLevelBinaryOperatorIndex(children, RELATIONAL_OPERATOR_TYPES)?.let { operatorIndex ->
                 val operatorType = children[operatorIndex].elementType
                 val leftNodes = children.subList(0, operatorIndex)
@@ -258,24 +315,41 @@ internal data class TiBasicDebugProgramSnapshot(
                 val leftNumeric = createNumericAssignmentFromNodes(leftNodes)
                 val rightNumeric = createNumericAssignmentFromNodes(rightNodes)
                 if (leftNumeric != null && rightNumeric != null) {
-                    return TiBasicDebugCondition.NumericComparison(
+                    return TiBasicDebugParseResult.Valid(
+                        TiBasicDebugCondition.NumericComparison(
                         left = leftNumeric,
                         operatorType = operatorType,
                         right = rightNumeric,
+                        ),
                     )
                 }
                 val leftString = createStringAssignmentFromNodes(leftNodes)
                 val rightString = createStringAssignmentFromNodes(rightNodes)
                 if (leftString != null && rightString != null) {
-                    return TiBasicDebugCondition.StringComparison(
+                    return TiBasicDebugParseResult.Valid(
+                        TiBasicDebugCondition.StringComparison(
                         left = leftString,
                         operatorType = operatorType,
                         right = rightString,
+                        ),
                     )
                 }
-                return null
+                return if (
+                    hasNumericContextMismatch(leftNodes) ||
+                    hasNumericContextMismatch(rightNodes) ||
+                    hasStringContextMismatch(leftNodes) ||
+                    hasStringContextMismatch(rightNodes)
+                ) {
+                    TiBasicDebugParseResult.StringNumberMismatch
+                } else {
+                    TiBasicDebugParseResult.Invalid
+                }
             }
-            return createNumericAssignmentFromNodes(children)?.let(TiBasicDebugCondition::NumericValue)
+            return when (val result = createRequiredNumericAssignmentFromNodes(children)) {
+                is TiBasicDebugParseResult.Valid -> TiBasicDebugParseResult.Valid(TiBasicDebugCondition.NumericValue(result.value))
+                TiBasicDebugParseResult.StringNumberMismatch -> TiBasicDebugParseResult.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> TiBasicDebugParseResult.Invalid
+            }
         }
 
         private fun createPrintItem(node: ASTNode): TiBasicDebugPrintItem? =
@@ -371,6 +445,27 @@ internal data class TiBasicDebugProgramSnapshot(
 
         private fun createNumericAssignment(expressionNode: ASTNode): TiBasicDebugNumericAssignment? =
             createNumericAssignmentFromExpression(expressionNode)
+
+        private fun createRequiredNumericAssignment(expressionNode: ASTNode): TiBasicDebugParseResult<TiBasicDebugNumericAssignment> =
+            createRequiredNumericAssignmentFromNodes(expressionNode.nonWhitespaceChildren)
+
+        private fun createRequiredNumericAssignmentFromNodes(nodes: List<ASTNode>): TiBasicDebugParseResult<TiBasicDebugNumericAssignment> =
+            createNumericAssignmentFromNodes(nodes)
+                ?.let { TiBasicDebugParseResult.Valid(it) }
+                ?: if (hasNumericContextMismatch(nodes)) {
+                    TiBasicDebugParseResult.StringNumberMismatch
+                } else {
+                    TiBasicDebugParseResult.Invalid
+                }
+
+        private fun createRequiredStringAssignment(expressionNode: ASTNode): TiBasicDebugParseResult<TiBasicDebugStringAssignment> =
+            createStringAssignmentFromExpression(expressionNode)
+                ?.let { TiBasicDebugParseResult.Valid(it) }
+                ?: if (hasStringContextMismatch(expressionNode.nonWhitespaceChildren)) {
+                    TiBasicDebugParseResult.StringNumberMismatch
+                } else {
+                    TiBasicDebugParseResult.Invalid
+                }
 
         private fun createNumericAssignmentFromExpression(expressionNode: ASTNode): TiBasicDebugNumericAssignment? {
             val children = expressionNode.nonWhitespaceChildren
@@ -602,8 +697,10 @@ internal data class TiBasicDebugSession(
             is TiBasicDebugLineSemantics.Print -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyPrint(programLine.lineNumber, semantics))
             is TiBasicDebugLineSemantics.CallKey -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallKey(programLine.lineNumber, semantics))
             TiBasicDebugLineSemantics.CallClear -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber))
+            is TiBasicDebugLineSemantics.CallColor -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallColor(programLine.lineNumber, semantics))
             is TiBasicDebugLineSemantics.CallScreen -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallScreen(programLine.lineNumber, semantics))
             is TiBasicDebugLineSemantics.CallSound -> sessionWithInitializedNumericVariables.applyCallSound(programLine.lineNumber, semantics)
+            TiBasicDebugLineSemantics.StringNumberMismatch -> TiBasicDebugStepResult(stringNumberMismatch())
             TiBasicDebugLineSemantics.IncorrectStatement -> TiBasicDebugStepResult(incorrectStatement())
         }
     }
@@ -786,6 +883,43 @@ internal data class TiBasicDebugSession(
             ),
         )
 
+    private fun applyCallColor(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.CallColor,
+    ): TiBasicDebugSession {
+        var currentSession = this
+        val characterSet = currentSession.evaluateColorArgument(
+            argumentName = CHARACTER_SET_ARGUMENT_NAME,
+            assignment = semantics.characterSetAssignment,
+            allowedValues = VALID_CALL_COLOR_CHARACTER_SETS,
+        )
+        if (characterSet.session.status == TiBasicDebugSessionStatus.PendingStop) return characterSet.session
+        currentSession = characterSet.session
+        val foreground = currentSession.evaluateColorArgument(
+            argumentName = FOREGROUND_COLOR_ARGUMENT_NAME,
+            assignment = semantics.foregroundAssignment,
+            allowedValues = VALID_CALL_COLOR_COLOR_CODES,
+        )
+        if (foreground.session.status == TiBasicDebugSessionStatus.PendingStop) return foreground.session
+        currentSession = foreground.session
+        val background = currentSession.evaluateColorArgument(
+            argumentName = BACKGROUND_COLOR_ARGUMENT_NAME,
+            assignment = semantics.backgroundAssignment,
+            allowedValues = VALID_CALL_COLOR_COLOR_CODES,
+        )
+        if (background.session.status == TiBasicDebugSessionStatus.PendingStop) return background.session
+        currentSession = background.session
+        return currentSession.continueAfter(currentLineNumber).copy(
+            screenContents = currentSession.screenContents.copy(
+                characterSetColors = currentSession.screenContents.characterSetColors +
+                    (characterSet.value to TiBasicDebugCharacterSetColors(
+                        fg = TiColor.at(foreground.value),
+                        bg = TiColor.at(background.value),
+                    )),
+            ),
+        )
+    }
+
     private fun applyCallScreen(
         currentLineNumber: Int,
         semantics: TiBasicDebugLineSemantics.CallScreen,
@@ -962,6 +1096,22 @@ internal data class TiBasicDebugSession(
                 )
             }
         }
+
+    private fun evaluateColorArgument(
+        argumentName: String,
+        assignment: TiBasicDebugNumericAssignment,
+        allowedValues: IntRange,
+    ): TiBasicDebugValidatedInt {
+        val evaluation = evaluateNumericAssignment(assignment)
+            ?: return TiBasicDebugValidatedInt(incorrectStatement(), Int.MIN_VALUE)
+        val sessionAfterEvaluation = mergeEvaluations(evaluation)
+        val roundedValue = evaluation.value.value.roundToWholeNumberIntOrNull()
+            ?: return TiBasicDebugValidatedInt(sessionAfterEvaluation.badValue(argumentName, evaluation.value.usualDisplay), Int.MIN_VALUE)
+        if (roundedValue !in allowedValues) {
+            return TiBasicDebugValidatedInt(sessionAfterEvaluation.badValue(argumentName, roundedValue), roundedValue)
+        }
+        return TiBasicDebugValidatedInt(sessionAfterEvaluation, roundedValue)
+    }
 
     private fun evaluateStringAssignment(assignment: TiBasicDebugStringAssignment): TiBasicDebugStringEvaluation? =
         (when (assignment) {
@@ -1162,6 +1312,16 @@ internal data class TiBasicDebugSession(
             keyboardScanInput = EMPTY_STRING,
         )
 
+    private fun badValue(argumentName: String, value: Any): TiBasicDebugSession =
+        badValue("$argumentName=$value")
+
+    private fun stringNumberMismatch(): TiBasicDebugSession =
+        copy(
+            status = TiBasicDebugSessionStatus.PendingStop,
+            statusMessage = TiBasicDebugMetadata.message(TiBasicDebugMetadata.stringNumberMismatchKey),
+            keyboardScanInput = EMPTY_STRING,
+        )
+
     private fun incorrectStatement(): TiBasicDebugSession =
         copy(
             status = TiBasicDebugSessionStatus.PendingStop,
@@ -1174,6 +1334,7 @@ internal sealed interface TiBasicDebugLineSemantics {
     data object Sequential : TiBasicDebugLineSemantics
     data object Rem : TiBasicDebugLineSemantics
     data object CallClear : TiBasicDebugLineSemantics
+    data object StringNumberMismatch : TiBasicDebugLineSemantics
     data object IncorrectStatement : TiBasicDebugLineSemantics
     data class Goto(val target: TiBasicJumpTarget) : TiBasicDebugLineSemantics
     data class Gosub(val target: TiBasicJumpTarget) : TiBasicDebugLineSemantics
@@ -1204,6 +1365,12 @@ internal sealed interface TiBasicDebugLineSemantics {
         val modeAssignment: TiBasicDebugNumericAssignment,
         val keyCodeVariableName: String,
         val statusVariableName: String,
+    ) : TiBasicDebugLineSemantics
+
+    data class CallColor(
+        val characterSetAssignment: TiBasicDebugNumericAssignment,
+        val foregroundAssignment: TiBasicDebugNumericAssignment,
+        val backgroundAssignment: TiBasicDebugNumericAssignment,
     ) : TiBasicDebugLineSemantics
 
     data class CallScreen(
@@ -1252,6 +1419,17 @@ internal data class TiBasicDebugConditionEvaluation(
     val initializedNumericVariables: Map<String, TiBasicDebugNumericValue> = emptyMap(),
     val initializedStringVariables: Map<String, TiBasicDebugStringValue> = emptyMap(),
     val warningMessage: String? = null,
+)
+
+internal sealed interface TiBasicDebugParseResult<out T> {
+    data class Valid<T>(val value: T) : TiBasicDebugParseResult<T>
+    data object StringNumberMismatch : TiBasicDebugParseResult<Nothing>
+    data object Invalid : TiBasicDebugParseResult<Nothing>
+}
+
+internal data class TiBasicDebugValidatedInt(
+    val session: TiBasicDebugSession,
+    val value: Int,
 )
 
 internal sealed interface TiBasicJumpTarget {
@@ -1522,7 +1700,12 @@ private const val NUMERIC_BYTE_PREFIX = ">"
 private const val CHR_DOLLAR_FUNCTION = "CHR$"
 private const val KEY_SUBPROGRAM_NAME = "KEY"
 private const val CLEAR_SUBPROGRAM_NAME = "CLEAR"
+private const val COLOR_SUBPROGRAM_NAME = "COLOR"
 private const val SCREEN_SUBPROGRAM_NAME = "SCREEN"
+private const val CALL_COLOR_ARG_COUNT = 3
+private const val CALL_COLOR_SET_ARG_INDEX = 0
+private const val CALL_COLOR_FOREGROUND_ARG_INDEX = 1
+private const val CALL_COLOR_BACKGROUND_ARG_INDEX = 2
 private const val CALL_SOUND_DURATION_ARG_INDEX = 0
 private const val CALL_SOUND_CHANNEL_ARGS_START_INDEX = 1
 private const val CALL_SOUND_CHANNEL_ARGUMENT_COUNT = 2
@@ -1558,6 +1741,9 @@ private const val NO_KEY_CODE = -1
 private const val REUSE_LAST_KEYBOARD_MODE = 0
 private const val PRINT_AREA_END_COLUMN = 30
 private const val WARNING_SEPARATOR = " | "
+private const val CHARACTER_SET_ARGUMENT_NAME = "character set"
+private const val FOREGROUND_COLOR_ARGUMENT_NAME = "foreground color"
+private const val BACKGROUND_COLOR_ARGUMENT_NAME = "background color"
 private val ZERO_NUMERIC_BYTES = List(8) { 0 }
 private val PRINTABLE_ASCII_RANGE = 32..126
 private val DEBUG_MATH_CONTEXT = MathContext.DECIMAL64
@@ -1570,6 +1756,7 @@ private val MULTIPLICATIVE_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.DIV_OP,
 )
 private val POWER_OPERATOR_TYPES = setOf(TiBasicTokenTypes.POW_OP)
+private val STRING_CONCAT_OPERATOR_TYPES = setOf(TiBasicTokenTypes.CONCAT_OP)
 private val RELATIONAL_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.EQ_OP,
     TiBasicTokenTypes.LT_OP,
@@ -1579,6 +1766,8 @@ private val RELATIONAL_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.GE_OP,
 )
 private val VALID_CALL_KEY_MODES = 0..5
+private val VALID_CALL_COLOR_CHARACTER_SETS = 1..16
+private val VALID_CALL_COLOR_COLOR_CODES = 1..16
 private val CALL_KEY_MODE_1_AND_2_CODES = 0..19
 private val CALL_KEY_MODE_3_CODES = (1..15) + (32..95)
 private val CALL_KEY_MODE_4_CODES = 1..143
@@ -1591,6 +1780,101 @@ private fun BigDecimal.toIntExactOrNull(): Int? =
 
 private fun BigDecimal.roundToWholeNumberIntOrNull(): Int? =
     setScale(0, RoundingMode.HALF_UP).toIntExactOrNull()
+
+private fun hasNumericContextMismatch(nodes: List<ASTNode>): Boolean {
+    if (nodes.isEmpty()) return false
+    if (isFullyParenthesized(nodes)) {
+        return hasNumericContextMismatch(nodes.subList(FIRST_INNER_NODE_INDEX, nodes.lastIndex))
+    }
+    lastTopLevelBinaryOperatorIndex(nodes, ADDITIVE_OPERATOR_TYPES + MULTIPLICATIVE_OPERATOR_TYPES)?.let { operatorIndex ->
+        return hasNumericContextMismatch(nodes.subList(0, operatorIndex)) ||
+            hasNumericContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
+    }
+    firstTopLevelBinaryOperatorIndex(nodes, POWER_OPERATOR_TYPES)?.let { operatorIndex ->
+        return hasNumericContextMismatch(nodes.subList(0, operatorIndex)) ||
+            hasNumericContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
+    }
+    return when {
+        nodes.size == SINGLE_NUMERIC_CHILD_COUNT -> isStringLikeNode(nodes.single())
+        nodes.firstOrNull()?.elementType in UNARY_EXPRESSION_OPERATOR_TYPES ->
+            hasNumericContextMismatch(nodes.dropWhile { it.elementType in UNARY_EXPRESSION_OPERATOR_TYPES })
+
+        else -> nodes.any(::isStringLikeNode)
+    }
+}
+
+private fun hasStringContextMismatch(nodes: List<ASTNode>): Boolean {
+    if (nodes.isEmpty()) return false
+    if (isFullyParenthesized(nodes)) {
+        return hasStringContextMismatch(nodes.subList(FIRST_INNER_NODE_INDEX, nodes.lastIndex))
+    }
+    lastTopLevelBinaryOperatorIndex(nodes, STRING_CONCAT_OPERATOR_TYPES)?.let { operatorIndex ->
+        return hasStringContextMismatch(nodes.subList(0, operatorIndex)) ||
+            hasStringContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
+    }
+    if (createNumericAssignmentFromNodesForMismatch(nodes) != null) return true
+    return when {
+        nodes.size == SINGLE_OPERAND_CHILD_COUNT -> isNumericLikeNode(nodes.single())
+        else -> nodes.any(::isNumericLikeNode)
+    }
+}
+
+private fun createNumericAssignmentFromNodesForMismatch(nodes: List<ASTNode>): TiBasicDebugNumericAssignment? {
+    if (nodes.isEmpty()) return null
+    if (isFullyParenthesized(nodes)) {
+        return createNumericAssignmentFromNodesForMismatch(nodes.subList(FIRST_INNER_NODE_INDEX, nodes.lastIndex))
+    }
+    lastTopLevelBinaryOperatorIndex(nodes, ADDITIVE_OPERATOR_TYPES)?.let { operatorIndex ->
+        val left = createNumericAssignmentFromNodesForMismatch(nodes.subList(0, operatorIndex)) ?: return null
+        val right = createNumericAssignmentFromNodesForMismatch(nodes.subList(operatorIndex + 1, nodes.size)) ?: return null
+        return TiBasicDebugNumericAssignment.Binary(left, nodes[operatorIndex].elementType, right)
+    }
+    lastTopLevelBinaryOperatorIndex(nodes, MULTIPLICATIVE_OPERATOR_TYPES)?.let { operatorIndex ->
+        val left = createNumericAssignmentFromNodesForMismatch(nodes.subList(0, operatorIndex)) ?: return null
+        val right = createNumericAssignmentFromNodesForMismatch(nodes.subList(operatorIndex + 1, nodes.size)) ?: return null
+        return TiBasicDebugNumericAssignment.Binary(left, nodes[operatorIndex].elementType, right)
+    }
+    firstTopLevelBinaryOperatorIndex(nodes, POWER_OPERATOR_TYPES)?.let { operatorIndex ->
+        val left = createNumericAssignmentFromNodesForMismatch(nodes.subList(0, operatorIndex)) ?: return null
+        val right = createNumericAssignmentFromNodesForMismatch(nodes.subList(operatorIndex + 1, nodes.size)) ?: return null
+        return TiBasicDebugNumericAssignment.Binary(left, nodes[operatorIndex].elementType, right)
+    }
+    var unaryOperatorsEndIndex = 0
+    while (unaryOperatorsEndIndex < nodes.size && nodes[unaryOperatorsEndIndex].elementType in UNARY_EXPRESSION_OPERATOR_TYPES) {
+        unaryOperatorsEndIndex++
+    }
+    if (unaryOperatorsEndIndex > 0) {
+        val operand = createNumericAssignmentFromNodesForMismatch(nodes.subList(unaryOperatorsEndIndex, nodes.size)) ?: return null
+        return nodes.take(unaryOperatorsEndIndex)
+            .reversed()
+            .fold(operand) { assignment, operatorNode ->
+                TiBasicDebugNumericAssignment.Unary(operatorNode.elementType, assignment)
+            }
+    }
+    return if (nodes.size == SINGLE_NUMERIC_CHILD_COUNT && isNumericLikeNode(nodes.single())) {
+        TiBasicDebugNumericAssignment.Literal(BigDecimal.ZERO)
+    } else {
+        null
+    }
+}
+
+private fun isStringLikeNode(node: ASTNode): Boolean =
+    when (node.elementType) {
+        TiBasicTokenTypes.STRING_LITERAL -> true
+        TiBasicNodeTypes.VARIABLE_ACCESS -> node.firstChildNode?.elementType == TiBasicTokenTypes.STRING_VARIABLE
+        TiBasicNodeTypes.FUNCTION_CALL -> node.firstChildNode?.elementType == TiBasicTokenTypes.STRING_FUNCTION_KEYWORD
+        TiBasicNodeTypes.EXPRESSION -> hasNumericContextMismatch(node.nonWhitespaceChildren)
+        else -> false
+    }
+
+private fun isNumericLikeNode(node: ASTNode): Boolean =
+    when (node.elementType) {
+        TiBasicTokenTypes.NUMERIC_LITERAL -> true
+        TiBasicNodeTypes.VARIABLE_ACCESS -> node.firstChildNode?.elementType == TiBasicTokenTypes.NUMERIC_VARIABLE
+        TiBasicNodeTypes.FUNCTION_CALL -> node.firstChildNode?.elementType == TiBasicTokenTypes.NUMERIC_FUNCTION_KEYWORD
+        TiBasicNodeTypes.EXPRESSION -> createNumericAssignmentFromNodesForMismatch(node.nonWhitespaceChildren) != null
+        else -> false
+    }
 
 private fun compareNumericValues(left: BigDecimal, operatorType: IElementType, right: BigDecimal): Boolean? =
     when (operatorType) {

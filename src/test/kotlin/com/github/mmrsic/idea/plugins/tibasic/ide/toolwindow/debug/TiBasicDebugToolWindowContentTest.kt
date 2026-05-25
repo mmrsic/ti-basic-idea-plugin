@@ -199,14 +199,63 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
             },
         )
         assertEquals("LightGreen", content.screenComponent.state.screenBackground.name)
-        assertEquals("Black", content.screenComponent.state.characterForeground.name)
-        assertEquals("Transparent", content.screenComponent.state.characterBackground.name)
+        assertEquals((1..16).toSet(), content.screenComponent.state.characterSetColors.keys)
+        assertTrue(content.screenComponent.state.characterSetColors.values.all { colors ->
+            colors.fg.name == "Black" && colors.bg.name == "Transparent"
+        })
         assertTrue(content.keepAspectRatioCheckBox.isSelected)
         assertTrue(content.screenComponent.keepAspectRatio)
+        assertTrue(content.characterSetPreviewComponent.keepAspectRatio)
         assertEquals(32 * 8 + 4 + 4, content.screenComponent.preferredSize.width)
         assertEquals(24 * 8, content.screenComponent.preferredSize.height)
+        assertEquals(content.screenComponent.preferredSize.width, content.characterSetPreviewComponent.preferredSize.width)
+        assertEquals(content.screenComponent.preferredSize.height, content.characterSetPreviewComponent.preferredSize.height)
+        assertEquals("LightGreen", content.characterSetPreviewComponent.state.screenBackground.name)
+        assertEquals((1..16).toSet(), content.characterSetPreviewComponent.state.characterSetColors.keys)
+        assertTrue(content.characterSetPreviewComponent.state.characterSetColors.values.all { colors ->
+            colors.fg.name == "Black" && colors.bg.name == "Transparent"
+        })
         assertEquals("0020100804081020", tiBasicCharacterPattern(62))
         assertEquals("0000007844784844", tiBasicCharacterPattern(114))
+    }
+
+    fun `test debug tool window paints character set preview beside screen`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 CALL SCREEN(2)
+            110 CALL COLOR(1,16,2)
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        repeat(2) {
+            content.stepButton.doClick()
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        }
+
+        val image = BufferedImage(
+            content.characterSetPreviewComponent.preferredSize.width,
+            content.characterSetPreviewComponent.preferredSize.height,
+            BufferedImage.TYPE_INT_RGB,
+        )
+        content.characterSetPreviewComponent.setSize(content.characterSetPreviewComponent.preferredSize)
+        content.characterSetPreviewComponent.paint(image.graphics)
+
+        assertEquals("Black", content.characterSetPreviewComponent.state.screenBackground.name)
+        assertEquals("White", content.characterSetPreviewComponent.state.characterSetColors.getValue(1).fg.name)
+        val previewBounds = content.characterSetPreviewComponent.scaledPreviewBounds()
+        assertEquals(0x000000, image.getRGB(previewBounds.x + 2, previewBounds.y + 2) and 0xFFFFFF)
+        val characterSetOrigin = content.characterSetPreviewComponent.characterSetOrigin()
+        val firstCharacterX = previewBounds.x + characterSetOrigin.x + 12
+        val firstCharacterY = previewBounds.y + characterSetOrigin.y + 5
+        val previewHasVisiblePixels = (firstCharacterX until firstCharacterX + 8).any { x ->
+            (firstCharacterY until firstCharacterY + 12).any { y -> image.getRGB(x, y) and 0xFFFFFF != 0x000000 }
+        }
+        assertTrue(previewHasVisiblePixels)
     }
 
     fun `test debug tool window paints visible screen codes`() {
@@ -316,6 +365,26 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals("Black", content.screenComponent.state.screenBackground.name)
     }
 
+    fun `test debug tool window updates character set colors after CALL COLOR step`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 CALL COLOR(5,3,1)
+            110 PRINT "A"
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("MediumGreen", content.screenComponent.state.characterSetColors[5]?.fg?.name)
+        assertEquals("Transparent", content.screenComponent.state.characterSetColors[5]?.bg?.name)
+    }
+
     fun `test debug tool window renders PRINT output in the screen area`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
@@ -363,7 +432,43 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
 
         assertFalse(content.keepAspectRatioCheckBox.isSelected)
         assertFalse(content.screenComponent.keepAspectRatio)
+        assertFalse(content.characterSetPreviewComponent.keepAspectRatio)
         assertEquals(400, screenBounds.width)
         assertEquals(400, screenBounds.height)
+    }
+
+    fun `test debug tool window scales character set preview to available space while keeping aspect ratio`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        content.characterSetPreviewComponent.setSize(400, 400)
+
+        val previewBounds = content.characterSetPreviewComponent.scaledPreviewBounds()
+        val screenBounds = content.screenComponent.apply { setSize(400, 400) }.scaledScreenBounds()
+
+        assertTrue(content.characterSetPreviewComponent.keepAspectRatio)
+        assertEquals(screenBounds, previewBounds)
+    }
+
+    fun `test debug tool window can scale character set preview without keeping aspect ratio`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        content.keepAspectRatioCheckBox.doClick()
+        content.characterSetPreviewComponent.setSize(400, 400)
+
+        val previewBounds = content.characterSetPreviewComponent.scaledPreviewBounds()
+        val screenBounds = content.screenComponent.apply { setSize(400, 400) }.scaledScreenBounds()
+
+        assertFalse(content.characterSetPreviewComponent.keepAspectRatio)
+        assertEquals(screenBounds, previewBounds)
+    }
+
+    fun `test debug tool window centers character set preview on second screen`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+
+        val characterSetOrigin = content.characterSetPreviewComponent.characterSetOrigin()
+
+        assertEquals((content.screenComponent.preferredSize.width - CHARACTER_SET_PREVIEW_WIDTH) / 2, characterSetOrigin.x)
+        assertEquals((content.screenComponent.preferredSize.height - CHARACTER_SET_PREVIEW_HEIGHT) / 2, characterSetOrigin.y)
     }
 }

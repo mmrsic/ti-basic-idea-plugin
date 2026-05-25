@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.debug
 
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugMetadata
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugScreenContents
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSession
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionService
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionStatus
@@ -13,6 +14,7 @@ import com.intellij.ui.components.JBTextField
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Font
+import java.awt.GridLayout
 import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JCheckBox
@@ -41,6 +43,9 @@ class TiBasicDebugToolWindowContent(
     internal val listModel = DefaultListModel<TiBasicDebugListingRow>()
     internal val listing = JBList(listModel)
     internal val screenComponent = TiBasicDebugScreenComponent()
+    internal val characterSetPreviewComponent = TiBasicDebugCharacterSetPreviewComponent(
+        TiBasicDebugCharacterSetPreviewState.fromScreenContents(TiBasicDebugScreenContents()),
+    )
     internal val keepAspectRatioCheckBox = JCheckBox(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowScreenKeepRatioKey), true)
     internal val numericVariablesModel = DefaultListModel<String>()
     internal val numericVariablesList = JBList(numericVariablesModel)
@@ -71,6 +76,7 @@ class TiBasicDebugToolWindowContent(
         listing.cellRenderer = TiBasicDebugListingRenderer { currentSourceLineIndex }
         keepAspectRatioCheckBox.addActionListener {
             screenComponent.keepAspectRatio = keepAspectRatioCheckBox.isSelected
+            characterSetPreviewComponent.keepAspectRatio = keepAspectRatioCheckBox.isSelected
         }
         add(createToolbar(), BorderLayout.NORTH)
         centerPanel.add(emptyLabel, EMPTY_CARD)
@@ -130,9 +136,11 @@ class TiBasicDebugToolWindowContent(
         currentSourceLineIndex = session.currentSourceLineIndex
         screenComponent.state = screenComponent.state.copy(
             screenBackground = session.screenContents.screenBackground,
+            characterSetColors = session.screenContents.characterSetColors,
             characterCodes = session.screenContents.characterCodes,
             characterPatterns = session.screenContents.characterPatterns,
         )
+        characterSetPreviewComponent.state = TiBasicDebugCharacterSetPreviewState.fromScreenContents(session.screenContents)
         stepButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         stopButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         inspectButton.isEnabled = true
@@ -157,6 +165,7 @@ class TiBasicDebugToolWindowContent(
         } ?: listing.clearSelection()
         listing.repaint()
         screenComponent.repaint()
+        characterSetPreviewComponent.repaint()
     }
 
     private fun createVariablesPanel(): JComponent =
@@ -189,7 +198,13 @@ class TiBasicDebugToolWindowContent(
                 },
                 BorderLayout.NORTH,
             )
-            panel.add(screenComponent, BorderLayout.CENTER)
+            panel.add(
+                JPanel(GridLayout(1, 2, SCREEN_CONTENT_GAP, 0)).also { contentPanel ->
+                    contentPanel.add(screenComponent)
+                    contentPanel.add(characterSetPreviewComponent)
+                },
+                BorderLayout.CENTER,
+            )
         }
 
     private fun createInteractionPanel(): JComponent =
@@ -290,5 +305,6 @@ class TiBasicDebugToolWindowContent(
 private const val EMPTY_CARD = "empty"
 private const val LIST_CARD = "list"
 private const val MAIN_CONTENT_PANEL_WEIGHT = 0.55
+private const val SCREEN_CONTENT_GAP = 8
 private const val SCREEN_PANEL_WEIGHT = 0.42
 private const val VARIABLES_PANEL_WEIGHT = 0.5
