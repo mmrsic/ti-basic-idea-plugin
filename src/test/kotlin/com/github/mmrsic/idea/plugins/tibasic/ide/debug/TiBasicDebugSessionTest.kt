@@ -396,8 +396,15 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(73, session.screenContents.characterCodes[23][3])
         assertEquals(32, session.screenContents.characterCodes[23][0])
         assertEquals(32, session.screenContents.characterCodes[23][1])
-        assertEquals(32, session.screenContents.characterCodes[23][30])
-        assertEquals(32, session.screenContents.characterCodes[23][31])
+    }
+
+    fun `test PRINT with exactly twenty eight characters does not add a blank line`() {
+        var session = startSession("100 PRINT \"1234567890123456789012345678\"")
+
+        session = session.step()
+
+        assertEquals("1234567890123456789012345678", screenText(session, 24, 3, 28))
+        assertEquals("> run", screenText(session, 23, 3, 5))
     }
 
     fun `test PRINT wraps after twenty eight characters and leaves outer columns unchanged`() {

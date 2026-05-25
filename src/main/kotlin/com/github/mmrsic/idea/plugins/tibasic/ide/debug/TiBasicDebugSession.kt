@@ -1821,7 +1821,7 @@ internal data class TiBasicDebugSession(
         text.fold(this) { session, character -> session.writePrintCharacter(character) }
 
     private fun writePrintCharacter(character: Char): TiBasicDebugSession {
-        val normalizedContents = screenContents.normalizePrintCursor()
+        val normalizedContents = screenContents.normalizePrintCursorForWrite()
         val updatedCodes = normalizedContents.characterCodes.map(List<Int>::toMutableList)
         val rowIndex = normalizedContents.printCursorRow - 1
         val columnIndex = normalizedContents.printCursorColumn - 1
@@ -2950,11 +2950,21 @@ private fun TiBasicDebugScreenContents.normalizePrintCursor(): TiBasicDebugScree
     return normalized
 }
 
+private fun TiBasicDebugScreenContents.normalizePrintCursorForWrite(): TiBasicDebugScreenContents =
+    normalizePrintCursor()
+        .let { normalized ->
+            if (normalized.printCursorColumn > PRINT_AREA_END_COLUMN) {
+                normalized.lineFeed().normalizePrintCursor()
+            } else {
+                normalized
+            }
+        }
+
 private fun TiBasicDebugScreenContents.advancePrintCursor(): TiBasicDebugScreenContents =
     if (printCursorColumn < PRINT_AREA_END_COLUMN) {
         copy(printCursorColumn = printCursorColumn + 1)
     } else {
-        lineFeed()
+        copy(printCursorColumn = PRINT_AREA_END_COLUMN + 1)
     }
 
 private fun TiBasicDebugScreenContents.lineFeed(): TiBasicDebugScreenContents =

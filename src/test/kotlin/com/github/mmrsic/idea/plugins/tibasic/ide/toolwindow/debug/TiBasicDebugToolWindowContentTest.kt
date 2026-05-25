@@ -694,6 +694,24 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals('T'.code, content.screenComponent.state.characterCodes[23][5])
     }
 
+    fun `test debug tool window keeps exactly twenty eight PRINT characters on the bottom row`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 PRINT \"1234567890123456789012345678\"")
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(
+            "1234567890123456789012345678".map(Char::code),
+            content.screenComponent.state.characterCodes[23].subList(2, 30),
+        )
+        assertEquals(listOf('>'.code, ' '.code, 'r'.code, 'u'.code, 'n'.code), content.screenComponent.state.characterCodes[22].subList(2, 7))
+    }
+
     fun `test debug tool window updates screen codes after CALL VCHAR step`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
