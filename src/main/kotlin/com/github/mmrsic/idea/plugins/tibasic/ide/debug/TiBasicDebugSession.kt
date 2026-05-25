@@ -26,11 +26,13 @@ import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiB
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicFunctionCall
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicVariableAccess
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicEndStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicForStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGosubStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicIfStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicPrintStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicNextStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRemStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicReturnStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicStopStatement
@@ -124,6 +126,8 @@ internal data class TiBasicDebugProgramSnapshot(
             is TiBasicStopStatement -> TiBasicDebugLineSemantics.Stop(isStandaloneKeyword(statement.node, TiBasicTokenTypes.STOP_KEYWORD))
             is TiBasicRemStatement -> TiBasicDebugLineSemantics.Rem
             is TiBasicIfStatement -> createIfSemantics(statement)
+            is TiBasicForStatement -> createForSemantics(statement)
+            is TiBasicNextStatement -> createNextSemantics(statement)
             is TiBasicPrintStatement -> createPrintSemantics(statement)
             is TiBasicLetStatement -> createLetSemantics(statement)
             is TiBasicCallStatement -> createCallSemantics(statement)
@@ -296,6 +300,38 @@ internal data class TiBasicDebugProgramSnapshot(
                 elseLineNumber = elseLineNumber,
             )
         }
+
+        private fun createForSemantics(statement: TiBasicForStatement): TiBasicDebugLineSemantics {
+            val initialValueAssignment = when (val result = statement.startExpression()?.node?.let(::createRequiredNumericAssignment)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                else -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val limitAssignment = when (val result = statement.endExpression()?.node?.let(::createRequiredNumericAssignment)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                else -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val incrementAssignment = when (val stepExpression = statement.stepExpression()) {
+                null -> TiBasicDebugNumericAssignment.Literal(BigDecimal.ONE)
+                else -> when (val result = createRequiredNumericAssignment(stepExpression.node)) {
+                    is TiBasicDebugParseResult.Valid -> result.value
+                    TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                    TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+                }
+            }
+            return TiBasicDebugLineSemantics.For(
+                controlVariableName = statement.controlVariableName() ?: return TiBasicDebugLineSemantics.IncorrectStatement,
+                initialValueAssignment = initialValueAssignment,
+                limitAssignment = limitAssignment,
+                incrementAssignment = incrementAssignment,
+            )
+        }
+
+        private fun createNextSemantics(statement: TiBasicNextStatement): TiBasicDebugLineSemantics =
+            statement.controlVariableName()
+                ?.let(TiBasicDebugLineSemantics::Next)
+                ?: TiBasicDebugLineSemantics.Sequential
 
         private fun createPrintSemantics(statement: TiBasicPrintStatement): TiBasicDebugLineSemantics {
             if (statement.isFileOutput()) return TiBasicDebugLineSemantics.Sequential
@@ -573,6 +609,14 @@ internal data class TiBasicDebugProgramSnapshot(
                         .mapNotNull { argument -> argument.numericVariableTarget()?.takeUnless(TiBasicVariableAccess::hasSubscriptParens) }
                         .forEach(::add)
                 }
+                (statement as? TiBasicForStatement)
+                    ?.node
+                    ?.allChildren
+                    ?.firstOrNull { node -> node.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
+                    ?.psi
+                    ?.let { psi -> psi as? TiBasicVariableAccess }
+                    ?.takeUnless(TiBasicVariableAccess::hasSubscriptParens)
+                    ?.let(::add)
             }
             return PsiTreeUtil.findChildrenOfType(statement, TiBasicVariableAccess::class.java)
                 .asSequence()
@@ -687,6 +731,8 @@ internal data class TiBasicDebugSession(
             programLine.isCallScreenLine() -> callScreenArgumentDisplays(programLine)
             programLine.isCallColorLine() -> callColorArgumentDisplays(programLine)
             programLine.isIfLine() -> ifArgumentDisplays(programLine)
+            programLine.isForLine() -> forArgumentDisplays(programLine)
+            programLine.isNextLine() -> nextArgumentDisplays(programLine)
             else -> emptyList()
         }
 
@@ -701,6 +747,58 @@ internal data class TiBasicDebugSession(
                         showsColorName = true,
                         showsLabelForIncorrectExpression = false,
                     ),
+                )
+            }
+
+            TiBasicDebugLineSemantics.StringNumberMismatch ->
+                listOf("$INCORRECT_EXPRESSION_DISPLAY ($STRING_NUMBER_MISMATCH_DISPLAY)")
+
+            TiBasicDebugLineSemantics.IncorrectStatement -> listOf(INCORRECT_EXPRESSION_DISPLAY)
+            else -> emptyList()
+        }
+
+    private fun forArgumentDisplays(programLine: TiBasicDebugProgramLine): List<String> =
+        when (val semantics = programLine.semantics) {
+            is TiBasicDebugLineSemantics.For -> {
+                val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+                listOf(
+                    preparedSession.numericArgumentDisplay(
+                        label = FOR_INITIAL_VALUE_ARGUMENT_NAME,
+                        assignment = semantics.initialValueAssignment,
+                    ),
+                    preparedSession.numericArgumentDisplay(
+                        label = FOR_LIMIT_ARGUMENT_NAME,
+                        assignment = semantics.limitAssignment,
+                    ),
+                    preparedSession.numericArgumentDisplay(
+                        label = FOR_INCREMENT_ARGUMENT_NAME,
+                        assignment = semantics.incrementAssignment,
+                    ),
+                ) + preparedSession.forIterationCountDisplay(semantics)
+            }
+
+            TiBasicDebugLineSemantics.StringNumberMismatch ->
+                listOf("$INCORRECT_EXPRESSION_DISPLAY ($STRING_NUMBER_MISMATCH_DISPLAY)")
+
+            TiBasicDebugLineSemantics.IncorrectStatement -> listOf(INCORRECT_EXPRESSION_DISPLAY)
+            else -> emptyList()
+        }
+
+    private fun nextArgumentDisplays(programLine: TiBasicDebugProgramLine): List<String> =
+        when (val semantics = programLine.semantics) {
+            is TiBasicDebugLineSemantics.Next -> {
+                val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+                val matchingForContext = preparedSession.matchingForContext(programLine.lineNumber, semantics.controlVariableName)
+                    ?: return emptyList()
+                val nextPreview = preparedSession.nextPreview(semantics.controlVariableName, matchingForContext)
+                    ?: return listOf(INCORRECT_EXPRESSION_DISPLAY)
+                listOf(
+                    preparedSession.numericArgumentDisplay(
+                        label = FOR_INCREMENT_ARGUMENT_NAME,
+                        assignment = matchingForContext.semantics.incrementAssignment,
+                    ),
+                    "$NEXT_CONTROL_VARIABLE_ARGUMENT_NAME ${semantics.controlVariableName} = ${nextPreview.updatedValueDisplay}",
+                    "$FOR_LIMIT_ARGUMENT_NAME = ${nextPreview.limitDisplay} (${nextPreview.decisionDisplay})",
                 )
             }
 
@@ -772,6 +870,77 @@ internal data class TiBasicDebugSession(
             .getOrElse { INVALID_COLOR_CODE_DISPLAY }
         return "$label = $valueDisplay ($colorName)"
     }
+
+    private fun forIterationCountDisplay(semantics: TiBasicDebugLineSemantics.For): String {
+        val initialEvaluation = evaluateNumericAssignment(semantics.initialValueAssignment)
+        val limitEvaluation = evaluateNumericAssignment(semantics.limitAssignment)
+        val incrementEvaluation = evaluateNumericAssignment(semantics.incrementAssignment)
+        val initialValue = initialEvaluation?.value?.value?.roundToWholeNumberIntOrNull()
+        val limitValue = limitEvaluation?.value?.value?.roundToWholeNumberIntOrNull()
+        val incrementValue = incrementEvaluation?.value?.value?.roundToWholeNumberIntOrNull()
+        val iterationCount = if (initialValue == null || limitValue == null || incrementValue == null || incrementValue == 0) {
+            INCORRECT_EXPRESSION_DISPLAY
+        } else {
+            forIterationCount(initialValue, limitValue, incrementValue).toString()
+        }
+        return "($FOR_ITERATION_COUNT_ARGUMENT_NAME = $iterationCount)"
+    }
+
+    private fun nextPreview(
+        controlVariableName: String,
+        matchingForContext: TiBasicDebugForContext,
+    ): TiBasicDebugNextPreview? {
+        val currentValue = evaluateNumericAssignment(TiBasicDebugNumericAssignment.VariableReference(controlVariableName)) ?: return null
+        val incrementValue = evaluateNumericAssignment(matchingForContext.semantics.incrementAssignment) ?: return null
+        val limitValue = evaluateNumericAssignment(matchingForContext.semantics.limitAssignment) ?: return null
+        val updatedValue = currentValue.value.value + incrementValue.value.value
+        val continuesLoop = continuesForLoop(updatedValue, limitValue.value.value, incrementValue.value.value)
+        return TiBasicDebugNextPreview(
+            updatedValue = updatedValue,
+            updatedValueDisplay = tiBasicDecimalString(updatedValue),
+            limitDisplay = limitValue.value.value.roundToWholeNumberIntOrNull()?.twoDigitDisplay()
+                ?: INCORRECT_EXPRESSION_DISPLAY,
+            continuesLoop = continuesLoop,
+            decisionDisplay = if (continuesLoop) {
+                matchingForContext.returnLineNumber?.let { returnLineNumber -> "$NEXT_DECISION_JUMP_PREFIX $returnLineNumber" }
+                    ?: NEXT_DECISION_END_DISPLAY
+            } else {
+                NEXT_DECISION_END_DISPLAY
+            },
+            warningMessage = mergeWarningMessages(
+                currentValue.warningMessage,
+                incrementValue.warningMessage,
+                limitValue.warningMessage,
+            ),
+            initializedNumericVariables = currentValue.initializedNumericVariables +
+                incrementValue.initializedNumericVariables +
+                limitValue.initializedNumericVariables,
+            initializedStringVariables = currentValue.initializedStringVariables +
+                incrementValue.initializedStringVariables +
+                limitValue.initializedStringVariables,
+        )
+    }
+
+    private fun matchingForContext(
+        nextLineNumber: Int,
+        controlVariableName: String,
+    ): TiBasicDebugForContext? =
+        snapshot.programLines
+            .asSequence()
+            .filter { programLine -> programLine.lineNumber < nextLineNumber }
+            .filter { programLine ->
+                (programLine.semantics as? TiBasicDebugLineSemantics.For)?.controlVariableName == controlVariableName
+            }
+            .lastOrNull()
+            ?.let { forProgramLine ->
+                TiBasicDebugForContext(
+                    semantics = forProgramLine.semantics as TiBasicDebugLineSemantics.For,
+                    forLineNumber = forProgramLine.lineNumber,
+                    returnLineNumber = snapshot.nextHigherNonRemProgramIndex(forProgramLine.lineNumber)
+                        ?.let(snapshot.programLines::get)
+                        ?.lineNumber,
+                )
+            }
 
     private fun conditionTrace(condition: TiBasicDebugCondition): TiBasicDebugConditionTrace? =
         when (condition) {
@@ -1009,6 +1178,8 @@ internal data class TiBasicDebugSession(
             is TiBasicDebugLineSemantics.Goto -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target))
             is TiBasicDebugLineSemantics.Gosub -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target, rememberOrigin = true))
             is TiBasicDebugLineSemantics.If -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyIf(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.For -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyFor(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.Next -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyNext(programLine.lineNumber, semantics))
             is TiBasicDebugLineSemantics.Return -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.returnFrom(semantics.isStandaloneKeyword))
             is TiBasicDebugLineSemantics.End -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
             is TiBasicDebugLineSemantics.Stop -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
@@ -1113,6 +1284,46 @@ internal data class TiBasicDebugSession(
             semantics.elseLineNumber
                 ?.let(sessionAfterCondition::jumpToLineNumber)
                 ?: sessionAfterCondition.continueAfter(currentLineNumber)
+        }
+    }
+
+    private fun applyFor(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.For,
+    ): TiBasicDebugSession {
+        val evaluation = evaluateNumericAssignment(semantics.initialValueAssignment) ?: return continueAfter(currentLineNumber)
+        val updatedNumericVariables = numericVariables + evaluation.initializedNumericVariables + (semantics.controlVariableName to evaluation.value)
+        val updatedStringVariables = stringVariables + evaluation.initializedStringVariables
+        return continueAfter(currentLineNumber, evaluation.warningMessage).copy(
+            numericVariables = updatedNumericVariables,
+            stringVariables = updatedStringVariables,
+        )
+    }
+
+    private fun applyNext(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.Next,
+    ): TiBasicDebugSession {
+        val matchingForContext = matchingForContext(currentLineNumber, semantics.controlVariableName)
+            ?: return continueAfter(currentLineNumber)
+        val nextPreview = nextPreview(semantics.controlVariableName, matchingForContext) ?: return continueAfter(currentLineNumber)
+        val updatedNumericVariables = numericVariables +
+            nextPreview.initializedNumericVariables +
+            (semantics.controlVariableName to TiBasicDebugNumericValue.fromValue(nextPreview.updatedValue))
+        val updatedStringVariables = stringVariables +
+            nextPreview.initializedStringVariables
+        val sessionAfterUpdate = copy(
+            numericVariables = updatedNumericVariables,
+            stringVariables = updatedStringVariables,
+            statusMessage = nextPreview.warningMessage ?: statusMessage,
+        )
+        return if (nextPreview.continuesLoop) {
+            matchingForContext.returnLineNumber
+                ?.let(sessionAfterUpdate::jumpToLineNumber)
+                ?.copy(statusMessage = nextPreview.warningMessage)
+                ?: sessionAfterUpdate.continueAfter(currentLineNumber, nextPreview.warningMessage)
+        } else {
+            sessionAfterUpdate.continueAfter(currentLineNumber, nextPreview.warningMessage)
         }
     }
 
@@ -1677,6 +1888,17 @@ internal sealed interface TiBasicDebugLineSemantics {
         val elseLineNumber: Int?,
     ) : TiBasicDebugLineSemantics
 
+    data class For(
+        val controlVariableName: String,
+        val initialValueAssignment: TiBasicDebugNumericAssignment,
+        val limitAssignment: TiBasicDebugNumericAssignment,
+        val incrementAssignment: TiBasicDebugNumericAssignment,
+    ) : TiBasicDebugLineSemantics
+
+    data class Next(
+        val controlVariableName: String,
+    ) : TiBasicDebugLineSemantics
+
     data class Print(
         val items: List<TiBasicDebugPrintItem>,
     ) : TiBasicDebugLineSemantics
@@ -1711,6 +1933,12 @@ private fun TiBasicDebugProgramLine.isCallColorLine(): Boolean =
 
 private fun TiBasicDebugProgramLine.isIfLine(): Boolean =
     IF_LINE_REGEX.containsMatchIn(sourceText)
+
+private fun TiBasicDebugProgramLine.isForLine(): Boolean =
+    FOR_LINE_REGEX.containsMatchIn(sourceText)
+
+private fun TiBasicDebugProgramLine.isNextLine(): Boolean =
+    NEXT_LINE_REGEX.containsMatchIn(sourceText)
 
 private fun Int.twoDigitDisplay(): String = toString().padStart(TWO_DIGIT_DISPLAY_WIDTH, '0')
 
@@ -1916,6 +2144,23 @@ internal data class TiBasicDebugNumericTrace(
     val lines: List<String>,
     val valueDisplay: String,
     val evaluation: TiBasicDebugNumericEvaluation,
+)
+
+internal data class TiBasicDebugForContext(
+    val semantics: TiBasicDebugLineSemantics.For,
+    val forLineNumber: Int,
+    val returnLineNumber: Int?,
+)
+
+internal data class TiBasicDebugNextPreview(
+    val updatedValue: BigDecimal,
+    val updatedValueDisplay: String,
+    val limitDisplay: String,
+    val continuesLoop: Boolean,
+    val decisionDisplay: String,
+    val warningMessage: String?,
+    val initializedNumericVariables: Map<String, TiBasicDebugNumericValue>,
+    val initializedStringVariables: Map<String, TiBasicDebugStringValue>,
 )
 
 private fun tracedEvaluationLine(
@@ -2139,10 +2384,19 @@ private const val WARNING_SEPARATOR = " | "
 private const val CHARACTER_SET_ARGUMENT_NAME = "character set"
 private const val FOREGROUND_COLOR_ARGUMENT_NAME = "foreground color"
 private const val BACKGROUND_COLOR_ARGUMENT_NAME = "background color"
+private const val FOR_INITIAL_VALUE_ARGUMENT_NAME = "initial-value"
+private const val FOR_LIMIT_ARGUMENT_NAME = "limit"
+private const val FOR_INCREMENT_ARGUMENT_NAME = "increment"
+private const val FOR_ITERATION_COUNT_ARGUMENT_NAME = "iterations"
+private const val NEXT_CONTROL_VARIABLE_ARGUMENT_NAME = "control-variable"
+private const val NEXT_DECISION_JUMP_PREFIX = "jump to"
+private const val NEXT_DECISION_END_DISPLAY = "loop end"
 private val ZERO_NUMERIC_BYTES = List(8) { 0 }
 private val PRINTABLE_ASCII_RANGE = 32..126
 private val DEBUG_MATH_CONTEXT = MathContext.DECIMAL64
 private val IF_LINE_REGEX = Regex("""^\s*\d+\s+IF\b""", RegexOption.IGNORE_CASE)
+private val FOR_LINE_REGEX = Regex("""^\s*\d+\s+FOR\b""", RegexOption.IGNORE_CASE)
+private val NEXT_LINE_REGEX = Regex("""^\s*\d+\s+NEXT\b""", RegexOption.IGNORE_CASE)
 private val ADDITIVE_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.PLUS_OP,
     TiBasicTokenTypes.MINUS_OP,
@@ -2292,6 +2546,29 @@ private fun compareStringValues(left: String, operatorType: IElementType, right:
         TiBasicTokenTypes.LE_OP -> left <= right
         TiBasicTokenTypes.GE_OP -> left >= right
         else -> null
+    }
+
+private fun forIterationCount(
+    initialValue: Int,
+    limitValue: Int,
+    incrementValue: Int,
+): Int =
+    when {
+        incrementValue > 0 && initialValue > limitValue -> 0
+        incrementValue < 0 && initialValue < limitValue -> 0
+        incrementValue > 0 -> ((limitValue - initialValue) / incrementValue) + 1
+        else -> ((initialValue - limitValue) / -incrementValue) + 1
+    }
+
+private fun continuesForLoop(
+    updatedValue: BigDecimal,
+    limitValue: BigDecimal,
+    incrementValue: BigDecimal,
+): Boolean =
+    when {
+        incrementValue > BigDecimal.ZERO -> updatedValue <= limitValue
+        incrementValue < BigDecimal.ZERO -> updatedValue >= limitValue
+        else -> false
     }
 
 private fun mergeWarningMessages(vararg warnings: String?): String? =

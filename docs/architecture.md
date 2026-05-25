@@ -356,7 +356,11 @@ Recommended structure:
   line has debugger-supported arguments; it grows vertically for multiple argument lines, currently
   resolves `CALL SCREEN` to `color-code = XX (NAME)` against the current debugger state, traces `IF`
   conditions through all evaluated subexpressions with variables substituted by their current values,
-  and shows malformed expressions as `<incorrect expression>` or `<incorrect expression> (string-number-mismatch)`
+  shows `FOR` control values as evaluated `initial-value`, `limit`, and `increment` lines, assigns
+  the evaluated initial value to the control variable when stepping the `FOR` line, adds a fourth
+  parenthesized iteration-count line, defaults omitted `STEP` clauses to `1`, shows `NEXT` as the
+  reused increment plus the adjusted control-variable value, and shows malformed expressions as
+  `<incorrect expression>` or `<incorrect expression> (string-number-mismatch)`
 - a keyboard-input pane appears for supported `CALL KEY` modes and feeds rounded scan-result input
   back into the paused debug session before the next step; the pane also shows the effective mode's
   allowed code ranges directly next to the mode label

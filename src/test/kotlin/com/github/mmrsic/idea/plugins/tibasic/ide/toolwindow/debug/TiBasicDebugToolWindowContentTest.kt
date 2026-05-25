@@ -263,6 +263,74 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals(2, content.argumentsTextArea.rows)
     }
 
+    fun `test debug tool window shows FOR arguments in footer area`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 LET A=2
+            110 LET B=4
+            120 FOR I=A+1 TO B*2 STEP A-1
+            130 NEXT I
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(content.argumentsPanel.isVisible)
+        assertEquals(
+            """
+            initial-value = 03
+            limit = 08
+            increment = 01
+            (iterations = 6)
+            """.trimIndent(),
+            content.argumentsTextArea.text,
+        )
+        assertEquals(4, content.argumentsTextArea.rows)
+    }
+
+    fun `test debug tool window shows NEXT arguments and jump decision in footer area`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 LET A=2
+            110 LET B=1
+            120 FOR I=A+1 TO 5 STEP B
+            130 NEXT I
+            140 PRINT I
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(content.argumentsPanel.isVisible)
+        assertEquals(
+            """
+            increment = 01
+            control-variable I = 4
+            limit = 05 (jump to 130)
+            """.trimIndent(),
+            content.argumentsTextArea.text,
+        )
+        assertEquals(3, content.argumentsTextArea.rows)
+    }
+
     fun `test debug tool window hides arguments footer area when current line has no arguments`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
