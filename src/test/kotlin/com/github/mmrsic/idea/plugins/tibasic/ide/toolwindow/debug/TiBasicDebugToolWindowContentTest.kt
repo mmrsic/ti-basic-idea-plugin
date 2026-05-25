@@ -235,6 +235,34 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals("<incorrect expression> (string-number-mismatch)", content.argumentsTextArea.text)
     }
 
+    fun `test debug tool window shows IF evaluation trace in footer area`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 LET X=2
+            110 IF X-1 THEN 300
+            300 PRINT "YES"
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(content.argumentsPanel.isVisible)
+        assertEquals(
+            """
+            2 - 1 -> 1
+            1 -> true
+            """.trimIndent(),
+            content.argumentsTextArea.text,
+        )
+        assertEquals(2, content.argumentsTextArea.rows)
+    }
+
     fun `test debug tool window hides arguments footer area when current line has no arguments`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)

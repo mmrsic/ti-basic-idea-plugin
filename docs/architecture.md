@@ -354,8 +354,9 @@ Recommended structure:
 - a listing component (`JBList`, `JBTable`, or equivalent) shows the frozen source lines, emphasizes actual program line numbers, wraps the code portion after 28 characters to match the TI-99/4A listing width, keeps the current line vertically centered when enough rows exist above and below, and otherwise scrolls to maximize visible source lines without introducing empty rows above the listing
 - a full-width footer arguments pane summarizes the current paused statement only when the current
   line has debugger-supported arguments; it grows vertically for multiple argument lines, currently
-  resolves `CALL SCREEN` to `color-code = XX (NAME)` against the current debugger state, and shows
-  malformed expressions as `<incorrect expression>` or `<incorrect expression> (string-number-mismatch)`
+  resolves `CALL SCREEN` to `color-code = XX (NAME)` against the current debugger state, traces `IF`
+  conditions through all evaluated subexpressions with variables substituted by their current values,
+  and shows malformed expressions as `<incorrect expression>` or `<incorrect expression> (string-number-mismatch)`
 - a keyboard-input pane appears for supported `CALL KEY` modes and feeds rounded scan-result input
   back into the paused debug session before the next step; the pane also shows the effective mode's
   allowed code ranges directly next to the mode label

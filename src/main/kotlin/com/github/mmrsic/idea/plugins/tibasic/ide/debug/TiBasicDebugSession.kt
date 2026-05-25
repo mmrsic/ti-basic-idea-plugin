@@ -686,6 +686,7 @@ internal data class TiBasicDebugSession(
         when {
             programLine.isCallScreenLine() -> callScreenArgumentDisplays(programLine)
             programLine.isCallColorLine() -> callColorArgumentDisplays(programLine)
+            programLine.isIfLine() -> ifArgumentDisplays(programLine)
             else -> emptyList()
         }
 
@@ -739,6 +740,20 @@ internal data class TiBasicDebugSession(
             else -> emptyList()
         }
 
+    private fun ifArgumentDisplays(programLine: TiBasicDebugProgramLine): List<String> =
+        when (val semantics = programLine.semantics) {
+            is TiBasicDebugLineSemantics.If -> {
+                val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+                preparedSession.conditionTrace(semantics.condition)?.lines ?: listOf(INCORRECT_EXPRESSION_DISPLAY)
+            }
+
+            TiBasicDebugLineSemantics.StringNumberMismatch ->
+                listOf("$INCORRECT_EXPRESSION_DISPLAY ($STRING_NUMBER_MISMATCH_DISPLAY)")
+
+            TiBasicDebugLineSemantics.IncorrectStatement -> listOf(INCORRECT_EXPRESSION_DISPLAY)
+            else -> emptyList()
+        }
+
     private fun numericArgumentDisplay(
         label: String,
         assignment: TiBasicDebugNumericAssignment,
@@ -756,6 +771,217 @@ internal data class TiBasicDebugSession(
         val colorName = runCatching { TiColor.at(roundedCode).displayName }
             .getOrElse { INVALID_COLOR_CODE_DISPLAY }
         return "$label = $valueDisplay ($colorName)"
+    }
+
+    private fun conditionTrace(condition: TiBasicDebugCondition): TiBasicDebugConditionTrace? =
+        when (condition) {
+            is TiBasicDebugCondition.NumericValue -> {
+                val numericTrace = numericTrace(condition.assignment) ?: return null
+                TiBasicDebugConditionTrace(
+                    lines = numericTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = numericTrace.valueDisplay,
+                        resultDisplay = conditionResultDisplay(numericTrace.evaluation.value.value.compareTo(BigDecimal.ZERO) != 0),
+                    ),
+                )
+            }
+
+            is TiBasicDebugCondition.NumericComparison -> {
+                val leftTrace = numericTrace(condition.left) ?: return null
+                val rightTrace = numericTrace(condition.right) ?: return null
+                val conditionResult = compareNumericValues(
+                    leftTrace.evaluation.value.value,
+                    condition.operatorType,
+                    rightTrace.evaluation.value.value,
+                ) ?: return null
+                TiBasicDebugConditionTrace(
+                    lines = leftTrace.lines +
+                        rightTrace.lines +
+                        tracedEvaluationLine(
+                            expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(condition.operatorType)} ${rightTrace.valueDisplay}",
+                            resultDisplay = conditionResultDisplay(conditionResult),
+                        ),
+                )
+            }
+
+            is TiBasicDebugCondition.StringComparison -> {
+                val leftTrace = stringTrace(condition.left) ?: return null
+                val rightTrace = stringTrace(condition.right) ?: return null
+                val conditionResult = compareStringValues(
+                    leftTrace.evaluation.value.text,
+                    condition.operatorType,
+                    rightTrace.evaluation.value.text,
+                ) ?: return null
+                TiBasicDebugConditionTrace(
+                    lines = leftTrace.lines +
+                        rightTrace.lines +
+                        tracedEvaluationLine(
+                            expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(condition.operatorType)} ${rightTrace.valueDisplay}",
+                            resultDisplay = conditionResultDisplay(conditionResult),
+                        ),
+                )
+            }
+        }
+
+    private fun stringTrace(assignment: TiBasicDebugStringAssignment): TiBasicDebugStringTrace? {
+        val evaluation = evaluateStringAssignment(assignment) ?: return null
+        return when (assignment) {
+            is TiBasicDebugStringAssignment.StringLiteral,
+            is TiBasicDebugStringAssignment.StringVariableReference,
+                -> TiBasicDebugStringTrace(
+                lines = emptyList(),
+                valueDisplay = stringLiteralDisplay(evaluation.value.text),
+                evaluation = evaluation,
+            )
+
+            is TiBasicDebugStringAssignment.CharacterCode -> {
+                val codeTrace = numericTrace(assignment.code) ?: return null
+                TiBasicDebugStringTrace(
+                    lines = codeTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = "$CHR_DOLLAR_FUNCTION(${codeTrace.valueDisplay})",
+                        resultDisplay = stringLiteralDisplay(evaluation.value.text),
+                    ),
+                    valueDisplay = stringLiteralDisplay(evaluation.value.text),
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugStringAssignment.StringRepresentation -> {
+                val valueTrace = numericTrace(assignment.value) ?: return null
+                TiBasicDebugStringTrace(
+                    lines = valueTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = "$STR_DOLLAR_FUNCTION(${valueTrace.valueDisplay})",
+                        resultDisplay = stringLiteralDisplay(evaluation.value.text),
+                    ),
+                    valueDisplay = stringLiteralDisplay(evaluation.value.text),
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugStringAssignment.Segment -> {
+                val sourceTrace = stringTrace(assignment.source) ?: return null
+                val startTrace = numericTrace(assignment.start) ?: return null
+                val lengthTrace = numericTrace(assignment.length) ?: return null
+                TiBasicDebugStringTrace(
+                    lines = sourceTrace.lines +
+                        startTrace.lines +
+                        lengthTrace.lines +
+                        tracedEvaluationLine(
+                            expressionDisplay = "$SEG_DOLLAR_FUNCTION(${sourceTrace.valueDisplay}, ${startTrace.valueDisplay}, ${lengthTrace.valueDisplay})",
+                            resultDisplay = stringLiteralDisplay(evaluation.value.text),
+                        ),
+                    valueDisplay = stringLiteralDisplay(evaluation.value.text),
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugStringAssignment.Concat -> {
+                val leftTrace = stringTrace(assignment.left) ?: return null
+                val rightTrace = stringTrace(assignment.right) ?: return null
+                TiBasicDebugStringTrace(
+                    lines = leftTrace.lines +
+                        rightTrace.lines +
+                        tracedEvaluationLine(
+                            expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(TiBasicTokenTypes.CONCAT_OP)} ${rightTrace.valueDisplay}",
+                            resultDisplay = stringLiteralDisplay(evaluation.value.text),
+                        ),
+                    valueDisplay = stringLiteralDisplay(evaluation.value.text),
+                    evaluation = evaluation,
+                )
+            }
+        }
+    }
+
+    private fun numericTrace(assignment: TiBasicDebugNumericAssignment): TiBasicDebugNumericTrace? {
+        val evaluation = evaluateNumericAssignment(assignment) ?: return null
+        return when (assignment) {
+            is TiBasicDebugNumericAssignment.Literal,
+            is TiBasicDebugNumericAssignment.VariableReference,
+                -> TiBasicDebugNumericTrace(
+                lines = emptyList(),
+                valueDisplay = evaluation.value.usualDisplay,
+                evaluation = evaluation,
+            )
+
+            is TiBasicDebugNumericAssignment.Unary -> {
+                val operandTrace = numericTrace(assignment.operand) ?: return null
+                TiBasicDebugNumericTrace(
+                    lines = operandTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = "${operatorDisplay(assignment.operatorType)}${operandTrace.valueDisplay}",
+                        resultDisplay = evaluation.value.usualDisplay,
+                    ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugNumericAssignment.Binary -> {
+                val leftTrace = numericTrace(assignment.left) ?: return null
+                val rightTrace = numericTrace(assignment.right) ?: return null
+                TiBasicDebugNumericTrace(
+                    lines = leftTrace.lines +
+                        rightTrace.lines +
+                        tracedEvaluationLine(
+                            expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(assignment.operatorType)} ${rightTrace.valueDisplay}",
+                            resultDisplay = evaluation.value.usualDisplay,
+                        ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugNumericAssignment.StringLength -> {
+                val sourceTrace = stringTrace(assignment.source) ?: return null
+                TiBasicDebugNumericTrace(
+                    lines = sourceTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = "$LEN_FUNCTION(${sourceTrace.valueDisplay})",
+                        resultDisplay = evaluation.value.usualDisplay,
+                    ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugNumericAssignment.AsciiCode -> {
+                val sourceTrace = stringTrace(assignment.source) ?: return null
+                TiBasicDebugNumericTrace(
+                    lines = sourceTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = "$ASC_FUNCTION(${sourceTrace.valueDisplay})",
+                        resultDisplay = evaluation.value.usualDisplay,
+                    ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugNumericAssignment.StringToNumber -> {
+                val sourceTrace = stringTrace(assignment.source) ?: return null
+                TiBasicDebugNumericTrace(
+                    lines = sourceTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = "$VAL_FUNCTION(${sourceTrace.valueDisplay})",
+                        resultDisplay = evaluation.value.usualDisplay,
+                    ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugNumericAssignment.StringPosition -> {
+                val sourceTrace = stringTrace(assignment.source) ?: return null
+                val targetTrace = stringTrace(assignment.target) ?: return null
+                val startTrace = numericTrace(assignment.start) ?: return null
+                TiBasicDebugNumericTrace(
+                    lines = sourceTrace.lines +
+                        targetTrace.lines +
+                        startTrace.lines +
+                        tracedEvaluationLine(
+                            expressionDisplay = "$POS_FUNCTION(${sourceTrace.valueDisplay}, ${targetTrace.valueDisplay}, ${startTrace.valueDisplay})",
+                            resultDisplay = evaluation.value.usualDisplay,
+                        ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+            }
+        }
     }
 
     fun step(): TiBasicDebugSession = stepWithEffects().session
@@ -1483,6 +1709,9 @@ private fun TiBasicDebugProgramLine.isCallScreenLine(): Boolean =
 private fun TiBasicDebugProgramLine.isCallColorLine(): Boolean =
     sourceText.contains(CALL_COLOR_LINE_MARKER, ignoreCase = true)
 
+private fun TiBasicDebugProgramLine.isIfLine(): Boolean =
+    IF_LINE_REGEX.containsMatchIn(sourceText)
+
 private fun Int.twoDigitDisplay(): String = toString().padStart(TWO_DIGIT_DISPLAY_WIDTH, '0')
 
 internal sealed interface TiBasicDebugPrintItem {
@@ -1673,6 +1902,50 @@ internal data class TiBasicDebugKeyboardRequest(
         get() = keyUnit
 }
 
+internal data class TiBasicDebugConditionTrace(
+    val lines: List<String>,
+)
+
+internal data class TiBasicDebugStringTrace(
+    val lines: List<String>,
+    val valueDisplay: String,
+    val evaluation: TiBasicDebugStringEvaluation,
+)
+
+internal data class TiBasicDebugNumericTrace(
+    val lines: List<String>,
+    val valueDisplay: String,
+    val evaluation: TiBasicDebugNumericEvaluation,
+)
+
+private fun tracedEvaluationLine(
+    expressionDisplay: String,
+    resultDisplay: String,
+): String = "$expressionDisplay$TRACE_DISPLAY_SEPARATOR$resultDisplay"
+
+private fun conditionResultDisplay(conditionResult: Boolean): String =
+    if (conditionResult) TRUE_DISPLAY else FALSE_DISPLAY
+
+private fun stringLiteralDisplay(text: String): String =
+    "\"${text.replace("\"", "\"\"")}\""
+
+private fun operatorDisplay(operatorType: IElementType): String =
+    when (operatorType) {
+        TiBasicTokenTypes.PLUS_OP -> "+"
+        TiBasicTokenTypes.MINUS_OP -> "-"
+        TiBasicTokenTypes.MUL_OP -> "*"
+        TiBasicTokenTypes.DIV_OP -> "/"
+        TiBasicTokenTypes.POW_OP -> "^"
+        TiBasicTokenTypes.CONCAT_OP -> "&"
+        TiBasicTokenTypes.EQ_OP -> "="
+        TiBasicTokenTypes.LT_OP -> "<"
+        TiBasicTokenTypes.GT_OP -> ">"
+        TiBasicTokenTypes.LE_OP -> "<="
+        TiBasicTokenTypes.GE_OP -> ">="
+        TiBasicTokenTypes.NEQ_OP -> "<>"
+        else -> operatorType.toString()
+    }
+
 private fun TiBasicDebugStringEvaluation.mergeWarnings(vararg warnings: String?): TiBasicDebugStringEvaluation =
     copy(
         warningMessage = (listOfNotNull(warningMessage) + warnings.filterNotNull())
@@ -1836,6 +2109,9 @@ private const val CALL_COLOR_LINE_MARKER = "CALL COLOR"
 private const val INCORRECT_EXPRESSION_DISPLAY = "<incorrect expression>"
 private const val STRING_NUMBER_MISMATCH_DISPLAY = "string-number-mismatch"
 private const val INVALID_COLOR_CODE_DISPLAY = "<invalid color code>"
+private const val TRACE_DISPLAY_SEPARATOR = " -> "
+private const val TRUE_DISPLAY = "true"
+private const val FALSE_DISPLAY = "false"
 private const val POS_ARG_COUNT = 3
 private const val POS_SOURCE_ARG_INDEX = 0
 private const val POS_TARGET_ARG_INDEX = 1
@@ -1866,6 +2142,7 @@ private const val BACKGROUND_COLOR_ARGUMENT_NAME = "background color"
 private val ZERO_NUMERIC_BYTES = List(8) { 0 }
 private val PRINTABLE_ASCII_RANGE = 32..126
 private val DEBUG_MATH_CONTEXT = MathContext.DECIMAL64
+private val IF_LINE_REGEX = Regex("""^\s*\d+\s+IF\b""", RegexOption.IGNORE_CASE)
 private val ADDITIVE_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.PLUS_OP,
     TiBasicTokenTypes.MINUS_OP,

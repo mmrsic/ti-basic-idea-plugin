@@ -424,6 +424,46 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(300, session.currentProgramLine?.lineNumber)
     }
 
+    fun `test IF current arguments display shows evaluated numeric subexpressions in evaluation order`() {
+        var session = startSession(
+            """
+            100 LET X=2
+            110 IF X-1 THEN 300
+            300 PRINT "YES"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals(
+            listOf(
+                "2 - 1 -> 1",
+                "1 -> true",
+            ),
+            session.currentArgumentDisplays,
+        )
+    }
+
+    fun `test IF current arguments display resolves string subexpressions with variable values`() {
+        var session = startSession(
+            """
+            100 LET A$="Y"
+            110 IF A$&"ES"="YES" THEN 300
+            300 PRINT "YES"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals(
+            listOf(
+                "\"Y\" & \"ES\" -> \"YES\"",
+                "\"YES\" = \"YES\" -> true",
+            ),
+            session.currentArgumentDisplays,
+        )
+    }
+
     fun `test RETURN without GOSUB shows runtime error then stops on next step`() {
         var session = startSession("100 RETURN")
 
