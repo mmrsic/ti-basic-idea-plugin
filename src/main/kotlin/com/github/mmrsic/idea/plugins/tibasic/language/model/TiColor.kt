@@ -2,23 +2,26 @@ package com.github.mmrsic.idea.plugins.tibasic.language.model
 
 class BadValue(message: String) : Exception(message)
 
-enum class TiColor(val rgbValue: Int) {
-    Transparent(-1),
-    Black(0x000000),
-    MediumGreen(0x21C842),
-    LightGreen(0x5EDC78),
-    DarkBlue(0x5455ED),
-    LightBlue(0x7D76FC),
-    DarkRed(0xD4524D),
-    Cyan(0x42EBF5),
-    MediumRed(0xFC5554),
-    LightRed(0xFF7978),
-    DarkYellow(0xD4C154),
-    LightYellow(0xE6CE80),
-    DarkGreen(0x21B03B),
-    Magenta(0xC95BBA),
-    Gray(0xCCCCCC),
-    White(0xFFFFFF);
+enum class TiColor(
+    val rgbValue: Int,
+    val displayName: String,
+) {
+    Transparent(-1, "Transparent"),
+    Black(0x000000, "Black"),
+    MediumGreen(0x21C842, "Medium Green"),
+    LightGreen(0x5EDC78, "Light Green"),
+    DarkBlue(0x5455ED, "Dark Blue"),
+    LightBlue(0x7D76FC, "Light Blue"),
+    DarkRed(0xD4524D, "Dark Red"),
+    Cyan(0x42EBF5, "Cyan"),
+    MediumRed(0xFC5554, "Medium Red"),
+    LightRed(0xFF7978, "Light Red"),
+    DarkYellow(0xD4C154, "Dark Yellow"),
+    LightYellow(0xE6CE80, "Light Yellow"),
+    DarkGreen(0x21B03B, "Dark Green"),
+    Magenta(0xC95BBA, "Magenta"),
+    Gray(0xCCCCCC, "Gray"),
+    White(0xFFFFFF, "White");
 
     companion object {
         fun at(index: Int): TiColor {

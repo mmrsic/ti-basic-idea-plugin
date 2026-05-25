@@ -6,6 +6,7 @@ import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugProgramSnaps
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionService
 import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.tiBasicCharacterPattern
 import com.intellij.openapi.util.Disposer
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.testFramework.PlatformTestUtil
 import java.awt.image.BufferedImage
 
@@ -29,6 +30,49 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals(1, content.listing.selectedIndex)
     }
 
+    fun `test debug tool window keeps current listing row vertically centered when possible`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        content.setSize(1000, 900)
+        val file = configureFile(
+            (10..220).joinToString("\n") { lineNumber -> "$lineNumber PRINT \"$lineNumber\"" },
+        )
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        prepareListingViewport(content.listingScrollPane, width = 320, height = 240)
+        repeat(110) {
+            content.stepButton.doClick()
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        }
+
+        val viewport = content.listingScrollPane.viewport
+        val selectedBounds = content.listing.getCellBounds(content.listing.selectedIndex, content.listing.selectedIndex)
+
+        assertNotNull(selectedBounds)
+        selectedBounds!!
+        val selectedCenterY = selectedBounds.y - viewport.viewPosition.y + selectedBounds.height / 2
+        assertTrue(kotlin.math.abs(selectedCenterY - viewport.extentSize.height / 2) <= selectedBounds.height)
+    }
+
+    fun `test debug tool window aligns short listing to top without empty rows above`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        content.setSize(1000, 900)
+        val file = configureFile(
+            """
+            100 PRINT "A"
+            110 PRINT "B"
+            """.trimIndent(),
+        )
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        prepareListingViewport(content.listingScrollPane, width = 320, height = 240)
+
+        assertEquals(0, content.listingScrollPane.viewport.viewPosition.y)
+    }
+
     fun `test debug tool window shows runtime error after stepping`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
@@ -44,7 +88,7 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertTrue(content.statusLabel.text.contains(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowStatusPendingStopKey)))
     }
 
-    fun `test debug tool window shows effective keyboard mode five for CALL KEY zero`() {
+    fun `test debug tool window shows keyboard unit and variable names for CALL KEY zero`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
         val file = configureFile("100 CALL KEY(0,K,S)")
@@ -53,8 +97,19 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
         assertTrue(content.keyboardPanel.isVisible)
-        assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowKeyboardModeKey, 5, "1-15, 32-159, 187"), content.keyboardModeLabel.text)
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowKeyboardUnitKey, 5, "1-15, 32-159, 187"),
+            content.keyboardUnitLabel.text,
+        )
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowKeyboardReturnVariableKey, "K"),
+            content.keyboardInputLabel.text,
+        )
         assertEquals("-1", content.keyboardInputField.text)
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowKeyboardStatusVariableKey, "S", "0"),
+            content.keyboardStatusLabel.text,
+        )
     }
 
     fun `test debug tool window applies keyboard input on step`() {
@@ -71,6 +126,12 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
         content.keyboardInputField.text = "186.6"
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowKeyboardStatusVariableKey, "S", "1"),
+            content.keyboardStatusLabel.text,
+        )
         content.stepButton.doClick()
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
@@ -141,13 +202,13 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.stringCutTo255CharactersKey), content.messageLabel.text)
     }
 
-    fun `test debug tool window inspects expressions from input field`() {
+    fun `test debug tool window shows CALL SCREEN arguments in footer area`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
         val file = configureFile(
             """
-            100 LET A$="HELLO"
-            110 PRINT A$
+            100 LET C=2
+            110 CALL SCREEN(C+1)
             """.trimIndent(),
         )
         val sessionService = project.getService(TiBasicDebugSessionService::class.java)
@@ -156,11 +217,54 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
 
         content.stepButton.doClick()
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-        content.inspectField.text = "SEG$(A$,2,3)"
-        content.inspectButton.doClick()
+
+        assertTrue(content.argumentsPanel.isVisible)
+        assertEquals("color-code = 03 (Medium Green)", content.argumentsTextArea.text)
+        assertEquals(1, content.argumentsTextArea.rows)
+    }
+
+    fun `test debug tool window shows CALL SCREEN string number mismatch in footer area`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 CALL SCREEN(\"A\")")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals("\"ELL\" = 03 E L L", content.inspectResultLabel.text)
+        assertTrue(content.argumentsPanel.isVisible)
+        assertEquals("<incorrect expression> (string-number-mismatch)", content.argumentsTextArea.text)
+    }
+
+    fun `test debug tool window hides arguments footer area when current line has no arguments`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 PRINT \"HELLO\"")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertFalse(content.argumentsPanel.isVisible)
+        assertEquals("", content.argumentsTextArea.text)
+    }
+
+    fun `test debug tool window shows multiple arguments on separate lines`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 CALL COLOR(5,3,1)")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(content.argumentsPanel.isVisible)
+        assertEquals(
+            """
+            character set = 05
+            foreground color = 03 (Medium Green)
+            background color = 01 (Transparent)
+            """.trimIndent(),
+            content.argumentsTextArea.text,
+        )
+        assertEquals(3, content.argumentsTextArea.rows)
     }
 
     fun `test debug tool window wraps program code after twenty eight characters`() {
@@ -470,5 +574,17 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
 
         assertEquals((content.screenComponent.preferredSize.width - CHARACTER_SET_PREVIEW_WIDTH) / 2, characterSetOrigin.x)
         assertEquals((content.screenComponent.preferredSize.height - CHARACTER_SET_PREVIEW_HEIGHT) / 2, characterSetOrigin.y)
+    }
+
+    private fun prepareListingViewport(
+        scrollPane: JBScrollPane,
+        width: Int,
+        height: Int,
+    ) {
+        scrollPane.setSize(width, height)
+        scrollPane.doLayout()
+        scrollPane.viewport.setSize(width, height)
+        scrollPane.viewport.doLayout()
+        scrollPane.viewport.extentSize = scrollPane.viewport.size
     }
 }

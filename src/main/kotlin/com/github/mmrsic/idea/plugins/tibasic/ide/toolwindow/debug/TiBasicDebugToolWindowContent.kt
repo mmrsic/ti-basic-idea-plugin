@@ -5,7 +5,6 @@ import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugScreenConten
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSession
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionService
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionStatus
-import com.github.mmrsic.idea.plugins.tibasic.ide.debug.inspectExpression
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBList
@@ -13,8 +12,11 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import java.awt.BorderLayout
 import java.awt.CardLayout
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.Font
 import java.awt.GridLayout
+import java.awt.Point
 import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JCheckBox
@@ -22,8 +24,11 @@ import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JSplitPane
+import javax.swing.JTextArea
 import javax.swing.JToolBar
 import javax.swing.border.TitledBorder
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 
 class TiBasicDebugToolWindowContent(
     private val project: Project,
@@ -34,14 +39,16 @@ class TiBasicDebugToolWindowContent(
     internal val messageLabel = JLabel(" ")
     internal val stepButton = JButton(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowStepKey))
     internal val stopButton = JButton(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowStopKey))
-    internal val inspectField = JBTextField()
-    internal val inspectButton = JButton(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowInspectActionKey))
-    internal val inspectResultLabel = JLabel(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowInspectEmptyKey))
+    internal val argumentsPanel = JPanel(BorderLayout())
+    internal val argumentsTextArea = JTextArea()
     internal val keyboardPanel = JPanel(BorderLayout())
-    internal val keyboardModeLabel = JLabel(" ")
+    internal val keyboardUnitLabel = JLabel(" ")
+    internal val keyboardInputLabel = JLabel(" ")
     internal val keyboardInputField = JBTextField()
+    internal val keyboardStatusLabel = JLabel(" ")
     internal val listModel = DefaultListModel<TiBasicDebugListingRow>()
     internal val listing = JBList(listModel)
+    internal val listingScrollPane = JBScrollPane(listing)
     internal val screenComponent = TiBasicDebugScreenComponent()
     internal val characterSetPreviewComponent = TiBasicDebugCharacterSetPreviewComponent(
         TiBasicDebugCharacterSetPreviewState.fromScreenContents(TiBasicDebugScreenContents()),
@@ -57,6 +64,7 @@ class TiBasicDebugToolWindowContent(
     private val emptyLabel = JLabel(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowEmptyKey))
     private val sessionService = project.getService(TiBasicDebugSessionService::class.java)
     private var currentSourceLineIndex: Int? = null
+    private var pendingListingScrollIndex: Int? = null
 
     init {
         stepButton.addActionListener {
@@ -64,16 +72,27 @@ class TiBasicDebugToolWindowContent(
             sessionService.step()
         }
         stopButton.addActionListener { sessionService.stop() }
-        inspectButton.addActionListener { updateInspectResult(sessionService.currentSession()) }
-        inspectField.addActionListener { updateInspectResult(sessionService.currentSession()) }
         keyboardInputField.addActionListener {
             sessionService.updateKeyboardScanInput(keyboardInputField.text)
             sessionService.step()
         }
+        keyboardInputField.document.addDocumentListener(object : DocumentListener {
+            override fun insertUpdate(event: DocumentEvent?) = updateKeyboardPreview()
+            override fun removeUpdate(event: DocumentEvent?) = updateKeyboardPreview()
+            override fun changedUpdate(event: DocumentEvent?) = updateKeyboardPreview()
+        })
         listing.font = Font(Font.MONOSPACED, Font.PLAIN, listing.font.size)
         numericVariablesList.font = Font(Font.MONOSPACED, Font.PLAIN, numericVariablesList.font.size)
         stringVariablesList.font = Font(Font.MONOSPACED, Font.PLAIN, stringVariablesList.font.size)
         listing.cellRenderer = TiBasicDebugListingRenderer { currentSourceLineIndex }
+        listingScrollPane.viewport.addComponentListener(object : ComponentAdapter() {
+            override fun componentResized(event: ComponentEvent?) {
+                pendingListingScrollIndex?.let { listingIndex ->
+                    pendingListingScrollIndex = null
+                    scrollListingTo(listingIndex)
+                }
+            }
+        })
         keepAspectRatioCheckBox.addActionListener {
             screenComponent.keepAspectRatio = keepAspectRatioCheckBox.isSelected
             characterSetPreviewComponent.keepAspectRatio = keepAspectRatioCheckBox.isSelected
@@ -82,13 +101,12 @@ class TiBasicDebugToolWindowContent(
         centerPanel.add(emptyLabel, EMPTY_CARD)
         centerPanel.add(
             JPanel(BorderLayout()).also { panel ->
-                panel.add(createInteractionPanel(), BorderLayout.NORTH)
                 panel.add(createMainContentPanel(), BorderLayout.CENTER)
             },
             LIST_CARD,
         )
         add(centerPanel, BorderLayout.CENTER)
-        add(messageLabel, BorderLayout.SOUTH)
+        add(createFooterPanel(), BorderLayout.SOUTH)
         sessionService.addListener(
             { _, session -> render(session) },
             this,
@@ -116,7 +134,6 @@ class TiBasicDebugToolWindowContent(
             messageLabel.text = " "
             stepButton.isEnabled = false
             stopButton.isEnabled = false
-            inspectButton.isEnabled = false
             currentSourceLineIndex = null
             listModel.clear()
             numericVariablesModel.clear()
@@ -124,9 +141,12 @@ class TiBasicDebugToolWindowContent(
             stringVariablesModel.clear()
             stringVariablesModel.addElement(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowNoStringsKey))
             keyboardPanel.isVisible = false
-            keyboardModeLabel.text = " "
+            keyboardUnitLabel.text = " "
+            keyboardInputLabel.text = " "
             keyboardInputField.text = ""
-            inspectResultLabel.text = TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowInspectEmptyKey)
+            keyboardStatusLabel.text = " "
+            argumentsPanel.isVisible = false
+            argumentsTextArea.text = ""
             layout.show(centerPanel, EMPTY_CARD)
             return
         }
@@ -143,7 +163,6 @@ class TiBasicDebugToolWindowContent(
         characterSetPreviewComponent.state = TiBasicDebugCharacterSetPreviewState.fromScreenContents(session.screenContents)
         stepButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         stopButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
-        inspectButton.isEnabled = true
         val listingRows = buildDebugListingRows(session.snapshot.sourceLines)
         if (listModel.size != listingRows.size || listingRows.indices.any { listModel.get(it) != listingRows[it] }) {
             listModel.clear()
@@ -152,14 +171,14 @@ class TiBasicDebugToolWindowContent(
         updateNumericVariables(session)
         updateStringVariables(session)
         updateKeyboardRequest(session)
-        updateInspectResult(session)
+        updateArguments(session)
         layout.show(centerPanel, LIST_CARD)
         currentSourceLineIndex?.let { sourceLineIndex ->
             (0 until listModel.size)
                 .firstOrNull { index -> listModel.get(index).sourceLineIndex == sourceLineIndex }
                 ?.let { listingIndex ->
                     listing.selectedIndex = listingIndex
-                    listing.ensureIndexIsVisible(listingIndex)
+                    scrollListingTo(listingIndex)
                 }
                 ?: listing.clearSelection()
         } ?: listing.clearSelection()
@@ -181,7 +200,7 @@ class TiBasicDebugToolWindowContent(
     private fun createListingPanel(): JComponent =
         JPanel(BorderLayout()).also { panel ->
             panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowProgramTitleKey))
-            panel.add(JBScrollPane(listing), BorderLayout.CENTER)
+            panel.add(listingScrollPane, BorderLayout.CENTER)
         }
 
     private fun createScreenAndVariablesPanel(): JComponent =
@@ -207,10 +226,11 @@ class TiBasicDebugToolWindowContent(
             )
         }
 
-    private fun createInteractionPanel(): JComponent =
+    private fun createFooterPanel(): JComponent =
         JPanel(BorderLayout()).also { panel ->
-            panel.add(createInspectPanel(), BorderLayout.NORTH)
-            panel.add(createKeyboardPanel(), BorderLayout.SOUTH)
+            panel.add(createArgumentsPanel(), BorderLayout.NORTH)
+            panel.add(createKeyboardPanel(), BorderLayout.CENTER)
+            panel.add(messageLabel, BorderLayout.SOUTH)
         }
 
     private fun createNumericVariablesPanel(): JComponent =
@@ -225,28 +245,33 @@ class TiBasicDebugToolWindowContent(
             panel.add(JBScrollPane(stringVariablesList), BorderLayout.CENTER)
         }
 
-    private fun createInspectPanel(): JComponent =
-        JPanel(BorderLayout()).also { panel ->
-            panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowInspectTitleKey))
-            panel.add(
-                JPanel(BorderLayout()).also { inputPanel ->
-                    inputPanel.add(inspectField, BorderLayout.CENTER)
-                    inputPanel.add(inspectButton, BorderLayout.EAST)
-                },
-                BorderLayout.NORTH,
-            )
-            inspectResultLabel.font = Font(Font.MONOSPACED, Font.PLAIN, inspectResultLabel.font.size)
-            panel.add(inspectResultLabel, BorderLayout.SOUTH)
+    private fun createArgumentsPanel(): JComponent =
+        argumentsPanel.also { panel ->
+            panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowArgumentsTitleKey))
+            argumentsTextArea.font = Font(Font.MONOSPACED, Font.PLAIN, argumentsTextArea.font.size)
+            argumentsTextArea.isEditable = false
+            argumentsTextArea.isFocusable = false
+            argumentsTextArea.isOpaque = false
+            argumentsTextArea.lineWrap = false
+            argumentsTextArea.wrapStyleWord = false
+            argumentsTextArea.border = null
+            panel.add(argumentsTextArea, BorderLayout.CENTER)
+            panel.isVisible = false
         }
 
     private fun createKeyboardPanel(): JComponent =
         keyboardPanel.also { panel ->
             panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowKeyboardTitleKey))
-            panel.add(keyboardModeLabel, BorderLayout.NORTH)
+            panel.add(keyboardUnitLabel, BorderLayout.NORTH)
             panel.add(
-                JPanel(BorderLayout()).also { inputPanel ->
-                    inputPanel.add(JLabel(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowKeyboardInputKey)), BorderLayout.WEST)
-                    inputPanel.add(keyboardInputField, BorderLayout.CENTER)
+                JPanel(GridLayout(KEYBOARD_PANEL_ROW_COUNT, 1, 0, KEYBOARD_PANEL_ROW_GAP)).also { inputPanel ->
+                    inputPanel.add(
+                        JPanel(BorderLayout()).also { returnVariablePanel ->
+                            returnVariablePanel.add(keyboardInputLabel, BorderLayout.WEST)
+                            returnVariablePanel.add(keyboardInputField, BorderLayout.CENTER)
+                        },
+                    )
+                    inputPanel.add(keyboardStatusLabel)
                 },
                 BorderLayout.CENTER,
             )
@@ -278,11 +303,24 @@ class TiBasicDebugToolWindowContent(
     private fun updateKeyboardRequest(session: TiBasicDebugSession) {
         val request = session.keyboardRequest
         keyboardPanel.isVisible = request != null
-        keyboardModeLabel.text = request?.let { keyboardRequest ->
+        keyboardUnitLabel.text = request?.let { keyboardRequest ->
             TiBasicDebugMetadata.message(
-                TiBasicDebugMetadata.toolWindowKeyboardModeKey,
-                keyboardRequest.mode,
+                TiBasicDebugMetadata.toolWindowKeyboardUnitKey,
+                keyboardRequest.keyUnit,
                 keyboardRequest.allowedCodesDisplay,
+            )
+        } ?: " "
+        keyboardInputLabel.text = request?.let { keyboardRequest ->
+            TiBasicDebugMetadata.message(
+                TiBasicDebugMetadata.toolWindowKeyboardReturnVariableKey,
+                keyboardRequest.keyCodeVariableName,
+            )
+        } ?: " "
+        keyboardStatusLabel.text = request?.let { keyboardRequest ->
+            TiBasicDebugMetadata.message(
+                TiBasicDebugMetadata.toolWindowKeyboardStatusVariableKey,
+                keyboardRequest.statusVariableName,
+                keyboardRequest.statusValueDisplay,
             )
         } ?: " "
         val requestedInput = request?.scanInput ?: ""
@@ -291,14 +329,36 @@ class TiBasicDebugToolWindowContent(
         }
     }
 
-    private fun updateInspectResult(session: TiBasicDebugSession?) {
-        val expressionText = inspectField.text.trim()
-        inspectResultLabel.text = when {
-            expressionText.isEmpty() -> TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowInspectEmptyKey)
-            session == null -> TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowInspectEmptyKey)
-            else -> inspectExpression(project, session, expressionText)?.displayText
-                ?: TiBasicDebugMetadata.message(TiBasicDebugMetadata.incorrectStatementKey)
+    private fun updateKeyboardPreview() {
+        val request = sessionService.currentSession()?.keyboardRequestForInput(keyboardInputField.text) ?: return
+        keyboardStatusLabel.text = TiBasicDebugMetadata.message(
+            TiBasicDebugMetadata.toolWindowKeyboardStatusVariableKey,
+            request.statusVariableName,
+            request.statusValueDisplay,
+        )
+    }
+
+    private fun updateArguments(session: TiBasicDebugSession) {
+        val argumentDisplays = session.currentArgumentDisplays
+        argumentsPanel.isVisible = argumentDisplays.isNotEmpty()
+        argumentsTextArea.text = argumentDisplays.joinToString(separator = "\n")
+        argumentsTextArea.rows = argumentDisplays.size.coerceAtLeast(1)
+        argumentsPanel.revalidate()
+    }
+
+    private fun scrollListingTo(listingIndex: Int) {
+        val viewport = listingScrollPane.viewport
+        val viewportHeight = viewport.extentSize.height
+        if (viewportHeight <= 0) {
+            pendingListingScrollIndex = listingIndex
+            return
         }
+        val cellBounds = listing.getCellBounds(listingIndex, listingIndex) ?: return
+        val totalBounds = listing.getCellBounds(0, listModel.size - 1) ?: return
+        val targetY = (cellBounds.centerY - viewportHeight / 2.0)
+            .toInt()
+            .coerceIn(0, (totalBounds.height - viewportHeight).coerceAtLeast(0))
+        viewport.viewPosition = Point(0, targetY)
     }
 }
 
@@ -308,3 +368,5 @@ private const val MAIN_CONTENT_PANEL_WEIGHT = 0.55
 private const val SCREEN_CONTENT_GAP = 8
 private const val SCREEN_PANEL_WEIGHT = 0.42
 private const val VARIABLES_PANEL_WEIGHT = 0.5
+private const val KEYBOARD_PANEL_ROW_COUNT = 2
+private const val KEYBOARD_PANEL_ROW_GAP = 4

@@ -648,21 +648,115 @@ internal data class TiBasicDebugSession(
     val currentSourceLineIndex: Int?
         get() = currentProgramLine?.sourceLineIndex
 
+    val currentArgumentDisplays: List<String>
+        get() = currentProgramLine?.let(::argumentDisplaysFor).orEmpty()
+
+    val currentArgumentsDisplay: String
+        get() = currentArgumentDisplays.joinToString(ARGUMENT_DISPLAY_SEPARATOR)
+
     val keyboardRequest: TiBasicDebugKeyboardRequest?
-        get() {
-            if (status != TiBasicDebugSessionStatus.Paused) return null
-            val programLine = currentProgramLine ?: return null
-            val semantics = programLine.semantics as? TiBasicDebugLineSemantics.CallKey ?: return null
-            val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
-            val modeEvaluation = preparedSession.evaluateNumericAssignment(semantics.modeAssignment) ?: return null
-            val roundedMode = modeEvaluation.value.value.roundToWholeNumberIntOrNull() ?: return null
-            val resolvedMode = preparedSession.resolveCallKeyMode(roundedMode) ?: return null
-            return TiBasicDebugKeyboardRequest(
-                mode = resolvedMode,
-                allowedCodesDisplay = callKeyAllowedCodesDisplay(resolvedMode),
-                scanInput = preparedSession.keyboardScanInput.ifEmpty { defaultKeyboardScanInput(programLine.semantics) },
-            )
+        get() = keyboardRequestForInput(keyboardScanInput)
+
+    internal fun keyboardRequestForInput(scanInputText: String): TiBasicDebugKeyboardRequest? {
+        if (status != TiBasicDebugSessionStatus.Paused) return null
+        val programLine = currentProgramLine ?: return null
+        val semantics = programLine.semantics as? TiBasicDebugLineSemantics.CallKey ?: return null
+        val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+        val modeEvaluation = preparedSession.evaluateNumericAssignment(semantics.modeAssignment) ?: return null
+        val roundedMode = modeEvaluation.value.value.roundToWholeNumberIntOrNull() ?: return null
+        val resolvedMode = preparedSession.resolveCallKeyMode(roundedMode) ?: return null
+        val effectiveScanInput = scanInputText.ifEmpty { defaultKeyboardScanInput(programLine.semantics) }
+        val roundedScanInput = parseTiBasicDecimalLiteral(effectiveScanInput)?.roundToWholeNumberIntOrNull()
+        return TiBasicDebugKeyboardRequest(
+            keyUnit = resolvedMode,
+            allowedCodesDisplay = callKeyAllowedCodesDisplay(resolvedMode),
+            keyCodeVariableName = semantics.keyCodeVariableName,
+            statusVariableName = semantics.statusVariableName,
+            scanInput = effectiveScanInput,
+            statusValueDisplay = when {
+                roundedScanInput == null -> UNKNOWN_KEYBOARD_STATUS_DISPLAY
+                roundedScanInput == NO_KEY_CODE -> ZERO_KEYBOARD_STATUS_DISPLAY
+                isAllowedCallKeyCode(resolvedMode, roundedScanInput) -> ONE_KEYBOARD_STATUS_DISPLAY
+                else -> UNKNOWN_KEYBOARD_STATUS_DISPLAY
+            },
+        )
+    }
+
+    private fun argumentDisplaysFor(programLine: TiBasicDebugProgramLine): List<String> =
+        when {
+            programLine.isCallScreenLine() -> callScreenArgumentDisplays(programLine)
+            programLine.isCallColorLine() -> callColorArgumentDisplays(programLine)
+            else -> emptyList()
         }
+
+    private fun callScreenArgumentDisplays(programLine: TiBasicDebugProgramLine): List<String> =
+        when (val semantics = programLine.semantics) {
+            is TiBasicDebugLineSemantics.CallScreen -> {
+                val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+                listOf(
+                    preparedSession.numericArgumentDisplay(
+                        label = SCREEN_COLOR_ARGUMENT_NAME,
+                        assignment = semantics.colorAssignment,
+                        showsColorName = true,
+                        showsLabelForIncorrectExpression = false,
+                    ),
+                )
+            }
+
+            TiBasicDebugLineSemantics.StringNumberMismatch ->
+                listOf("$INCORRECT_EXPRESSION_DISPLAY ($STRING_NUMBER_MISMATCH_DISPLAY)")
+
+            TiBasicDebugLineSemantics.IncorrectStatement -> listOf(INCORRECT_EXPRESSION_DISPLAY)
+            else -> emptyList()
+        }
+
+    private fun callColorArgumentDisplays(programLine: TiBasicDebugProgramLine): List<String> =
+        when (val semantics = programLine.semantics) {
+            is TiBasicDebugLineSemantics.CallColor -> {
+                val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+                listOf(
+                    preparedSession.numericArgumentDisplay(
+                        label = CHARACTER_SET_ARGUMENT_NAME,
+                        assignment = semantics.characterSetAssignment,
+                    ),
+                    preparedSession.numericArgumentDisplay(
+                        label = FOREGROUND_COLOR_ARGUMENT_NAME,
+                        assignment = semantics.foregroundAssignment,
+                        showsColorName = true,
+                    ),
+                    preparedSession.numericArgumentDisplay(
+                        label = BACKGROUND_COLOR_ARGUMENT_NAME,
+                        assignment = semantics.backgroundAssignment,
+                        showsColorName = true,
+                    ),
+                )
+            }
+
+            TiBasicDebugLineSemantics.StringNumberMismatch ->
+                listOf("$INCORRECT_EXPRESSION_DISPLAY ($STRING_NUMBER_MISMATCH_DISPLAY)")
+
+            TiBasicDebugLineSemantics.IncorrectStatement -> listOf(INCORRECT_EXPRESSION_DISPLAY)
+            else -> emptyList()
+        }
+
+    private fun numericArgumentDisplay(
+        label: String,
+        assignment: TiBasicDebugNumericAssignment,
+        showsColorName: Boolean = false,
+        showsLabelForIncorrectExpression: Boolean = true,
+    ): String {
+        val incorrectExpressionDisplay =
+            if (showsLabelForIncorrectExpression) "$label = $INCORRECT_EXPRESSION_DISPLAY" else INCORRECT_EXPRESSION_DISPLAY
+        val evaluation = evaluateNumericAssignment(assignment) ?: return incorrectExpressionDisplay
+        val roundedCode = evaluation.value.value.roundToWholeNumberIntOrNull() ?: return incorrectExpressionDisplay
+        val valueDisplay = roundedCode.twoDigitDisplay()
+        if (!showsColorName) {
+            return "$label = $valueDisplay"
+        }
+        val colorName = runCatching { TiColor.at(roundedCode).displayName }
+            .getOrElse { INVALID_COLOR_CODE_DISPLAY }
+        return "$label = $valueDisplay ($colorName)"
+    }
 
     fun step(): TiBasicDebugSession = stepWithEffects().session
 
@@ -1383,6 +1477,14 @@ internal sealed interface TiBasicDebugLineSemantics {
     ) : TiBasicDebugLineSemantics
 }
 
+private fun TiBasicDebugProgramLine.isCallScreenLine(): Boolean =
+    sourceText.contains(CALL_SCREEN_LINE_MARKER, ignoreCase = true)
+
+private fun TiBasicDebugProgramLine.isCallColorLine(): Boolean =
+    sourceText.contains(CALL_COLOR_LINE_MARKER, ignoreCase = true)
+
+private fun Int.twoDigitDisplay(): String = toString().padStart(TWO_DIGIT_DISPLAY_WIDTH, '0')
+
 internal sealed interface TiBasicDebugPrintItem {
     data class StringValue(val assignment: TiBasicDebugStringAssignment) : TiBasicDebugPrintItem
     data class NumericValue(val assignment: TiBasicDebugNumericAssignment) : TiBasicDebugPrintItem
@@ -1560,10 +1662,16 @@ internal data class TiBasicDebugNumericEvaluation(
 )
 
 internal data class TiBasicDebugKeyboardRequest(
-    val mode: Int,
+    val keyUnit: Int,
     val allowedCodesDisplay: String,
+    val keyCodeVariableName: String,
+    val statusVariableName: String,
     val scanInput: String,
-)
+    val statusValueDisplay: String,
+) {
+    val mode: Int
+        get() = keyUnit
+}
 
 private fun TiBasicDebugStringEvaluation.mergeWarnings(vararg warnings: String?): TiBasicDebugStringEvaluation =
     copy(
@@ -1723,20 +1831,31 @@ private const val ASC_FUNCTION = "ASC"
 private const val LEN_FUNCTION = "LEN"
 private const val POS_FUNCTION = "POS"
 private const val VAL_FUNCTION = "VAL"
+private const val CALL_SCREEN_LINE_MARKER = "CALL SCREEN"
+private const val CALL_COLOR_LINE_MARKER = "CALL COLOR"
+private const val INCORRECT_EXPRESSION_DISPLAY = "<incorrect expression>"
+private const val STRING_NUMBER_MISMATCH_DISPLAY = "string-number-mismatch"
+private const val INVALID_COLOR_CODE_DISPLAY = "<invalid color code>"
 private const val POS_ARG_COUNT = 3
 private const val POS_SOURCE_ARG_INDEX = 0
 private const val POS_TARGET_ARG_INDEX = 1
 private const val POS_START_ARG_INDEX = 2
 private const val FIRST_INNER_NODE_INDEX = 1
 private const val MAX_TI_BASIC_STRING_LENGTH = 255
+private const val ARGUMENT_DISPLAY_SEPARATOR = "\n"
 private const val BYTE_MASK = 0xFF
 private const val BYTE_RADIX = 16
 private const val BYTE_HEX_WIDTH = 2
 private const val BYTE_PADDING = '0'
 private const val BYTE_SEPARATOR = " "
+private const val TWO_DIGIT_DISPLAY_WIDTH = 2
 private const val EMPTY_STRING = ""
+private const val SCREEN_COLOR_ARGUMENT_NAME = "color-code"
 private const val DEFAULT_CALL_KEY_SCAN_INPUT = "-1"
 private const val DEFAULT_KEYBOARD_MODE = 5
+private const val UNKNOWN_KEYBOARD_STATUS_DISPLAY = "?"
+private const val ZERO_KEYBOARD_STATUS_DISPLAY = "0"
+private const val ONE_KEYBOARD_STATUS_DISPLAY = "1"
 private const val NO_KEY_CODE = -1
 private const val REUSE_LAST_KEYBOARD_MODE = 0
 private const val PRINT_AREA_END_COLUMN = 30
