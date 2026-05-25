@@ -41,6 +41,7 @@ class TiBasicDebugToolWindowContent(
     internal val stopButton = JButton(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowStopKey))
     internal val argumentsPanel = JPanel(BorderLayout())
     internal val argumentsTextArea = JTextArea()
+    internal val argumentPatternPreviewComponent = TiBasicDebugArgumentPatternPreviewComponent()
     internal val keyboardPanel = JPanel(BorderLayout())
     internal val keyboardUnitLabel = JLabel(" ")
     internal val keyboardInputLabel = JLabel(" ")
@@ -147,6 +148,7 @@ class TiBasicDebugToolWindowContent(
             keyboardStatusLabel.text = " "
             argumentsPanel.isVisible = false
             argumentsTextArea.text = ""
+            argumentPatternPreviewComponent.hexPattern = null
             layout.show(centerPanel, EMPTY_CARD)
             return
         }
@@ -255,7 +257,13 @@ class TiBasicDebugToolWindowContent(
             argumentsTextArea.lineWrap = false
             argumentsTextArea.wrapStyleWord = false
             argumentsTextArea.border = null
-            panel.add(argumentsTextArea, BorderLayout.CENTER)
+            panel.add(
+                JPanel(BorderLayout()).also { contentPanel ->
+                    contentPanel.add(argumentsTextArea, BorderLayout.NORTH)
+                    contentPanel.add(argumentPatternPreviewComponent, BorderLayout.CENTER)
+                },
+                BorderLayout.CENTER,
+            )
             panel.isVisible = false
         }
 
@@ -343,6 +351,7 @@ class TiBasicDebugToolWindowContent(
         argumentsPanel.isVisible = argumentDisplays.isNotEmpty()
         argumentsTextArea.text = argumentDisplays.joinToString(separator = "\n")
         argumentsTextArea.rows = argumentDisplays.size.coerceAtLeast(1)
+        argumentPatternPreviewComponent.hexPattern = session.currentArgumentPatternPreview
         argumentsPanel.revalidate()
     }
 

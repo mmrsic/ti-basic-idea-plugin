@@ -235,6 +235,48 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals("<incorrect expression> (string-number-mismatch)", content.argumentsTextArea.text)
     }
 
+    fun `test debug tool window shows CALL CHAR arguments and pixel preview in footer area`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 CALL CHAR(65,\"F0\")")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(content.argumentsPanel.isVisible)
+        assertEquals(
+            """
+            ascii-code = 65
+            pattern-string = F000000000000000
+            (pixel-representation)
+            """.trimIndent(),
+            content.argumentsTextArea.text,
+        )
+        assertEquals(3, content.argumentsTextArea.rows)
+        assertTrue(content.argumentPatternPreviewComponent.isVisible)
+        assertEquals("F000000000000000", content.argumentPatternPreviewComponent.hexPattern)
+    }
+
+    fun `test debug tool window shows CALL CHAR ignored tail warning in footer area`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 CALL CHAR(65,\"1234567890ABCDEF99\")")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(
+            """
+            ascii-code = 65
+            pattern-string = 1234567890ABCDEF (ignored tail: 99)
+            (pixel-representation)
+            """.trimIndent(),
+            content.argumentsTextArea.text,
+        )
+        assertTrue(content.argumentPatternPreviewComponent.isVisible)
+        assertEquals("1234567890ABCDEF", content.argumentPatternPreviewComponent.hexPattern)
+    }
+
     fun `test debug tool window shows IF evaluation trace in footer area`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
@@ -584,6 +626,26 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
         assertEquals("Black", content.screenComponent.state.screenBackground.name)
+    }
+
+    fun `test debug tool window updates character patterns after CALL CHAR step`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 CALL CHAR(65,"F0")
+            110 PRINT "A"
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals("F000000000000000", content.screenComponent.state.characterPatterns[65])
+        assertEquals("F000000000000000", content.characterSetPreviewComponent.state.characterPatterns[65])
     }
 
     fun `test debug tool window updates character set colors after CALL COLOR step`() {

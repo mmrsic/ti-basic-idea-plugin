@@ -356,13 +356,17 @@ Recommended structure:
   line has debugger-supported arguments; it grows vertically for multiple argument lines, currently
   resolves `CALL SCREEN` to `color-code = XX (NAME)` against the current debugger state, resolves
   `CALL HCHAR` and `CALL VCHAR` to evaluated `row`, `column`, `character-code`, and `repeat` lines,
-  traces `IF` conditions through all evaluated subexpressions with variables substituted by their
-  current values,
+  resolves `CALL CHAR` to evaluated `ascii-code` and effective `pattern-string` lines plus a
+  dedicated 8x8 gray pixel preview and an inline ignored-tail note for overlong patterns, traces
+  `IF` conditions through all evaluated subexpressions with variables substituted by their current
+  values,
   shows `FOR` control values as evaluated `initial-value`, `limit`, and `increment` lines, assigns
   the evaluated initial value to the control variable when stepping the `FOR` line, adds a fourth
   parenthesized iteration-count line, defaults omitted `STEP` clauses to `1`, shows `NEXT` as the
   reused increment plus the adjusted control-variable value, and shows malformed expressions as
-  `<incorrect expression>` or `<incorrect expression> (string-number-mismatch)`
+  `<incorrect expression>` or `<incorrect expression> (string-number-mismatch)`; `CALL CHAR`
+  argument values outside `32..159` or pattern digits outside `0..9`/`A..F` surface as `Bad Value`
+  and stop the session on step
 - a keyboard-input pane appears for supported `CALL KEY` modes and feeds rounded scan-result input
   back into the paused debug session before the next step; the pane also shows the effective mode's
   allowed code ranges directly next to the mode label
