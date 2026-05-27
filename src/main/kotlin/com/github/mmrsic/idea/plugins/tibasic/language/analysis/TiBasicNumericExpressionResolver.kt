@@ -67,7 +67,12 @@ internal fun firstTopLevelBinaryOperatorIndex(children: List<ASTNode>, operatorT
                 when {
                     child.isExpressionOperand() -> expectsOperand = false
                     child.elementType in UNARY_EXPRESSION_OPERATOR_TYPES && expectsOperand -> Unit
-                    child.elementType in operatorTypes && !expectsOperand -> return index
+                    child.elementType in BINARY_EXPRESSION_OPERATOR_TYPES && !expectsOperand ->
+                        if (child.elementType in operatorTypes) {
+                            return index
+                        } else {
+                            expectsOperand = true
+                        }
                 }
             }
         }
@@ -93,10 +98,13 @@ internal fun lastTopLevelBinaryOperatorIndex(children: List<ASTNode>, operatorTy
                 when {
                     child.isExpressionOperand() -> expectsOperand = false
                     child.elementType in UNARY_EXPRESSION_OPERATOR_TYPES && expectsOperand -> Unit
-                    child.elementType in operatorTypes && !expectsOperand -> {
-                        lastMatch = index
-                        expectsOperand = true
-                    }
+                    child.elementType in BINARY_EXPRESSION_OPERATOR_TYPES && !expectsOperand ->
+                        if (child.elementType in operatorTypes) {
+                            lastMatch = index
+                            expectsOperand = true
+                        } else {
+                            expectsOperand = true
+                        }
                 }
             }
         }
@@ -180,6 +188,16 @@ internal val ARITHMETIC_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.DIV_OP,
     TiBasicTokenTypes.POW_OP,
 )
+
+private val BINARY_EXPRESSION_OPERATOR_TYPES = setOf(
+    TiBasicTokenTypes.CONCAT_OP,
+    TiBasicTokenTypes.EQ_OP,
+    TiBasicTokenTypes.LT_OP,
+    TiBasicTokenTypes.GT_OP,
+    TiBasicTokenTypes.NEQ_OP,
+    TiBasicTokenTypes.LE_OP,
+    TiBasicTokenTypes.GE_OP,
+) + ARITHMETIC_OPERATOR_TYPES
 
 internal val UNARY_EXPRESSION_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.PLUS_OP,

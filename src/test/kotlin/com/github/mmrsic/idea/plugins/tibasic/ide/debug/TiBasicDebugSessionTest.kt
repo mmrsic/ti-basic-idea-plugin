@@ -5,6 +5,7 @@ import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundNoise
 import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundPlayback
 import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundTone
 import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
+import java.math.BigDecimal
 
 class TiBasicDebugSessionTest : TiBasicTestBase() {
 
@@ -427,6 +428,23 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
 
         assertEquals('A'.code, session.screenContents.characterCodes[22][2])
         assertEquals('B'.code, session.screenContents.characterCodes[23][2])
+    }
+
+    fun `test PRINT numeric value adds TI-Basic padding spaces`() {
+        var session = startSession("100 PRINT 12")
+
+        session = session.step()
+
+        assertEquals(" 12 ", screenText(session, 24, 3, 4))
+    }
+
+    fun `test PRINT wraps numeric value as a whole when it no longer fits in the row`() {
+        var session = startSession("100 PRINT \"12345678901234567890123456\";6")
+
+        session = session.step()
+
+        assertEquals("12345678901234567890123456  ", screenText(session, 23, 3, 28))
+        assertEquals(" 6 ", screenText(session, 24, 3, 3))
     }
 
     fun `test PRINT without trailing separator performs implicit line feed before next print`() {
@@ -1035,6 +1053,116 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(listOf(2, 50, 51), session.stringVariables["A$"]?.internalBytes)
         assertEquals("-5", session.stringVariables["B$"]?.text)
         assertEquals(listOf(2, 45, 53), session.stringVariables["B$"]?.internalBytes)
+    }
+
+    fun `test numeric LET supports INT function with positive decimal`() {
+        var session = startSession(
+            """
+            100 LET A=INT(123.45)
+            110 PRINT A
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals("123", session.numericVariables["A"]?.usualDisplay)
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test numeric LET supports INT function with negative decimal`() {
+        var session = startSession(
+            """
+            100 LET A=INT(-123.45)
+            110 PRINT A
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals("-124", session.numericVariables["A"]?.usualDisplay)
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test implicit numeric LET supports INT around RND without parentheses`() {
+        var session = startSession(
+            """
+            920 K=INT(22*RND)+1
+            930 PRINT K
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        val value = session.numericVariables["K"]?.value
+        assertEquals(930, session.currentProgramLine?.lineNumber)
+        assertTrue(value != null && value >= BigDecimal.ONE && value <= BigDecimal("22"))
+    }
+
+    fun `test RND produces the same initial sequence in separate debugger sessions`() {
+        var firstSession = startSession(
+            """
+            100 LET A=RND
+            110 LET B=RND
+            """.trimIndent(),
+        )
+        var secondSession = startSession(
+            """
+            100 LET A=RND
+            110 LET B=RND
+            """.trimIndent(),
+        )
+
+        firstSession = firstSession.step()
+        firstSession = firstSession.step()
+        secondSession = secondSession.step()
+        secondSession = secondSession.step()
+
+        val firstA = firstSession.numericVariables["A"]?.value
+        val firstB = firstSession.numericVariables["B"]?.value
+        val secondA = secondSession.numericVariables["A"]?.value
+        val secondB = secondSession.numericVariables["B"]?.value
+        assertEquals("0.52918778230732", firstSession.numericVariables["A"]?.usualDisplay)
+        assertEquals("0.3913360723005", firstSession.numericVariables["B"]?.usualDisplay)
+        assertEquals(firstA, secondA)
+        assertEquals(firstB, secondB)
+        assertTrue(firstA != null && firstA > BigDecimal.ZERO && firstA < BigDecimal.ONE)
+        assertTrue(firstB != null && firstB > BigDecimal.ZERO && firstB < BigDecimal.ONE)
+    }
+
+    fun `test RANDOMIZE with equal seed reproduces the same RND sequence`() {
+        var session = startSession(
+            """
+            100 RANDOMIZE 42.9
+            110 LET A=RND
+            120 LET B=RND
+            130 RANDOMIZE 42
+            140 LET C=RND
+            150 LET D=RND
+            """.trimIndent(),
+        )
+
+        repeat(6) {
+            session = session.step()
+        }
+
+        assertEquals(session.numericVariables["A"]?.value, session.numericVariables["C"]?.value)
+        assertEquals(session.numericVariables["B"]?.value, session.numericVariables["D"]?.value)
+    }
+
+    fun `test implicit numeric LET supports division by negative literal`() {
+        var session = startSession(
+            """
+            1050 Y=8
+            1060 Y=Y/-4
+            1070 PRINT Y
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals("-2", session.numericVariables["Y"]?.usualDisplay)
+        assertEquals(1070, session.currentProgramLine?.lineNumber)
     }
 
     fun `test string LET supports SEG dollar`() {

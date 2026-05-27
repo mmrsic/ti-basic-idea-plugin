@@ -694,6 +694,20 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertEquals('T'.code, content.screenComponent.state.characterCodes[23][5])
     }
 
+    fun `test debug tool window renders numeric PRINT output with TI-Basic spacing`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 PRINT 12")
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(listOf(' '.code, '1'.code, '2'.code, ' '.code), content.screenComponent.state.characterCodes[23].subList(2, 6))
+    }
+
     fun `test debug tool window keeps exactly twenty eight PRINT characters on the bottom row`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)

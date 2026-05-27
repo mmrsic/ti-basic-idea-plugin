@@ -9,15 +9,18 @@ import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicNoiseShiftRate
 import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundNoise
 import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundPlayback
 import com.github.mmrsic.idea.plugins.tibasic.editor.TiBasicSoundTone
-import com.github.mmrsic.idea.plugins.tibasic.editor.callColorCharacterSetRange
 import com.github.mmrsic.idea.plugins.tibasic.editor.displayedScreenBackground
 import com.github.mmrsic.idea.plugins.tibasic.editor.isPlayableSoundPlayback
 import com.github.mmrsic.idea.plugins.tibasic.editor.roundedScreenColorAt
-import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.UNARY_EXPRESSION_OPERATOR_TYPES
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.firstTopLevelBinaryOperatorIndex
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.isFullyParenthesized
 import com.github.mmrsic.idea.plugins.tibasic.language.analysis.lastTopLevelBinaryOperatorIndex
+import com.github.mmrsic.idea.plugins.tibasic.language.model.TiColor
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_COLUMNS
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_ROWS
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SPACE_CHARACTER_CODE
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.tiBasicScreenWritePositions
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.parser.TiBasicNodeTypes
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
@@ -30,17 +33,14 @@ import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBa
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGosubStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicIfStatement
-import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicPrintStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicNextStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicPrintStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRandomizeStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRemStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicReturnStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicStopStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicUnknownStatement
-import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_COLUMNS
-import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SCREEN_ROWS
-import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.TI_BASIC_SPACE_CHARACTER_CODE
-import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.tiBasicScreenWritePositions
 import com.github.mmrsic.idea.plugins.tibasic.language.values.parseTiBasicDecimalLiteral
 import com.github.mmrsic.idea.plugins.tibasic.language.values.tiBasicDecimalString
 import com.github.mmrsic.idea.plugins.tibasic.language.values.tiBasicRadix100Number
@@ -51,6 +51,7 @@ import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.MathContext
 import java.math.RoundingMode
 import java.util.regex.Pattern
@@ -131,14 +132,36 @@ internal data class TiBasicDebugProgramSnapshot(
             is TiBasicNextStatement -> createNextSemantics(statement)
             is TiBasicPrintStatement -> createPrintSemantics(statement)
             is TiBasicLetStatement -> createLetSemantics(statement)
+            is TiBasicRandomizeStatement -> createRandomizeSemantics(statement)
             is TiBasicCallStatement -> createCallSemantics(statement)
             else -> TiBasicDebugLineSemantics.Sequential
+        }
+
+        private fun createRandomizeSemantics(statement: TiBasicRandomizeStatement): TiBasicDebugLineSemantics {
+            val relevantChildren = statement.node.nonWhitespaceChildren
+            if (relevantChildren.any { child -> child.elementType != TiBasicTokenTypes.RANDOMIZE_KEYWORD && child.elementType != TiBasicNodeTypes.EXPRESSION }) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val seedAssignment = statement.seedExpression()
+                ?.node
+                ?.let(::createRequiredNumericAssignment)
+                ?.let { result ->
+                    when (result) {
+                        is TiBasicDebugParseResult.Valid -> result.value
+                        TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                        TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+                    }
+                }
+            return TiBasicDebugLineSemantics.Randomize(seedAssignment)
         }
 
         private fun createCallSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
             return when (statement.subprogramName()) {
                 KEY_SUBPROGRAM_NAME -> createCallKeySemantics(statement)
-                CLEAR_SUBPROGRAM_NAME -> if (statement.arguments().isEmpty()) TiBasicDebugLineSemantics.CallClear else TiBasicDebugLineSemantics.IncorrectStatement
+                CLEAR_SUBPROGRAM_NAME -> if (statement.arguments()
+                        .isEmpty()
+                ) TiBasicDebugLineSemantics.CallClear else TiBasicDebugLineSemantics.IncorrectStatement
+
                 CHAR_SUBPROGRAM_NAME -> createCallCharSemantics(statement)
                 COLOR_SUBPROGRAM_NAME -> createCallColorSemantics(statement)
                 SCREEN_SUBPROGRAM_NAME -> createCallScreenSemantics(statement)
@@ -276,16 +299,18 @@ internal data class TiBasicDebugProgramSnapshot(
                 .drop(CALL_SOUND_CHANNEL_ARGS_START_INDEX)
                 .chunked(CALL_SOUND_CHANNEL_ARGUMENT_COUNT)
                 .map { channelArgs ->
-                    val pitchAssignment = when (val result = channelArgs.getOrNull(CALL_SOUND_PITCH_ARG_OFFSET)?.node?.let(::createRequiredNumericAssignment)) {
-                        is TiBasicDebugParseResult.Valid -> result.value
-                        TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
-                        else -> return TiBasicDebugLineSemantics.IncorrectStatement
-                    }
-                    val volumeAssignment = when (val result = channelArgs.getOrNull(CALL_SOUND_VOLUME_ARG_OFFSET)?.node?.let(::createRequiredNumericAssignment)) {
-                        is TiBasicDebugParseResult.Valid -> result.value
-                        TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
-                        else -> return TiBasicDebugLineSemantics.IncorrectStatement
-                    }
+                    val pitchAssignment =
+                        when (val result = channelArgs.getOrNull(CALL_SOUND_PITCH_ARG_OFFSET)?.node?.let(::createRequiredNumericAssignment)) {
+                            is TiBasicDebugParseResult.Valid -> result.value
+                            TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                            else -> return TiBasicDebugLineSemantics.IncorrectStatement
+                        }
+                    val volumeAssignment =
+                        when (val result = channelArgs.getOrNull(CALL_SOUND_VOLUME_ARG_OFFSET)?.node?.let(::createRequiredNumericAssignment)) {
+                            is TiBasicDebugParseResult.Valid -> result.value
+                            TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                            else -> return TiBasicDebugLineSemantics.IncorrectStatement
+                        }
                     TiBasicDebugSoundChannelAssignment(
                         pitchAssignment = pitchAssignment,
                         volumeAssignment = volumeAssignment,
@@ -424,9 +449,9 @@ internal data class TiBasicDebugProgramSnapshot(
                 if (leftNumeric != null && rightNumeric != null) {
                     return TiBasicDebugParseResult.Valid(
                         TiBasicDebugCondition.NumericComparison(
-                        left = leftNumeric,
-                        operatorType = operatorType,
-                        right = rightNumeric,
+                            left = leftNumeric,
+                            operatorType = operatorType,
+                            right = rightNumeric,
                         ),
                     )
                 }
@@ -435,9 +460,9 @@ internal data class TiBasicDebugProgramSnapshot(
                 if (leftString != null && rightString != null) {
                     return TiBasicDebugParseResult.Valid(
                         TiBasicDebugCondition.StringComparison(
-                        left = leftString,
-                        operatorType = operatorType,
-                        right = rightString,
+                            left = leftString,
+                            operatorType = operatorType,
+                            right = rightString,
                         ),
                     )
                 }
@@ -658,6 +683,16 @@ internal data class TiBasicDebugProgramSnapshot(
                     ?.let { createStringAssignmentFromExpression(it.node) }
                     ?.let(TiBasicDebugNumericAssignment::StringToNumber)
 
+                RND_FUNCTION -> if (arguments.isEmpty()) {
+                    TiBasicDebugNumericAssignment.RandomNumber
+                } else {
+                    null
+                }
+
+                INT_FUNCTION -> arguments.singleOrNull()
+                    ?.let { createNumericAssignmentFromExpression(it.node) }
+                    ?.let(TiBasicDebugNumericAssignment::IntegerPart)
+
                 POS_FUNCTION -> {
                     if (arguments.size != POS_ARG_COUNT) return null
                     val source = createStringAssignmentFromExpression(arguments[POS_SOURCE_ARG_INDEX].node) ?: return null
@@ -755,6 +790,7 @@ internal data class TiBasicDebugSession(
     val keyboardScanInput: String = EMPTY_STRING,
     val lastKeyboardMode: Int? = null,
     val lastSoundTone3Pitch: Int? = null,
+    val randomSeed: Int = INITIAL_RANDOM_SEED,
     val screenContents: TiBasicDebugScreenContents = TiBasicDebugScreenContents(),
 ) {
     val currentProgramLine: TiBasicDebugProgramLine?
@@ -1047,8 +1083,14 @@ internal data class TiBasicDebugSession(
 
     private fun forIterationCountDisplay(semantics: TiBasicDebugLineSemantics.For): String {
         val initialEvaluation = evaluateNumericAssignment(semantics.initialValueAssignment)
-        val limitEvaluation = evaluateNumericAssignment(semantics.limitAssignment)
-        val incrementEvaluation = evaluateNumericAssignment(semantics.incrementAssignment)
+        val limitEvaluation = initialEvaluation
+            ?.resultingRandomSeed
+            ?.let(::withRandomSeed)
+            ?.evaluateNumericAssignment(semantics.limitAssignment)
+        val incrementEvaluation = limitEvaluation
+            ?.resultingRandomSeed
+            ?.let(::withRandomSeed)
+            ?.evaluateNumericAssignment(semantics.incrementAssignment)
         val initialValue = initialEvaluation?.value?.value?.roundToWholeNumberIntOrNull()
         val limitValue = limitEvaluation?.value?.value?.roundToWholeNumberIntOrNull()
         val incrementValue = incrementEvaluation?.value?.value?.roundToWholeNumberIntOrNull()
@@ -1065,8 +1107,12 @@ internal data class TiBasicDebugSession(
         matchingForContext: TiBasicDebugForContext,
     ): TiBasicDebugNextPreview? {
         val currentValue = evaluateNumericAssignment(TiBasicDebugNumericAssignment.VariableReference(controlVariableName)) ?: return null
-        val incrementValue = evaluateNumericAssignment(matchingForContext.semantics.incrementAssignment) ?: return null
-        val limitValue = evaluateNumericAssignment(matchingForContext.semantics.limitAssignment) ?: return null
+        val incrementValue = withRandomSeed(currentValue.resultingRandomSeed)
+            .evaluateNumericAssignment(matchingForContext.semantics.incrementAssignment)
+            ?: return null
+        val limitValue = withRandomSeed(incrementValue.resultingRandomSeed)
+            .evaluateNumericAssignment(matchingForContext.semantics.limitAssignment)
+            ?: return null
         val updatedValue = currentValue.value.value + incrementValue.value.value
         val continuesLoop = continuesForLoop(updatedValue, limitValue.value.value, incrementValue.value.value)
         return TiBasicDebugNextPreview(
@@ -1087,11 +1133,12 @@ internal data class TiBasicDebugSession(
                 limitValue.warningMessage,
             ),
             initializedNumericVariables = currentValue.initializedNumericVariables +
-                incrementValue.initializedNumericVariables +
-                limitValue.initializedNumericVariables,
+                    incrementValue.initializedNumericVariables +
+                    limitValue.initializedNumericVariables,
             initializedStringVariables = currentValue.initializedStringVariables +
-                incrementValue.initializedStringVariables +
-                limitValue.initializedStringVariables,
+                    incrementValue.initializedStringVariables +
+                    limitValue.initializedStringVariables,
+            resultingRandomSeed = limitValue.resultingRandomSeed,
         )
     }
 
@@ -1138,11 +1185,11 @@ internal data class TiBasicDebugSession(
                 ) ?: return null
                 TiBasicDebugConditionTrace(
                     lines = leftTrace.lines +
-                        rightTrace.lines +
-                        tracedEvaluationLine(
-                            expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(condition.operatorType)} ${rightTrace.valueDisplay}",
-                            resultDisplay = conditionResultDisplay(conditionResult),
-                        ),
+                            rightTrace.lines +
+                            tracedEvaluationLine(
+                                expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(condition.operatorType)} ${rightTrace.valueDisplay}",
+                                resultDisplay = conditionResultDisplay(conditionResult),
+                            ),
                 )
             }
 
@@ -1156,11 +1203,11 @@ internal data class TiBasicDebugSession(
                 ) ?: return null
                 TiBasicDebugConditionTrace(
                     lines = leftTrace.lines +
-                        rightTrace.lines +
-                        tracedEvaluationLine(
-                            expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(condition.operatorType)} ${rightTrace.valueDisplay}",
-                            resultDisplay = conditionResultDisplay(conditionResult),
-                        ),
+                            rightTrace.lines +
+                            tracedEvaluationLine(
+                                expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(condition.operatorType)} ${rightTrace.valueDisplay}",
+                                resultDisplay = conditionResultDisplay(conditionResult),
+                            ),
                 )
             }
         }
@@ -1206,12 +1253,12 @@ internal data class TiBasicDebugSession(
                 val lengthTrace = numericTrace(assignment.length) ?: return null
                 TiBasicDebugStringTrace(
                     lines = sourceTrace.lines +
-                        startTrace.lines +
-                        lengthTrace.lines +
-                        tracedEvaluationLine(
-                            expressionDisplay = "$SEG_DOLLAR_FUNCTION(${sourceTrace.valueDisplay}, ${startTrace.valueDisplay}, ${lengthTrace.valueDisplay})",
-                            resultDisplay = stringLiteralDisplay(evaluation.value.text),
-                        ),
+                            startTrace.lines +
+                            lengthTrace.lines +
+                            tracedEvaluationLine(
+                                expressionDisplay = "$SEG_DOLLAR_FUNCTION(${sourceTrace.valueDisplay}, ${startTrace.valueDisplay}, ${lengthTrace.valueDisplay})",
+                                resultDisplay = stringLiteralDisplay(evaluation.value.text),
+                            ),
                     valueDisplay = stringLiteralDisplay(evaluation.value.text),
                     evaluation = evaluation,
                 )
@@ -1222,11 +1269,11 @@ internal data class TiBasicDebugSession(
                 val rightTrace = stringTrace(assignment.right) ?: return null
                 TiBasicDebugStringTrace(
                     lines = leftTrace.lines +
-                        rightTrace.lines +
-                        tracedEvaluationLine(
-                            expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(TiBasicTokenTypes.CONCAT_OP)} ${rightTrace.valueDisplay}",
-                            resultDisplay = stringLiteralDisplay(evaluation.value.text),
-                        ),
+                            rightTrace.lines +
+                            tracedEvaluationLine(
+                                expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(TiBasicTokenTypes.CONCAT_OP)} ${rightTrace.valueDisplay}",
+                                resultDisplay = stringLiteralDisplay(evaluation.value.text),
+                            ),
                     valueDisplay = stringLiteralDisplay(evaluation.value.text),
                     evaluation = evaluation,
                 )
@@ -1262,11 +1309,11 @@ internal data class TiBasicDebugSession(
                 val rightTrace = numericTrace(assignment.right) ?: return null
                 TiBasicDebugNumericTrace(
                     lines = leftTrace.lines +
-                        rightTrace.lines +
-                        tracedEvaluationLine(
-                            expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(assignment.operatorType)} ${rightTrace.valueDisplay}",
-                            resultDisplay = evaluation.value.usualDisplay,
-                        ),
+                            rightTrace.lines +
+                            tracedEvaluationLine(
+                                expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(assignment.operatorType)} ${rightTrace.valueDisplay}",
+                                resultDisplay = evaluation.value.usualDisplay,
+                            ),
                     valueDisplay = evaluation.value.usualDisplay,
                     evaluation = evaluation,
                 )
@@ -1308,18 +1355,42 @@ internal data class TiBasicDebugSession(
                 )
             }
 
+            TiBasicDebugNumericAssignment.RandomNumber ->
+                TiBasicDebugNumericTrace(
+                    lines = listOf(
+                        tracedEvaluationLine(
+                            expressionDisplay = RND_FUNCTION,
+                            resultDisplay = evaluation.value.usualDisplay,
+                        ),
+                    ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+
+            is TiBasicDebugNumericAssignment.IntegerPart -> {
+                val sourceTrace = numericTrace(assignment.source) ?: return null
+                TiBasicDebugNumericTrace(
+                    lines = sourceTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = "$INT_FUNCTION(${sourceTrace.valueDisplay})",
+                        resultDisplay = evaluation.value.usualDisplay,
+                    ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+            }
+
             is TiBasicDebugNumericAssignment.StringPosition -> {
                 val sourceTrace = stringTrace(assignment.source) ?: return null
                 val targetTrace = stringTrace(assignment.target) ?: return null
                 val startTrace = numericTrace(assignment.start) ?: return null
                 TiBasicDebugNumericTrace(
                     lines = sourceTrace.lines +
-                        targetTrace.lines +
-                        startTrace.lines +
-                        tracedEvaluationLine(
-                            expressionDisplay = "$POS_FUNCTION(${sourceTrace.valueDisplay}, ${targetTrace.valueDisplay}, ${startTrace.valueDisplay})",
-                            resultDisplay = evaluation.value.usualDisplay,
-                        ),
+                            targetTrace.lines +
+                            startTrace.lines +
+                            tracedEvaluationLine(
+                                expressionDisplay = "$POS_FUNCTION(${sourceTrace.valueDisplay}, ${targetTrace.valueDisplay}, ${startTrace.valueDisplay})",
+                                resultDisplay = evaluation.value.usualDisplay,
+                            ),
                     valueDisplay = evaluation.value.usualDisplay,
                     evaluation = evaluation,
                 )
@@ -1350,22 +1421,102 @@ internal data class TiBasicDebugSession(
             TiBasicDebugLineSemantics.Sequential -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber))
             TiBasicDebugLineSemantics.Rem -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber))
             is TiBasicDebugLineSemantics.Goto -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target))
-            is TiBasicDebugLineSemantics.Gosub -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target, rememberOrigin = true))
-            is TiBasicDebugLineSemantics.If -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyIf(programLine.lineNumber, semantics))
-            is TiBasicDebugLineSemantics.For -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyFor(programLine.lineNumber, semantics))
-            is TiBasicDebugLineSemantics.Next -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyNext(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.Gosub -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.jumpTo(
+                    programLine,
+                    semantics.target,
+                    rememberOrigin = true
+                )
+            )
+
+            is TiBasicDebugLineSemantics.If -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyIf(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.For -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyFor(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.Next -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyNext(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
             is TiBasicDebugLineSemantics.Return -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.returnFrom(semantics.isStandaloneKeyword))
             is TiBasicDebugLineSemantics.End -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
             is TiBasicDebugLineSemantics.Stop -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
-            is TiBasicDebugLineSemantics.LetString -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyStringLet(programLine.lineNumber, semantics))
-            is TiBasicDebugLineSemantics.LetNumeric -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyNumericLet(programLine.lineNumber, semantics))
-            is TiBasicDebugLineSemantics.Print -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyPrint(programLine.lineNumber, semantics))
-            is TiBasicDebugLineSemantics.CallKey -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallKey(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.LetString -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyStringLet(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.LetNumeric -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyNumericLet(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.Randomize -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyRandomize(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.Print -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyPrint(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.CallKey -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyCallKey(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
             TiBasicDebugLineSemantics.CallClear -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber))
-            is TiBasicDebugLineSemantics.CallChar -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallChar(programLine.lineNumber, semantics))
-            is TiBasicDebugLineSemantics.CallColor -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallColor(programLine.lineNumber, semantics))
-            is TiBasicDebugLineSemantics.CallScreen -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallScreen(programLine.lineNumber, semantics))
-            is TiBasicDebugLineSemantics.CallScreenWrite -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallScreenWrite(programLine.lineNumber, semantics))
+            is TiBasicDebugLineSemantics.CallChar -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyCallChar(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.CallColor -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyCallColor(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.CallScreen -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyCallScreen(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
+            is TiBasicDebugLineSemantics.CallScreenWrite -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyCallScreenWrite(
+                    programLine.lineNumber,
+                    semantics
+                )
+            )
+
             is TiBasicDebugLineSemantics.CallSound -> sessionWithInitializedNumericVariables.applyCallSound(programLine.lineNumber, semantics)
             TiBasicDebugLineSemantics.StringNumberMismatch -> TiBasicDebugStepResult(stringNumberMismatch())
             TiBasicDebugLineSemantics.IncorrectStatement -> TiBasicDebugStepResult(incorrectStatement())
@@ -1427,11 +1578,9 @@ internal data class TiBasicDebugSession(
         semantics: TiBasicDebugLineSemantics.LetString,
     ): TiBasicDebugSession {
         val evaluation = evaluateStringAssignment(semantics.assignment) ?: return continueAfter(currentLineNumber)
-        val updatedNumericVariables = numericVariables + evaluation.initializedNumericVariables
-        val updatedStringVariables = stringVariables + evaluation.initializedStringVariables + (semantics.targetVariableName to evaluation.value)
-        return continueAfter(currentLineNumber, evaluation.warningMessage).copy(
-            numericVariables = updatedNumericVariables,
-            stringVariables = updatedStringVariables,
+        val sessionAfterEvaluation = mergeEvaluations(evaluation)
+        return sessionAfterEvaluation.continueAfter(currentLineNumber, evaluation.warningMessage).copy(
+            stringVariables = sessionAfterEvaluation.stringVariables + (semantics.targetVariableName to evaluation.value),
         )
     }
 
@@ -1440,12 +1589,24 @@ internal data class TiBasicDebugSession(
         semantics: TiBasicDebugLineSemantics.LetNumeric,
     ): TiBasicDebugSession {
         val evaluation = evaluateNumericAssignment(semantics.assignment) ?: return continueAfter(currentLineNumber)
-        val updatedNumericVariables = numericVariables + evaluation.initializedNumericVariables + (semantics.targetVariableName to evaluation.value)
-        val updatedStringVariables = stringVariables + evaluation.initializedStringVariables
-        return continueAfter(currentLineNumber, evaluation.warningMessage).copy(
-            numericVariables = updatedNumericVariables,
-            stringVariables = updatedStringVariables,
+        val sessionAfterEvaluation = mergeEvaluations(evaluation)
+        return sessionAfterEvaluation.continueAfter(currentLineNumber, evaluation.warningMessage).copy(
+            numericVariables = sessionAfterEvaluation.numericVariables + (semantics.targetVariableName to evaluation.value),
         )
+    }
+
+    private fun applyRandomize(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.Randomize,
+    ): TiBasicDebugSession {
+        val sessionAfterEvaluation = semantics.seedAssignment
+            ?.let { seedAssignment ->
+                val evaluation = evaluateNumericAssignment(seedAssignment) ?: return continueAfter(currentLineNumber)
+                mergeEvaluations(evaluation)
+                    .copy(randomSeed = randomSeedFrom(evaluation.value.value))
+            }
+            ?: copy(randomSeed = generatedRandomizeSeed())
+        return sessionAfterEvaluation.continueAfter(currentLineNumber)
     }
 
     private fun applyIf(
@@ -1468,11 +1629,9 @@ internal data class TiBasicDebugSession(
         semantics: TiBasicDebugLineSemantics.For,
     ): TiBasicDebugSession {
         val evaluation = evaluateNumericAssignment(semantics.initialValueAssignment) ?: return continueAfter(currentLineNumber)
-        val updatedNumericVariables = numericVariables + evaluation.initializedNumericVariables + (semantics.controlVariableName to evaluation.value)
-        val updatedStringVariables = stringVariables + evaluation.initializedStringVariables
-        return continueAfter(currentLineNumber, evaluation.warningMessage).copy(
-            numericVariables = updatedNumericVariables,
-            stringVariables = updatedStringVariables,
+        val sessionAfterEvaluation = mergeEvaluations(evaluation)
+        return sessionAfterEvaluation.continueAfter(currentLineNumber, evaluation.warningMessage).copy(
+            numericVariables = sessionAfterEvaluation.numericVariables + (semantics.controlVariableName to evaluation.value),
         )
     }
 
@@ -1484,14 +1643,15 @@ internal data class TiBasicDebugSession(
             ?: return continueAfter(currentLineNumber)
         val nextPreview = nextPreview(semantics.controlVariableName, matchingForContext) ?: return continueAfter(currentLineNumber)
         val updatedNumericVariables = numericVariables +
-            nextPreview.initializedNumericVariables +
-            (semantics.controlVariableName to TiBasicDebugNumericValue.fromValue(nextPreview.updatedValue))
+                nextPreview.initializedNumericVariables +
+                (semantics.controlVariableName to TiBasicDebugNumericValue.fromValue(nextPreview.updatedValue))
         val updatedStringVariables = stringVariables +
-            nextPreview.initializedStringVariables
+                nextPreview.initializedStringVariables
         val sessionAfterUpdate = copy(
             numericVariables = updatedNumericVariables,
             stringVariables = updatedStringVariables,
             statusMessage = nextPreview.warningMessage ?: statusMessage,
+            randomSeed = nextPreview.resultingRandomSeed,
         )
         return if (nextPreview.continuesLoop) {
             matchingForContext.returnLineNumber
@@ -1512,7 +1672,8 @@ internal data class TiBasicDebugSession(
         semantics.items.forEach { item ->
             when (item) {
                 is TiBasicDebugPrintItem.StringValue -> {
-                    val evaluation = currentSession.evaluateStringAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
+                    val evaluation =
+                        currentSession.evaluateStringAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
                     currentSession = currentSession
                         .mergeEvaluations(evaluation)
                         .writePrintText(evaluation.value.text)
@@ -1520,10 +1681,11 @@ internal data class TiBasicDebugSession(
                 }
 
                 is TiBasicDebugPrintItem.NumericValue -> {
-                    val evaluation = currentSession.evaluateNumericAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
+                    val evaluation =
+                        currentSession.evaluateNumericAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
                     currentSession = currentSession
                         .mergeEvaluations(evaluation)
-                        .writePrintText(evaluation.value.usualDisplay)
+                        .writePrintNumericValue(evaluation.value)
                     trailingSeparator = null
                 }
 
@@ -1643,10 +1805,10 @@ internal data class TiBasicDebugSession(
         return currentSession.continueAfter(currentLineNumber).copy(
             screenContents = currentSession.screenContents.copy(
                 characterSetColors = currentSession.screenContents.characterSetColors +
-                    (characterSet.value to TiBasicDebugCharacterSetColors(
-                        fg = TiColor.at(foreground.value),
-                        bg = TiColor.at(background.value),
-                    )),
+                        (characterSet.value to TiBasicDebugCharacterSetColors(
+                            fg = TiColor.at(foreground.value),
+                            bg = TiColor.at(background.value),
+                        )),
             ),
         )
     }
@@ -1794,6 +1956,7 @@ internal data class TiBasicDebugSession(
             numericVariables = numericVariables + evaluation.initializedNumericVariables,
             stringVariables = stringVariables + evaluation.initializedStringVariables,
             statusMessage = evaluation.warningMessage ?: statusMessage,
+            randomSeed = evaluation.resultingRandomSeed,
         )
 
     private fun mergeEvaluations(evaluation: TiBasicDebugNumericEvaluation): TiBasicDebugSession =
@@ -1801,6 +1964,7 @@ internal data class TiBasicDebugSession(
             numericVariables = numericVariables + evaluation.initializedNumericVariables,
             stringVariables = stringVariables + evaluation.initializedStringVariables,
             statusMessage = evaluation.warningMessage ?: statusMessage,
+            randomSeed = evaluation.resultingRandomSeed,
         )
 
     private fun mergeEvaluations(evaluation: TiBasicDebugConditionEvaluation): TiBasicDebugSession =
@@ -1808,6 +1972,7 @@ internal data class TiBasicDebugSession(
             numericVariables = numericVariables + evaluation.initializedNumericVariables,
             stringVariables = stringVariables + evaluation.initializedStringVariables,
             statusMessage = evaluation.warningMessage ?: statusMessage,
+            randomSeed = evaluation.resultingRandomSeed,
         )
 
     private fun applyPrintSeparator(tokenType: IElementType): TiBasicDebugSession =
@@ -1819,6 +1984,18 @@ internal data class TiBasicDebugSession(
 
     private fun writePrintText(text: String): TiBasicDebugSession =
         text.fold(this) { session, character -> session.writePrintCharacter(character) }
+
+    private fun writePrintNumericValue(value: TiBasicDebugNumericValue): TiBasicDebugSession {
+        val printText = value.printText()
+        val normalizedContents = screenContents.normalizePrintCursorForWrite()
+        val remainingColumns = normalizedContents.remainingPrintColumns()
+        val adjustedContents = if (printText.length > remainingColumns) {
+            normalizedContents.lineFeed().normalizePrintCursorForWrite()
+        } else {
+            normalizedContents
+        }
+        return copy(screenContents = adjustedContents).writePrintText(printText)
+    }
 
     private fun writePrintCharacter(character: Char): TiBasicDebugSession {
         val normalizedContents = screenContents.normalizePrintCursorForWrite()
@@ -1849,28 +2026,31 @@ internal data class TiBasicDebugSession(
                             initializedNumericVariables = numericEvaluation.initializedNumericVariables,
                             initializedStringVariables = numericEvaluation.initializedStringVariables,
                             warningMessage = numericEvaluation.warningMessage,
+                            resultingRandomSeed = numericEvaluation.resultingRandomSeed,
                         )
                     }
 
             is TiBasicDebugCondition.NumericComparison -> {
                 val left = evaluateNumericAssignment(condition.left) ?: return null
-                val right = evaluateNumericAssignment(condition.right) ?: return null
+                val right = withRandomSeed(left.resultingRandomSeed).evaluateNumericAssignment(condition.right) ?: return null
                 TiBasicDebugConditionEvaluation(
                     value = compareNumericValues(left.value.value, condition.operatorType, right.value.value) ?: return null,
                     initializedNumericVariables = left.initializedNumericVariables + right.initializedNumericVariables,
                     initializedStringVariables = left.initializedStringVariables + right.initializedStringVariables,
                     warningMessage = mergeWarningMessages(left.warningMessage, right.warningMessage),
+                    resultingRandomSeed = right.resultingRandomSeed,
                 )
             }
 
             is TiBasicDebugCondition.StringComparison -> {
                 val left = evaluateStringAssignment(condition.left) ?: return null
-                val right = evaluateStringAssignment(condition.right) ?: return null
+                val right = withRandomSeed(left.resultingRandomSeed).evaluateStringAssignment(condition.right) ?: return null
                 TiBasicDebugConditionEvaluation(
                     value = compareStringValues(left.value.text, condition.operatorType, right.value.text) ?: return null,
                     initializedNumericVariables = left.initializedNumericVariables + right.initializedNumericVariables,
                     initializedStringVariables = left.initializedStringVariables + right.initializedStringVariables,
                     warningMessage = mergeWarningMessages(left.warningMessage, right.warningMessage),
+                    resultingRandomSeed = right.resultingRandomSeed,
                 )
             }
         }
@@ -1912,16 +2092,17 @@ internal data class TiBasicDebugSession(
 
     private fun evaluateStringAssignment(assignment: TiBasicDebugStringAssignment): TiBasicDebugStringEvaluation? =
         (when (assignment) {
-            is TiBasicDebugStringAssignment.StringLiteral -> TiBasicDebugStringEvaluation.fromLiteral(assignment.text)
+            is TiBasicDebugStringAssignment.StringLiteral -> TiBasicDebugStringEvaluation.fromLiteral(assignment.text, randomSeed)
             is TiBasicDebugStringAssignment.StringVariableReference -> {
                 val existingValue = stringVariables[assignment.variableName]
                 if (existingValue != null) {
-                    TiBasicDebugStringEvaluation.fromExistingValue(existingValue)
+                    TiBasicDebugStringEvaluation.fromExistingValue(existingValue, randomSeed)
                 } else {
                     val initializedValue = TiBasicDebugStringValue.fromText(EMPTY_STRING)
                     TiBasicDebugStringEvaluation(
                         value = initializedValue,
                         initializedStringVariables = mapOf(assignment.variableName to initializedValue),
+                        resultingRandomSeed = randomSeed,
                     )
                 }
             }
@@ -1940,25 +2121,31 @@ internal data class TiBasicDebugSession(
             is TiBasicDebugStringAssignment.StringRepresentation ->
                 evaluateNumericAssignment(assignment.value)
                     ?.let { numericEvaluation ->
-                        TiBasicDebugStringEvaluation.fromLiteral(tiBasicDecimalString(numericEvaluation.value.value))
+                        TiBasicDebugStringEvaluation.fromLiteral(
+                            tiBasicDecimalString(numericEvaluation.value.value),
+                            numericEvaluation.resultingRandomSeed,
+                        )
                             .mergeWith(numericEvaluation)
                     }
 
             is TiBasicDebugStringAssignment.Segment -> {
                 val source = evaluateStringAssignment(assignment.source) ?: return null
-                val start = evaluateNumericAssignment(assignment.start) ?: return null
-                val length = evaluateNumericAssignment(assignment.length) ?: return null
+                val start = withRandomSeed(source.resultingRandomSeed).evaluateNumericAssignment(assignment.start) ?: return null
+                val length = withRandomSeed(start.resultingRandomSeed).evaluateNumericAssignment(assignment.length) ?: return null
                 val startValue = start.value.value.toIntExactOrNull() ?: return null
                 val lengthValue = length.value.value.toIntExactOrNull() ?: return null
-                TiBasicDebugStringEvaluation.fromLiteral(source.value.text.segment(startValue, lengthValue))
+                TiBasicDebugStringEvaluation.fromLiteral(
+                    source.value.text.segment(startValue, lengthValue),
+                    length.resultingRandomSeed,
+                )
                     .mergeWith(source)
                     .mergeWith(start, length)
             }
 
             is TiBasicDebugStringAssignment.Concat -> {
                 val left = evaluateStringAssignment(assignment.left) ?: return null
-                val right = evaluateStringAssignment(assignment.right) ?: return null
-                TiBasicDebugStringEvaluation.fromLiteral(left.value.text + right.value.text)
+                val right = withRandomSeed(left.resultingRandomSeed).evaluateStringAssignment(assignment.right) ?: return null
+                TiBasicDebugStringEvaluation.fromLiteral(left.value.text + right.value.text, right.resultingRandomSeed)
                     .mergeWith(left, right)
             }
         })?.truncateForReuse()
@@ -1966,17 +2153,18 @@ internal data class TiBasicDebugSession(
     private fun evaluateNumericAssignment(assignment: TiBasicDebugNumericAssignment): TiBasicDebugNumericEvaluation? =
         when (assignment) {
             is TiBasicDebugNumericAssignment.Literal ->
-                TiBasicDebugNumericEvaluation(TiBasicDebugNumericValue.fromValue(assignment.value))
+                TiBasicDebugNumericEvaluation(TiBasicDebugNumericValue.fromValue(assignment.value), resultingRandomSeed = randomSeed)
 
             is TiBasicDebugNumericAssignment.VariableReference -> {
                 val existingValue = numericVariables[assignment.variableName]
                 if (existingValue != null) {
-                    TiBasicDebugNumericEvaluation(existingValue)
+                    TiBasicDebugNumericEvaluation(existingValue, resultingRandomSeed = randomSeed)
                 } else {
                     val initializedValue = TiBasicDebugNumericValue.fromValue(BigDecimal.ZERO)
                     TiBasicDebugNumericEvaluation(
                         value = initializedValue,
                         initializedNumericVariables = mapOf(assignment.variableName to initializedValue),
+                        resultingRandomSeed = randomSeed,
                     )
                 }
             }
@@ -1994,7 +2182,7 @@ internal data class TiBasicDebugSession(
 
             is TiBasicDebugNumericAssignment.Binary -> {
                 val left = evaluateNumericAssignment(assignment.left) ?: return null
-                val right = evaluateNumericAssignment(assignment.right) ?: return null
+                val right = withRandomSeed(left.resultingRandomSeed).evaluateNumericAssignment(assignment.right) ?: return null
                 val resultValue = when (assignment.operatorType) {
                     TiBasicTokenTypes.PLUS_OP -> left.value.value + right.value.value
                     TiBasicTokenTypes.MINUS_OP -> left.value.value - right.value.value
@@ -2011,14 +2199,20 @@ internal data class TiBasicDebugSession(
 
                     else -> return null
                 }
-                TiBasicDebugNumericEvaluation(TiBasicDebugNumericValue.fromValue(resultValue))
+                TiBasicDebugNumericEvaluation(
+                    TiBasicDebugNumericValue.fromValue(resultValue),
+                    resultingRandomSeed = right.resultingRandomSeed,
+                )
                     .mergeWith(left, right)
             }
 
             is TiBasicDebugNumericAssignment.StringLength ->
                 evaluateStringAssignment(assignment.source)
                     ?.let { stringEvaluation ->
-                        TiBasicDebugNumericEvaluation(TiBasicDebugNumericValue.fromValue(stringEvaluation.value.text.length.toBigDecimal()))
+                        TiBasicDebugNumericEvaluation(
+                            TiBasicDebugNumericValue.fromValue(stringEvaluation.value.text.length.toBigDecimal()),
+                            resultingRandomSeed = stringEvaluation.resultingRandomSeed,
+                        )
                             .mergeWith(stringEvaluation)
                     }
 
@@ -2029,7 +2223,10 @@ internal data class TiBasicDebugSession(
                             ?.code
                             ?.toBigDecimal()
                             ?.let { code ->
-                                TiBasicDebugNumericEvaluation(TiBasicDebugNumericValue.fromValue(code))
+                                TiBasicDebugNumericEvaluation(
+                                    TiBasicDebugNumericValue.fromValue(code),
+                                    resultingRandomSeed = stringEvaluation.resultingRandomSeed,
+                                )
                                     .mergeWith(stringEvaluation)
                             }
                     }
@@ -2039,18 +2236,29 @@ internal data class TiBasicDebugSession(
                     ?.let { stringEvaluation ->
                         parseTiBasicDecimalLiteral(stringEvaluation.value.text)
                             ?.let { number ->
-                                TiBasicDebugNumericEvaluation(TiBasicDebugNumericValue.fromValue(number))
+                                TiBasicDebugNumericEvaluation(
+                                    TiBasicDebugNumericValue.fromValue(number),
+                                    resultingRandomSeed = stringEvaluation.resultingRandomSeed,
+                                )
                                     .mergeWith(stringEvaluation)
                             }
                     }
 
+            TiBasicDebugNumericAssignment.RandomNumber ->
+                nextRandomNumberEvaluation()
+
+            is TiBasicDebugNumericAssignment.IntegerPart ->
+                evaluateNumericAssignment(assignment.source)
+                    ?.mapValue { numericValue -> numericValue.value.setScale(0, RoundingMode.FLOOR) }
+
             is TiBasicDebugNumericAssignment.StringPosition -> {
                 val source = evaluateStringAssignment(assignment.source) ?: return null
-                val target = evaluateStringAssignment(assignment.target) ?: return null
-                val start = evaluateNumericAssignment(assignment.start) ?: return null
+                val target = withRandomSeed(source.resultingRandomSeed).evaluateStringAssignment(assignment.target) ?: return null
+                val start = withRandomSeed(target.resultingRandomSeed).evaluateNumericAssignment(assignment.start) ?: return null
                 val startValue = start.value.value.toIntExactOrNull() ?: return null
                 TiBasicDebugNumericEvaluation(
                     TiBasicDebugNumericValue.fromValue(source.value.text.pos(target.value.text, startValue).toBigDecimal()),
+                    resultingRandomSeed = start.resultingRandomSeed,
                 ).mergeWith(source, target, start)
             }
         }
@@ -2080,19 +2288,19 @@ internal data class TiBasicDebugSession(
     }
 
     private fun jumpToLineNumber(targetLineNumber: Int): TiBasicDebugSession =
-    if (targetLineNumber !in VALID_LINE_NUMBER_RANGE) {
-        badLineNumber()
+        if (targetLineNumber !in VALID_LINE_NUMBER_RANGE) {
+            badLineNumber()
         } else {
-        snapshot.lineNumberToProgramIndex[targetLineNumber]
-            ?.let { targetIndex -> moveTo(targetIndex) }
-            ?: badLineNumber()
-    }
+            snapshot.lineNumberToProgramIndex[targetLineNumber]
+                ?.let { targetIndex -> moveTo(targetIndex) }
+                ?: badLineNumber()
+        }
 
     private fun pendingStopIf(isStandaloneKeyword: Boolean): TiBasicDebugSession =
-    if (isStandaloneKeyword) {
-        copy(status = TiBasicDebugSessionStatus.PendingStop, statusMessage = null, keyboardScanInput = EMPTY_STRING)
-    } else {
-        incorrectStatement()
+        if (isStandaloneKeyword) {
+            copy(status = TiBasicDebugSessionStatus.PendingStop, statusMessage = null, keyboardScanInput = EMPTY_STRING)
+        } else {
+            incorrectStatement()
         }
 
     private fun badLineNumber(): TiBasicDebugSession =
@@ -2146,6 +2354,10 @@ internal sealed interface TiBasicDebugLineSemantics {
     data class LetNumeric(
         val targetVariableName: String,
         val assignment: TiBasicDebugNumericAssignment,
+    ) : TiBasicDebugLineSemantics
+
+    data class Randomize(
+        val seedAssignment: TiBasicDebugNumericAssignment?,
     ) : TiBasicDebugLineSemantics
 
     data class If(
@@ -2266,6 +2478,7 @@ internal data class TiBasicDebugConditionEvaluation(
     val initializedNumericVariables: Map<String, TiBasicDebugNumericValue> = emptyMap(),
     val initializedStringVariables: Map<String, TiBasicDebugStringValue> = emptyMap(),
     val warningMessage: String? = null,
+    val resultingRandomSeed: Int = DEFAULT_RANDOM_SEED,
 )
 
 internal sealed interface TiBasicDebugParseResult<out T> {
@@ -2277,6 +2490,11 @@ internal sealed interface TiBasicDebugParseResult<out T> {
 internal data class TiBasicDebugValidatedInt(
     val session: TiBasicDebugSession,
     val value: Int,
+)
+
+internal data class TiBasicRandDigit(
+    val updatedSeed: Int,
+    val digit: Int,
 )
 
 internal sealed interface TiBasicJumpTarget {
@@ -2314,6 +2532,8 @@ internal sealed interface TiBasicDebugNumericAssignment {
     data class StringLength(val source: TiBasicDebugStringAssignment) : TiBasicDebugNumericAssignment
     data class AsciiCode(val source: TiBasicDebugStringAssignment) : TiBasicDebugNumericAssignment
     data class StringToNumber(val source: TiBasicDebugStringAssignment) : TiBasicDebugNumericAssignment
+    data object RandomNumber : TiBasicDebugNumericAssignment
+    data class IntegerPart(val source: TiBasicDebugNumericAssignment) : TiBasicDebugNumericAssignment
     data class StringPosition(
         val source: TiBasicDebugStringAssignment,
         val target: TiBasicDebugStringAssignment,
@@ -2380,9 +2600,10 @@ internal data class TiBasicDebugStringEvaluation(
     val warningMessage: String? = null,
     val initializedStringVariables: Map<String, TiBasicDebugStringValue> = emptyMap(),
     val initializedNumericVariables: Map<String, TiBasicDebugNumericValue> = emptyMap(),
+    val resultingRandomSeed: Int = DEFAULT_RANDOM_SEED,
 ) {
     companion object {
-        fun fromLiteral(text: String): TiBasicDebugStringEvaluation {
+        fun fromLiteral(text: String, resultingRandomSeed: Int = DEFAULT_RANDOM_SEED): TiBasicDebugStringEvaluation {
             val truncatedText = text.take(MAX_TI_BASIC_STRING_LENGTH)
             return TiBasicDebugStringEvaluation(
                 value = TiBasicDebugStringValue.fromText(truncatedText),
@@ -2391,11 +2612,12 @@ internal data class TiBasicDebugStringEvaluation(
                 } else {
                     null
                 },
+                resultingRandomSeed = resultingRandomSeed,
             )
         }
 
-        fun fromExistingValue(value: TiBasicDebugStringValue): TiBasicDebugStringEvaluation =
-            TiBasicDebugStringEvaluation(value = value)
+        fun fromExistingValue(value: TiBasicDebugStringValue, resultingRandomSeed: Int = DEFAULT_RANDOM_SEED): TiBasicDebugStringEvaluation =
+            TiBasicDebugStringEvaluation(value = value, resultingRandomSeed = resultingRandomSeed)
     }
 }
 
@@ -2404,6 +2626,7 @@ internal data class TiBasicDebugNumericEvaluation(
     val warningMessage: String? = null,
     val initializedNumericVariables: Map<String, TiBasicDebugNumericValue> = emptyMap(),
     val initializedStringVariables: Map<String, TiBasicDebugStringValue> = emptyMap(),
+    val resultingRandomSeed: Int = DEFAULT_RANDOM_SEED,
 )
 
 internal data class TiBasicDebugKeyboardRequest(
@@ -2467,6 +2690,7 @@ internal data class TiBasicDebugNextPreview(
     val warningMessage: String?,
     val initializedNumericVariables: Map<String, TiBasicDebugNumericValue>,
     val initializedStringVariables: Map<String, TiBasicDebugStringValue>,
+    val resultingRandomSeed: Int,
 )
 
 private fun tracedEvaluationLine(
@@ -2512,6 +2736,7 @@ private fun TiBasicDebugStringEvaluation.mergeWith(
     copy(
         initializedStringVariables = left.initializedStringVariables + right.initializedStringVariables,
         initializedNumericVariables = left.initializedNumericVariables + right.initializedNumericVariables,
+        resultingRandomSeed = right.resultingRandomSeed,
     ).mergeWarnings(left.warningMessage, right.warningMessage)
 
 private fun TiBasicDebugStringEvaluation.mergeWith(
@@ -2520,6 +2745,7 @@ private fun TiBasicDebugStringEvaluation.mergeWith(
     copy(
         initializedStringVariables = source.initializedStringVariables,
         initializedNumericVariables = source.initializedNumericVariables,
+        resultingRandomSeed = source.resultingRandomSeed,
     ).mergeWarnings(source.warningMessage)
 
 private fun TiBasicDebugStringEvaluation.mergeWith(
@@ -2529,6 +2755,7 @@ private fun TiBasicDebugStringEvaluation.mergeWith(
         initializedNumericVariables = numericEvaluations
             .flatMap { it.initializedNumericVariables.entries }
             .associate { it.toPair() } + initializedNumericVariables,
+        resultingRandomSeed = numericEvaluations.lastOrNull()?.resultingRandomSeed ?: resultingRandomSeed,
         warningMessage = (listOfNotNull(warningMessage) + numericEvaluations.mapNotNull(TiBasicDebugNumericEvaluation::warningMessage))
             .distinct()
             .joinToString(WARNING_SEPARATOR)
@@ -2557,6 +2784,7 @@ private fun TiBasicDebugNumericEvaluation.mergeWith(
     copy(
         initializedNumericVariables = left.initializedNumericVariables + right.initializedNumericVariables,
         initializedStringVariables = left.initializedStringVariables + right.initializedStringVariables,
+        resultingRandomSeed = right.resultingRandomSeed,
         warningMessage = (listOfNotNull(warningMessage, left.warningMessage, right.warningMessage))
             .distinct()
             .joinToString(WARNING_SEPARATOR)
@@ -2569,6 +2797,7 @@ private fun TiBasicDebugNumericEvaluation.mergeWith(
     copy(
         initializedNumericVariables = initializedNumericVariables + stringEvaluation.initializedNumericVariables,
         initializedStringVariables = initializedStringVariables + stringEvaluation.initializedStringVariables,
+        resultingRandomSeed = stringEvaluation.resultingRandomSeed,
         warningMessage = (listOfNotNull(warningMessage, stringEvaluation.warningMessage))
             .distinct()
             .joinToString(WARNING_SEPARATOR)
@@ -2589,6 +2818,7 @@ private fun TiBasicDebugNumericEvaluation.mergeWith(
                 source.initializedStringVariables +
                 target.initializedStringVariables +
                 start.initializedStringVariables,
+        resultingRandomSeed = start.resultingRandomSeed,
         warningMessage = (listOfNotNull(warningMessage, source.warningMessage, target.warningMessage, start.warningMessage))
             .distinct()
             .joinToString(WARNING_SEPARATOR)
@@ -2663,8 +2893,10 @@ private const val MAX_SOUND_NOISE_SELECTOR = -1
 private const val SEG_DOLLAR_FUNCTION = "SEG$"
 private const val STR_DOLLAR_FUNCTION = "STR$"
 private const val ASC_FUNCTION = "ASC"
+private const val INT_FUNCTION = "INT"
 private const val LEN_FUNCTION = "LEN"
 private const val POS_FUNCTION = "POS"
+private const val RND_FUNCTION = "RND"
 private const val VAL_FUNCTION = "VAL"
 private const val CALL_SCREEN_LINE_MARKER = "CALL SCREEN"
 private const val CALL_COLOR_LINE_MARKER = "CALL COLOR"
@@ -2709,6 +2941,15 @@ private const val ONE_KEYBOARD_STATUS_DISPLAY = "1"
 private const val NO_KEY_CODE = -1
 private const val REUSE_LAST_KEYBOARD_MODE = 0
 private const val PRINT_AREA_END_COLUMN = 30
+private const val DEFAULT_RANDOM_SEED = 0
+private const val INITIAL_RANDOM_SEED = 13671
+private const val RANDOM_GENERATOR_MULTIPLIER = 28645
+private const val RANDOM_GENERATOR_INCREMENT = 31417
+private const val RANDOM_NUMBER_DIGIT_LIMIT = 99
+private const val MAX_RANDOM_NUMBER_LEADING_ZERO_DIGITS = 63
+private const val RANDOM_NUMBER_EXTRA_DIGIT_COUNT = 6
+private const val INITIAL_RANDOM_NUMBER_SCALE = 2
+private const val RANDOM_NUMBER_SCALE_STEP = 2
 private const val WARNING_SEPARATOR = " | "
 private const val CHARACTER_SET_ARGUMENT_NAME = "character set"
 private const val FOREGROUND_COLOR_ARGUMENT_NAME = "foreground color"
@@ -2721,6 +2962,9 @@ private const val NEXT_CONTROL_VARIABLE_ARGUMENT_NAME = "control-variable"
 private const val NEXT_DECISION_JUMP_PREFIX = "jump to"
 private const val NEXT_DECISION_END_DISPLAY = "loop end"
 private val ZERO_NUMERIC_BYTES = List(8) { 0 }
+private const val BYTE_BIT_COUNT = 8
+private const val WORD_MASK = 0xFFFF
+private val RANDOM_SEED_MODULUS = BigInteger.valueOf(WORD_MASK.toLong() + 1)
 private val PRINTABLE_ASCII_RANGE = 32..126
 private val DEBUG_MATH_CONTEXT = MathContext.DECIMAL64
 private val IF_LINE_REGEX = Regex("""^\s*\d+\s+IF\b""", RegexOption.IGNORE_CASE)
@@ -2772,11 +3016,11 @@ private fun hasNumericContextMismatch(nodes: List<ASTNode>): Boolean {
     }
     lastTopLevelBinaryOperatorIndex(nodes, ADDITIVE_OPERATOR_TYPES + MULTIPLICATIVE_OPERATOR_TYPES)?.let { operatorIndex ->
         return hasNumericContextMismatch(nodes.subList(0, operatorIndex)) ||
-            hasNumericContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
+                hasNumericContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
     }
     firstTopLevelBinaryOperatorIndex(nodes, POWER_OPERATOR_TYPES)?.let { operatorIndex ->
         return hasNumericContextMismatch(nodes.subList(0, operatorIndex)) ||
-            hasNumericContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
+                hasNumericContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
     }
     return when {
         nodes.size == SINGLE_NUMERIC_CHILD_COUNT -> isStringLikeNode(nodes.single())
@@ -2794,7 +3038,7 @@ private fun hasStringContextMismatch(nodes: List<ASTNode>): Boolean {
     }
     lastTopLevelBinaryOperatorIndex(nodes, STRING_CONCAT_OPERATOR_TYPES)?.let { operatorIndex ->
         return hasStringContextMismatch(nodes.subList(0, operatorIndex)) ||
-            hasStringContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
+                hasStringContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
     }
     if (createNumericAssignmentFromNodesForMismatch(nodes) != null) return true
     return when {
@@ -2942,6 +3186,79 @@ private fun String.segment(start: Int, length: Int): String =
 private fun printableScreenCode(character: Char): Int =
     character.code.takeIf { it in PRINTABLE_ASCII_RANGE } ?: TI_BASIC_SPACE_CHARACTER_CODE
 
+private fun TiBasicDebugNumericValue.printText(): String =
+    buildString {
+        if (value.compareTo(BigDecimal.ZERO) >= 0) {
+            append(' ')
+        }
+        append(usualDisplay)
+        append(' ')
+    }
+
+private fun TiBasicDebugSession.withRandomSeed(updatedRandomSeed: Int): TiBasicDebugSession =
+    if (randomSeed == updatedRandomSeed) {
+        this
+    } else {
+        copy(randomSeed = updatedRandomSeed)
+    }
+
+private fun TiBasicDebugSession.nextRandomNumberEvaluation(): TiBasicDebugNumericEvaluation {
+    var updatedSeed = randomSeed
+    var scale = INITIAL_RANDOM_NUMBER_SCALE
+    repeat(MAX_RANDOM_NUMBER_LEADING_ZERO_DIGITS) {
+        val nextDigit = nextRandomCentimalDigit(updatedSeed, RANDOM_NUMBER_DIGIT_LIMIT)
+        updatedSeed = nextDigit.updatedSeed
+        if (nextDigit.digit != 0) {
+            return randomNumberEvaluation(updatedSeed, scale, nextDigit.digit)
+        }
+        scale += RANDOM_NUMBER_SCALE_STEP
+    }
+    return TiBasicDebugNumericEvaluation(
+        value = TiBasicDebugNumericValue.fromValue(BigDecimal.ZERO),
+        resultingRandomSeed = updatedSeed,
+    )
+}
+
+private fun TiBasicDebugSession.randomNumberEvaluation(
+    updatedSeed: Int,
+    initialScale: Int,
+    firstDigit: Int,
+): TiBasicDebugNumericEvaluation {
+    var scale = initialScale
+    var value = BigDecimal.valueOf(firstDigit.toLong()).movePointLeft(scale)
+    var currentSeed = updatedSeed
+    repeat(RANDOM_NUMBER_EXTRA_DIGIT_COUNT) {
+        scale += RANDOM_NUMBER_SCALE_STEP
+        val nextDigit = nextRandomCentimalDigit(currentSeed, RANDOM_NUMBER_DIGIT_LIMIT)
+        currentSeed = nextDigit.updatedSeed
+        value = value.add(BigDecimal.valueOf(nextDigit.digit.toLong()).movePointLeft(scale))
+    }
+    return TiBasicDebugNumericEvaluation(
+        value = TiBasicDebugNumericValue.fromValue(value),
+        resultingRandomSeed = currentSeed,
+    )
+}
+
+private fun nextRandomCentimalDigit(seed: Int, limit: Int): TiBasicRandDigit {
+    val updatedSeed = (seed * RANDOM_GENERATOR_MULTIPLIER + RANDOM_GENERATOR_INCREMENT) and WORD_MASK
+    val swapped = updatedSeed.swappedWordBytes()
+    val digit = swapped % (limit + 1)
+    return TiBasicRandDigit(updatedSeed = updatedSeed, digit = digit)
+}
+
+private fun Int.swappedWordBytes(): Int =
+    ((this and BYTE_MASK) shl BYTE_BIT_COUNT) or ((this shr BYTE_BIT_COUNT) and BYTE_MASK)
+
+private fun randomSeedFrom(value: BigDecimal): Int =
+    value
+        .setScale(0, RoundingMode.FLOOR)
+        .toBigInteger()
+        .mod(RANDOM_SEED_MODULUS)
+        .toInt()
+
+private fun generatedRandomizeSeed(): Int =
+    (System.currentTimeMillis().toInt() and WORD_MASK)
+
 private fun TiBasicDebugScreenContents.normalizePrintCursor(): TiBasicDebugScreenContents {
     var normalized = this
     while (normalized.printCursorRow > TI_BASIC_SCREEN_ROWS) {
@@ -2959,6 +3276,9 @@ private fun TiBasicDebugScreenContents.normalizePrintCursorForWrite(): TiBasicDe
                 normalized
             }
         }
+
+private fun TiBasicDebugScreenContents.remainingPrintColumns(): Int =
+    (PRINT_AREA_END_COLUMN - printCursorColumn + 1).coerceAtLeast(0)
 
 private fun TiBasicDebugScreenContents.advancePrintCursor(): TiBasicDebugScreenContents =
     if (printCursorColumn < PRINT_AREA_END_COLUMN) {

@@ -75,7 +75,10 @@ class TiBasicEndStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicStopStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
-class TiBasicRandomizeStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+class TiBasicRandomizeStatement(node: ASTNode) : ASTWrapperPsiElement(node) {
+    fun seedExpression(): TiBasicExpression? =
+        node.firstChildOfType(TiBasicNodeTypes.EXPRESSION)?.psi as? TiBasicExpression
+}
 
 class TiBasicGotoStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
