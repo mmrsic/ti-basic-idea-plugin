@@ -399,6 +399,24 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(32, session.screenContents.characterCodes[23][1])
     }
 
+    fun `test PRINT without list inserts a single blank line`() {
+        var session = startSession(
+            """
+            100 PRINT "A"
+            110 PRINT
+            120 PRINT "B"
+            """.trimIndent(),
+        )
+
+        repeat(3) {
+            session = session.step()
+        }
+
+        assertEquals("A", screenText(session, 22, 3, 1))
+        assertEquals("     ", screenText(session, 23, 3, 5))
+        assertEquals("B", screenText(session, 24, 3, 1))
+    }
+
     fun `test PRINT with exactly twenty eight characters does not add a blank line`() {
         var session = startSession("100 PRINT \"1234567890123456789012345678\"")
 
@@ -430,6 +448,33 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals('B'.code, session.screenContents.characterCodes[23][2])
     }
 
+    fun `test PRINT semicolon separator keeps the next item on the same line`() {
+        var session = startSession("100 PRINT \"A\";\"B\"")
+
+        session = session.step()
+
+        assertEquals("AB", screenText(session, 24, 3, 2))
+    }
+
+    fun `test PRINT comma separator jumps to zone 2`() {
+        var session = startSession("100 PRINT \"A\",\"B\"")
+
+        session = session.step()
+
+        assertEquals("A             ", screenText(session, 24, 3, 14))
+        assertEquals("B", screenText(session, 24, 17, 1))
+    }
+
+    fun `test PRINT comma separator moves from zone 2 to the next line`() {
+        var session = startSession("100 PRINT \"A\",\"B\",\"C\"")
+
+        session = session.step()
+
+        assertEquals("A             ", screenText(session, 23, 3, 14))
+        assertEquals("B", screenText(session, 23, 17, 1))
+        assertEquals("C", screenText(session, 24, 3, 1))
+    }
+
     fun `test PRINT numeric value adds TI-Basic padding spaces`() {
         var session = startSession("100 PRINT 12")
 
@@ -438,13 +483,71 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(" 12 ", screenText(session, 24, 3, 4))
     }
 
-    fun `test PRINT wraps numeric value as a whole when it no longer fits in the row`() {
+    fun `test PRINT negative numeric value replaces the leading blank with a minus sign`() {
+        var session = startSession("100 PRINT -12")
+
+        session = session.step()
+
+        assertEquals("-12 ", screenText(session, 24, 3, 4))
+    }
+
+    fun `test PRINT rounds normal decimal output at the tenth displayed digit`() {
+        var session = startSession("100 PRINT 1.23456789056")
+
+        session = session.step()
+
+        assertEquals(" 1.234567891 ", screenText(session, 24, 3, 13))
+    }
+
+    fun `test PRINT uses scientific notation for large values`() {
+        var session = startSession("100 PRINT 100000000000")
+
+        session = session.step()
+
+        assertEquals(" 1.0E11 ", screenText(session, 24, 3, 8))
+    }
+
+    fun `test PRINT rounds scientific notation to six significant digits`() {
+        var session = startSession("100 PRINT 1234567890123")
+
+        session = session.step()
+
+        assertEquals(" 1.23457E12 ", screenText(session, 24, 3, 12))
+    }
+
+    fun `test PRINT uses scientific notation for very small values`() {
+        var session = startSession("100 PRINT .0000000000123456")
+
+        session = session.step()
+
+        assertEquals(" 1.23456E-11 ", screenText(session, 24, 3, 13))
+    }
+
+    fun `test PRINT starts a string longer than twenty eight characters on the next line`() {
+        var session = startSession("100 PRINT \"A\";\"12345678901234567890123456789\"")
+
+        session = session.step()
+
+        assertEquals("A", screenText(session, 22, 3, 1))
+        assertEquals("1234567890123456789012345678", screenText(session, 23, 3, 28))
+        assertEquals("9", screenText(session, 24, 3, 1))
+    }
+
+    fun `test PRINT moves a shorter string as a whole to the next line when it no longer fits`() {
+        var session = startSession("100 PRINT \"12345678901234567890\";\"ABCDEFGHIJ\"")
+
+        session = session.step()
+
+        assertEquals("12345678901234567890", screenText(session, 23, 3, 20))
+        assertEquals("ABCDEFGHIJ", screenText(session, 24, 3, 10))
+    }
+
+    fun `test PRINT omits the trailing numeric blank when it is the only overflowing character`() {
         var session = startSession("100 PRINT \"12345678901234567890123456\";6")
 
         session = session.step()
 
-        assertEquals("12345678901234567890123456  ", screenText(session, 23, 3, 28))
-        assertEquals(" 6 ", screenText(session, 24, 3, 3))
+        assertEquals("12345678901234567890123456 6", screenText(session, 24, 3, 28))
     }
 
     fun `test PRINT without trailing separator performs implicit line feed before next print`() {
@@ -460,6 +563,35 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
 
         assertEquals('A'.code, session.screenContents.characterCodes[22][2])
         assertEquals('B'.code, session.screenContents.characterCodes[23][2])
+    }
+
+    fun `test PRINT ending with semicolon keeps the next PRINT on the same line`() {
+        var session = startSession(
+            """
+            100 PRINT "A";
+            110 PRINT "B"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals("AB", screenText(session, 24, 3, 2))
+    }
+
+    fun `test PRINT ending with comma keeps the next PRINT in zone 2`() {
+        var session = startSession(
+            """
+            100 PRINT "A",
+            110 PRINT "B"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals("A             ", screenText(session, 24, 3, 14))
+        assertEquals("B", screenText(session, 24, 17, 1))
     }
 
     fun `test PRINT with two trailing colons leaves one blank bottom line`() {

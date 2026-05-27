@@ -1978,23 +1978,35 @@ internal data class TiBasicDebugSession(
     private fun applyPrintSeparator(tokenType: IElementType): TiBasicDebugSession =
         when (tokenType) {
             TiBasicTokenTypes.COLON -> copy(screenContents = screenContents.lineFeed())
-            TiBasicTokenTypes.SEMICOLON, TiBasicTokenTypes.COMMA -> this
+            TiBasicTokenTypes.SEMICOLON -> this
+            TiBasicTokenTypes.COMMA -> copy(screenContents = screenContents.advanceToNextPrintZone())
             else -> this
         }
 
-    private fun writePrintText(text: String): TiBasicDebugSession =
+    private fun writePrintText(text: String): TiBasicDebugSession {
+        val adjustedContents = screenContents.prepareForPrintText(text)
+        return copy(screenContents = adjustedContents).writePrintTextCharacters(text)
+    }
+
+    private fun writePrintTextCharacters(text: String): TiBasicDebugSession =
         text.fold(this) { session, character -> session.writePrintCharacter(character) }
 
     private fun writePrintNumericValue(value: TiBasicDebugNumericValue): TiBasicDebugSession {
         val printText = value.printText()
         val normalizedContents = screenContents.normalizePrintCursorForWrite()
         val remainingColumns = normalizedContents.remainingPrintColumns()
-        val adjustedContents = if (printText.length > remainingColumns) {
+        val printTextWithoutTrailingBlank = printText.dropLastWhile { it == ' ' }
+        val textToWrite = when {
+            printText.length <= remainingColumns -> printText
+            printTextWithoutTrailingBlank.length <= remainingColumns -> printTextWithoutTrailingBlank
+            else -> printText
+        }
+        val adjustedContents = if (textToWrite.length > remainingColumns) {
             normalizedContents.lineFeed().normalizePrintCursorForWrite()
         } else {
             normalizedContents
         }
-        return copy(screenContents = adjustedContents).writePrintText(printText)
+        return copy(screenContents = adjustedContents).writePrintTextCharacters(textToWrite)
     }
 
     private fun writePrintCharacter(character: Char): TiBasicDebugSession {
@@ -2938,9 +2950,16 @@ private const val DEFAULT_KEYBOARD_MODE = 5
 private const val UNKNOWN_KEYBOARD_STATUS_DISPLAY = "?"
 private const val ZERO_KEYBOARD_STATUS_DISPLAY = "0"
 private const val ONE_KEYBOARD_STATUS_DISPLAY = "1"
+private const val ZERO_DISPLAY = "0"
+private const val SCIENTIFIC_EXPONENT_SEPARATOR = "E"
 private const val NO_KEY_CODE = -1
 private const val REUSE_LAST_KEYBOARD_MODE = 0
+private const val PRINT_AREA_WIDTH = 28
+private const val PRINT_ZONE_WIDTH = 14
+private const val PRINT_ZONE_2_COLUMN = INITIAL_PRINT_CURSOR_COLUMN + PRINT_ZONE_WIDTH
 private const val PRINT_AREA_END_COLUMN = 30
+private const val PRINT_NORMAL_SIGNIFICANT_DIGITS = 10
+private const val PRINT_SCIENTIFIC_SIGNIFICANT_DIGITS = 6
 private const val DEFAULT_RANDOM_SEED = 0
 private const val INITIAL_RANDOM_SEED = 13671
 private const val RANDOM_GENERATOR_MULTIPLIER = 28645
@@ -2965,6 +2984,8 @@ private val ZERO_NUMERIC_BYTES = List(8) { 0 }
 private const val BYTE_BIT_COUNT = 8
 private const val WORD_MASK = 0xFFFF
 private val RANDOM_SEED_MODULUS = BigInteger.valueOf(WORD_MASK.toLong() + 1)
+private val PRINT_SCIENTIFIC_UPPER_BOUND = BigDecimal.TEN.pow(PRINT_NORMAL_SIGNIFICANT_DIGITS)
+private val PRINT_SCIENTIFIC_LOWER_BOUND = BigDecimal.ONE.movePointLeft(PRINT_NORMAL_SIGNIFICANT_DIGITS)
 private val PRINTABLE_ASCII_RANGE = 32..126
 private val DEBUG_MATH_CONTEXT = MathContext.DECIMAL64
 private val IF_LINE_REGEX = Regex("""^\s*\d+\s+IF\b""", RegexOption.IGNORE_CASE)
@@ -3186,14 +3207,66 @@ private fun String.segment(start: Int, length: Int): String =
 private fun printableScreenCode(character: Char): Int =
     character.code.takeIf { it in PRINTABLE_ASCII_RANGE } ?: TI_BASIC_SPACE_CHARACTER_CODE
 
+private fun tiBasicPrintDecimalString(value: BigDecimal): String {
+    if (value.signum() == 0) return ZERO_DISPLAY
+    val absoluteValue = value.abs()
+    return if (absoluteValue !in PRINT_SCIENTIFIC_LOWER_BOUND..<PRINT_SCIENTIFIC_UPPER_BOUND) {
+        tiBasicScientificPrintString(value)
+    } else {
+        tiBasicNormalPrintString(value)
+    }
+}
+
+private fun tiBasicNormalPrintString(value: BigDecimal): String =
+    value.round(MathContext(PRINT_NORMAL_SIGNIFICANT_DIGITS, RoundingMode.HALF_UP))
+        .stripTrailingZeros()
+        .toPlainString()
+        .removeZeroBeforeDecimalPoint()
+
+private fun tiBasicScientificPrintString(value: BigDecimal): String {
+    val strippedValue = value.stripTrailingZeros()
+    var exponent = strippedValue.precision() - strippedValue.scale() - 1
+    var mantissa = strippedValue.scaleByPowerOfTen(-exponent)
+        .round(MathContext(PRINT_SCIENTIFIC_SIGNIFICANT_DIGITS, RoundingMode.HALF_UP))
+    if (mantissa.abs() >= BigDecimal.TEN) {
+        mantissa = mantissa.movePointLeft(1)
+        exponent++
+    }
+    val mantissaText = mantissa.stripTrailingZeros()
+        .toPlainString()
+        .removeZeroBeforeDecimalPoint()
+        .let { text ->
+            if ('.' in text) {
+                text
+            } else {
+                "$text.0"
+            }
+        }
+    return "$mantissaText${SCIENTIFIC_EXPONENT_SEPARATOR}$exponent"
+}
+
+private fun String.removeZeroBeforeDecimalPoint(): String =
+    when {
+        startsWith("0.") -> drop(1)
+        startsWith("-0.") -> buildString(length - 1) {
+            append('-')
+            append(drop(2))
+        }
+
+        else -> this
+    }
+
 private fun TiBasicDebugNumericValue.printText(): String =
     buildString {
-        if (value.compareTo(BigDecimal.ZERO) >= 0) {
+        if (value >= BigDecimal.ZERO) {
             append(' ')
         }
-        append(usualDisplay)
+        append(printDisplay())
         append(' ')
     }
+
+private fun TiBasicDebugNumericValue.printDisplay(): String =
+    tiBasicPrintDecimalString(value)
 
 private fun TiBasicDebugSession.withRandomSeed(updatedRandomSeed: Int): TiBasicDebugSession =
     if (randomSeed == updatedRandomSeed) {
@@ -3219,11 +3292,7 @@ private fun TiBasicDebugSession.nextRandomNumberEvaluation(): TiBasicDebugNumeri
     )
 }
 
-private fun TiBasicDebugSession.randomNumberEvaluation(
-    updatedSeed: Int,
-    initialScale: Int,
-    firstDigit: Int,
-): TiBasicDebugNumericEvaluation {
+private fun randomNumberEvaluation(updatedSeed: Int, initialScale: Int, firstDigit: Int): TiBasicDebugNumericEvaluation {
     var scale = initialScale
     var value = BigDecimal.valueOf(firstDigit.toLong()).movePointLeft(scale)
     var currentSeed = updatedSeed
@@ -3277,8 +3346,32 @@ private fun TiBasicDebugScreenContents.normalizePrintCursorForWrite(): TiBasicDe
             }
         }
 
+private fun TiBasicDebugScreenContents.prepareForPrintText(text: String): TiBasicDebugScreenContents {
+    if (text.isEmpty()) return normalizePrintCursorForWrite()
+    val normalizedContents = normalizePrintCursorForWrite()
+    return when {
+        text.length > PRINT_AREA_WIDTH && normalizedContents.printCursorColumn != INITIAL_PRINT_CURSOR_COLUMN ->
+            normalizedContents.lineFeed().normalizePrintCursorForWrite()
+
+        text.length <= PRINT_AREA_WIDTH && text.length > normalizedContents.remainingPrintColumns() ->
+            normalizedContents.lineFeed().normalizePrintCursorForWrite()
+
+        else -> normalizedContents
+    }
+}
+
 private fun TiBasicDebugScreenContents.remainingPrintColumns(): Int =
     (PRINT_AREA_END_COLUMN - printCursorColumn + 1).coerceAtLeast(0)
+
+private fun TiBasicDebugScreenContents.advanceToNextPrintZone(): TiBasicDebugScreenContents =
+    normalizePrintCursorForWrite()
+        .let { normalized ->
+            if (normalized.printCursorColumn < PRINT_ZONE_2_COLUMN) {
+                normalized.copy(printCursorColumn = PRINT_ZONE_2_COLUMN)
+            } else {
+                normalized.lineFeed().normalizePrintCursorForWrite()
+            }
+        }
 
 private fun TiBasicDebugScreenContents.advancePrintCursor(): TiBasicDebugScreenContents =
     if (printCursorColumn < PRINT_AREA_END_COLUMN) {
