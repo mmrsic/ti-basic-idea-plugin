@@ -1,6 +1,8 @@
 package com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.debug
 
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugMetadata
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugJoystickPosition
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugJoystickRequest
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugScreenContents
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSession
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionService
@@ -18,6 +20,7 @@ import java.awt.Font
 import java.awt.GridLayout
 import java.awt.Point
 import javax.swing.DefaultListModel
+import javax.swing.ButtonGroup
 import javax.swing.JButton
 import javax.swing.JCheckBox
 import javax.swing.JComponent
@@ -26,6 +29,7 @@ import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.JTextArea
 import javax.swing.JToolBar
+import javax.swing.JToggleButton
 import javax.swing.border.TitledBorder
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
@@ -47,6 +51,12 @@ class TiBasicDebugToolWindowContent(
     internal val keyboardInputLabel = JLabel(" ")
     internal val keyboardInputField = JBTextField()
     internal val keyboardStatusLabel = JLabel(" ")
+    internal val joystickPanel = JPanel(BorderLayout())
+    internal val joystickUnitLabel = JLabel(" ")
+    internal val joystickPositionLabel = JLabel(" ")
+    internal val joystickXLabel = JLabel(" ")
+    internal val joystickYLabel = JLabel(" ")
+    internal val joystickButtonsByInput = linkedMapOf<String, JToggleButton>()
     internal val listModel = DefaultListModel<TiBasicDebugListingRow>()
     internal val listing = JBList(listModel)
     internal val listingScrollPane = JBScrollPane(listing)
@@ -62,14 +72,18 @@ class TiBasicDebugToolWindowContent(
 
     private val layout = CardLayout()
     private val centerPanel = JPanel(layout)
+    private val inputPanels = JPanel(GridLayout(0, 1, 0, INPUT_PANELS_GAP))
     private val emptyLabel = JLabel(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowEmptyKey))
     private val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+    private val joystickButtonGroup = ButtonGroup()
     private var currentSourceLineIndex: Int? = null
     private var pendingListingScrollIndex: Int? = null
 
     init {
         stepButton.addActionListener {
-            sessionService.updateKeyboardScanInput(keyboardInputField.text)
+            if (keyboardPanel.isVisible) {
+                sessionService.updateKeyboardScanInput(keyboardInputField.text)
+            }
             sessionService.step()
         }
         stopButton.addActionListener { sessionService.stop() }
@@ -146,9 +160,16 @@ class TiBasicDebugToolWindowContent(
             keyboardInputLabel.text = " "
             keyboardInputField.text = ""
             keyboardStatusLabel.text = " "
+            joystickPanel.isVisible = false
+            joystickUnitLabel.text = " "
+            joystickPositionLabel.text = " "
+            joystickXLabel.text = " "
+            joystickYLabel.text = " "
+            joystickButtonGroup.clearSelection()
             argumentsPanel.isVisible = false
             argumentsTextArea.text = ""
             argumentPatternPreviewComponent.hexPattern = null
+            refreshInputPanels()
             layout.show(centerPanel, EMPTY_CARD)
             return
         }
@@ -173,6 +194,8 @@ class TiBasicDebugToolWindowContent(
         updateNumericVariables(session)
         updateStringVariables(session)
         updateKeyboardRequest(session)
+        updateJoystickRequest(session)
+        refreshInputPanels()
         updateArguments(session)
         layout.show(centerPanel, LIST_CARD)
         currentSourceLineIndex?.let { sourceLineIndex ->
@@ -231,7 +254,10 @@ class TiBasicDebugToolWindowContent(
     private fun createFooterPanel(): JComponent =
         JPanel(BorderLayout()).also { panel ->
             panel.add(createArgumentsPanel(), BorderLayout.NORTH)
-            panel.add(createKeyboardPanel(), BorderLayout.CENTER)
+            createKeyboardPanel()
+            createJoystickPanel()
+            refreshInputPanels()
+            panel.add(inputPanels, BorderLayout.CENTER)
             panel.add(messageLabel, BorderLayout.SOUTH)
         }
 
@@ -282,6 +308,35 @@ class TiBasicDebugToolWindowContent(
                     inputPanel.add(keyboardStatusLabel)
                 },
                 BorderLayout.CENTER,
+            )
+            panel.isVisible = false
+        }
+
+    private fun createJoystickPanel(): JComponent =
+        joystickPanel.also { panel ->
+            panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowJoystickTitleKey))
+            panel.add(joystickUnitLabel, BorderLayout.NORTH)
+            panel.add(
+                JPanel(GridLayout(JOYSTICK_GRID_ROWS, JOYSTICK_GRID_COLUMNS, JOYSTICK_GRID_GAP, JOYSTICK_GRID_GAP)).also { grid ->
+                    TiBasicDebugToolWindowJoystickPositions.forEach { position ->
+                        val button = JToggleButton(position.gridLabel)
+                        button.addActionListener {
+                            sessionService.updateKeyboardScanInput(position.input)
+                        }
+                        joystickButtonGroup.add(button)
+                        joystickButtonsByInput[position.input] = button
+                        grid.add(button)
+                    }
+                },
+                BorderLayout.CENTER,
+            )
+            panel.add(
+                JPanel(GridLayout(JOYSTICK_INFO_ROW_COUNT, 1, 0, JOYSTICK_INFO_ROW_GAP)).also { infoPanel ->
+                    infoPanel.add(joystickPositionLabel)
+                    infoPanel.add(joystickXLabel)
+                    infoPanel.add(joystickYLabel)
+                },
+                BorderLayout.SOUTH,
             )
             panel.isVisible = false
         }
@@ -337,6 +392,54 @@ class TiBasicDebugToolWindowContent(
         }
     }
 
+    private fun updateJoystickRequest(session: TiBasicDebugSession) {
+        val request = session.joystickRequest
+        joystickPanel.isVisible = request != null
+        joystickUnitLabel.text = request?.let { joystickRequest ->
+            TiBasicDebugMetadata.message(
+                TiBasicDebugMetadata.toolWindowJoystickUnitKey,
+                joystickRequest.keyUnit,
+            )
+        } ?: " "
+        joystickPositionLabel.text = request?.let { joystickRequest ->
+            TiBasicDebugMetadata.message(
+                TiBasicDebugMetadata.toolWindowJoystickPositionKey,
+                joystickRequest.position.compactDisplay,
+                joystickRequest.position.x,
+                joystickRequest.position.y,
+            )
+        } ?: " "
+        joystickXLabel.text = request?.let { joystickRequest ->
+            TiBasicDebugMetadata.message(
+                TiBasicDebugMetadata.toolWindowJoystickXVariableKey,
+                joystickRequest.xVariableName,
+                joystickRequest.position.x,
+            )
+        } ?: " "
+        joystickYLabel.text = request?.let { joystickRequest ->
+            TiBasicDebugMetadata.message(
+                TiBasicDebugMetadata.toolWindowJoystickYVariableKey,
+                joystickRequest.yVariableName,
+                joystickRequest.position.y,
+            )
+        } ?: " "
+        val selectedButton = request?.input?.let(joystickButtonsByInput::get)
+        joystickButtonsByInput.values.forEach { button -> button.isSelected = button == selectedButton }
+    }
+
+    private fun refreshInputPanels() {
+        inputPanels.removeAll()
+        if (keyboardPanel.isVisible) {
+            inputPanels.add(keyboardPanel)
+        }
+        if (joystickPanel.isVisible) {
+            inputPanels.add(joystickPanel)
+        }
+        inputPanels.isVisible = inputPanels.componentCount > 0
+        inputPanels.revalidate()
+        inputPanels.repaint()
+    }
+
     private fun updateKeyboardPreview() {
         val request = sessionService.currentSession()?.keyboardRequestForInput(keyboardInputField.text) ?: return
         keyboardStatusLabel.text = TiBasicDebugMetadata.message(
@@ -379,3 +482,21 @@ private const val SCREEN_PANEL_WEIGHT = 0.42
 private const val VARIABLES_PANEL_WEIGHT = 0.5
 private const val KEYBOARD_PANEL_ROW_COUNT = 2
 private const val KEYBOARD_PANEL_ROW_GAP = 4
+private const val INPUT_PANELS_GAP = 4
+private const val JOYSTICK_GRID_ROWS = 3
+private const val JOYSTICK_GRID_COLUMNS = 3
+private const val JOYSTICK_GRID_GAP = 4
+private const val JOYSTICK_INFO_ROW_COUNT = 3
+private const val JOYSTICK_INFO_ROW_GAP = 2
+
+private val TiBasicDebugToolWindowJoystickPositions = listOf(
+    TiBasicDebugJoystickPosition(x = -4, y = 4, compactDisplay = "up-left", gridLabel = "NW", input = "-4,4"),
+    TiBasicDebugJoystickPosition(x = 0, y = 4, compactDisplay = "up", gridLabel = "N", input = "0,4"),
+    TiBasicDebugJoystickPosition(x = 4, y = 4, compactDisplay = "up-right", gridLabel = "NE", input = "4,4"),
+    TiBasicDebugJoystickPosition(x = -4, y = 0, compactDisplay = "left", gridLabel = "W", input = "-4,0"),
+    TiBasicDebugJoystickPosition(x = 0, y = 0, compactDisplay = "center", gridLabel = "C", input = "0,0"),
+    TiBasicDebugJoystickPosition(x = 4, y = 0, compactDisplay = "right", gridLabel = "E", input = "4,0"),
+    TiBasicDebugJoystickPosition(x = -4, y = -4, compactDisplay = "down-left", gridLabel = "SW", input = "-4,-4"),
+    TiBasicDebugJoystickPosition(x = 0, y = -4, compactDisplay = "down", gridLabel = "S", input = "0,-4"),
+    TiBasicDebugJoystickPosition(x = 4, y = -4, compactDisplay = "down-right", gridLabel = "SE", input = "4,-4"),
+)

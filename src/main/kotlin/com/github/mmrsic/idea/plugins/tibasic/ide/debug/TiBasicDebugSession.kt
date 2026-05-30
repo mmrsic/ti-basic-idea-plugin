@@ -158,6 +158,7 @@ internal data class TiBasicDebugProgramSnapshot(
         private fun createCallSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
             return when (statement.subprogramName()) {
                 KEY_SUBPROGRAM_NAME -> createCallKeySemantics(statement)
+                JOYST_SUBPROGRAM_NAME -> createCallJoystSemantics(statement)
                 CLEAR_SUBPROGRAM_NAME -> if (statement.arguments()
                         .isEmpty()
                 ) TiBasicDebugLineSemantics.CallClear else TiBasicDebugLineSemantics.IncorrectStatement
@@ -349,6 +350,36 @@ internal data class TiBasicDebugProgramSnapshot(
                 modeAssignment = modeAssignment,
                 keyCodeVariableName = keyCodeVariableName,
                 statusVariableName = statusVariableName,
+            )
+        }
+
+        private fun createCallJoystSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
+            if (!statement.hasArgumentParens() || !statement.hasClosingArgumentParen()) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val arguments = statement.arguments()
+            if (arguments.size != CALL_JOYST_ARG_COUNT) {
+                return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val unitAssignment = when (val result = createRequiredNumericAssignment(arguments[JOYSTICK_UNIT_ARG_INDEX].node)) {
+                is TiBasicDebugParseResult.Valid -> result.value
+                TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+            }
+            val xVariableName = arguments[JOYST_X_ARG_INDEX]
+                .numericVariableTarget()
+                ?.takeUnless(TiBasicVariableAccess::hasSubscriptParens)
+                ?.name
+                ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val yVariableName = arguments[JOYST_Y_ARG_INDEX]
+                .numericVariableTarget()
+                ?.takeUnless(TiBasicVariableAccess::hasSubscriptParens)
+                ?.name
+                ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            return TiBasicDebugLineSemantics.CallJoyst(
+                unitAssignment = unitAssignment,
+                xVariableName = xVariableName,
+                yVariableName = yVariableName,
             )
         }
 
@@ -715,8 +746,10 @@ internal data class TiBasicDebugProgramSnapshot(
             val writeTargets = buildSet {
                 (statement as? TiBasicLetStatement)?.targetVariableAccess()?.let(::add)
                 val callStatement = statement as? TiBasicCallStatement
-                if (callStatement?.subprogramName() == KEY_SUBPROGRAM_NAME) {
-                    callStatement.arguments()
+                if (callStatement?.subprogramName() in setOf(KEY_SUBPROGRAM_NAME, JOYST_SUBPROGRAM_NAME)) {
+                    callStatement
+                        ?.arguments()
+                        .orEmpty()
                         .drop(FIRST_CALL_KEY_WRITE_ARG_INDEX)
                         .mapNotNull { argument -> argument.numericVariableTarget()?.takeUnless(TiBasicVariableAccess::hasSubscriptParens) }
                         .forEach(::add)
@@ -817,6 +850,9 @@ internal data class TiBasicDebugSession(
     val keyboardRequest: TiBasicDebugKeyboardRequest?
         get() = keyboardRequestForInput(keyboardScanInput)
 
+    val joystickRequest: TiBasicDebugJoystickRequest?
+        get() = joystickRequestForInput(keyboardScanInput)
+
     internal fun keyboardRequestForInput(scanInputText: String): TiBasicDebugKeyboardRequest? {
         if (status != TiBasicDebugSessionStatus.Paused) return null
         val programLine = currentProgramLine ?: return null
@@ -839,6 +875,24 @@ internal data class TiBasicDebugSession(
                 isAllowedCallKeyCode(resolvedMode, roundedScanInput) -> ONE_KEYBOARD_STATUS_DISPLAY
                 else -> UNKNOWN_KEYBOARD_STATUS_DISPLAY
             },
+        )
+    }
+
+    internal fun joystickRequestForInput(inputText: String): TiBasicDebugJoystickRequest? {
+        if (status != TiBasicDebugSessionStatus.Paused) return null
+        val programLine = currentProgramLine ?: return null
+        val semantics = programLine.semantics as? TiBasicDebugLineSemantics.CallJoyst ?: return null
+        val preparedSession = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+        val unitEvaluation = preparedSession.evaluateNumericAssignment(semantics.unitAssignment) ?: return null
+        val resolvedUnit = unitEvaluation.value.value.roundToWholeNumberIntOrNull() ?: return null
+        val effectiveInput = inputText.ifEmpty { defaultKeyboardScanInput(programLine.semantics) }
+        val position = parseJoystickPositionInput(effectiveInput) ?: DEFAULT_JOYSTICK_POSITION
+        return TiBasicDebugJoystickRequest(
+            keyUnit = resolvedUnit,
+            xVariableName = semantics.xVariableName,
+            yVariableName = semantics.yVariableName,
+            position = position,
+            input = effectiveInput,
         )
     }
 
@@ -1494,6 +1548,13 @@ internal data class TiBasicDebugSession(
                 )
             )
 
+            is TiBasicDebugLineSemantics.CallJoyst -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyCallJoyst(
+                    programLine.lineNumber,
+                    semantics,
+                )
+            )
+
             TiBasicDebugLineSemantics.CallClear -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber))
             is TiBasicDebugLineSemantics.CallChar -> TiBasicDebugStepResult(
                 sessionWithInitializedNumericVariables.applyCallChar(
@@ -1761,6 +1822,27 @@ internal data class TiBasicDebugSession(
             ),
             stringVariables = updatedStringVariables,
             lastKeyboardMode = resolvedMode,
+        )
+    }
+
+    private fun applyCallJoyst(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.CallJoyst,
+    ): TiBasicDebugSession {
+        val unitEvaluation = evaluateNumericAssignment(semantics.unitAssignment) ?: return incorrectStatement()
+        val sessionAfterEvaluation = mergeEvaluations(unitEvaluation)
+        val roundedUnit = unitEvaluation.value.value.roundToWholeNumberIntOrNull()
+            ?: return sessionAfterEvaluation.badValue(unitEvaluation.value.usualDisplay)
+        if (roundedUnit !in VALID_JOYSTICK_UNITS) {
+            return sessionAfterEvaluation.badValue(unitEvaluation.value.usualDisplay)
+        }
+        val position = parseJoystickPositionInput(keyboardScanInput.trim().ifEmpty { defaultKeyboardScanInput(semantics) })
+            ?: return sessionAfterEvaluation.badValue(keyboardScanInput)
+        return sessionAfterEvaluation.continueAfter(currentLineNumber).copy(
+            numericVariables = sessionAfterEvaluation.numericVariables + mapOf(
+                semantics.xVariableName to TiBasicDebugNumericValue.fromValue(position.x.toBigDecimal()),
+                semantics.yVariableName to TiBasicDebugNumericValue.fromValue(position.y.toBigDecimal()),
+            ),
         )
     }
 
@@ -2430,6 +2512,12 @@ internal sealed interface TiBasicDebugLineSemantics {
         val statusVariableName: String,
     ) : TiBasicDebugLineSemantics
 
+    data class CallJoyst(
+        val unitAssignment: TiBasicDebugNumericAssignment,
+        val xVariableName: String,
+        val yVariableName: String,
+    ) : TiBasicDebugLineSemantics
+
     data class CallChar(
         val codeAssignment: TiBasicDebugNumericAssignment,
         val patternAssignment: TiBasicDebugStringAssignment,
@@ -2685,6 +2773,22 @@ internal data class TiBasicDebugKeyboardRequest(
         get() = keyUnit
 }
 
+internal data class TiBasicDebugJoystickRequest(
+    val keyUnit: Int,
+    val xVariableName: String,
+    val yVariableName: String,
+    val position: TiBasicDebugJoystickPosition,
+    val input: String,
+)
+
+internal data class TiBasicDebugJoystickPosition(
+    val x: Int,
+    val y: Int,
+    val compactDisplay: String,
+    val gridLabel: String,
+    val input: String,
+)
+
 internal data class TiBasicDebugConditionTrace(
     val lines: List<String>,
 )
@@ -2887,9 +2991,13 @@ private const val FIRST_CALL_KEY_WRITE_ARG_INDEX = 1
 private const val FIRST_CONCAT_RIGHT_OPERAND_INDEX = 2
 private const val CONCAT_GROUP_SIZE = 2
 private const val CALL_KEY_ARG_COUNT = 3
+private const val CALL_JOYST_ARG_COUNT = 3
 private const val KEYBOARD_MODE_ARG_INDEX = 0
+private const val JOYSTICK_UNIT_ARG_INDEX = 0
 private const val KEY_CODE_ARG_INDEX = 1
 private const val KEY_STATUS_ARG_INDEX = 2
+private const val JOYST_X_ARG_INDEX = 1
+private const val JOYST_Y_ARG_INDEX = 2
 private const val SEG_DOLLAR_ARG_COUNT = 3
 private const val SEG_SOURCE_ARG_INDEX = 0
 private const val SEG_START_ARG_INDEX = 1
@@ -2906,6 +3014,7 @@ private const val NUMERIC_BYTE_PREFIX = ">"
 private const val CHR_DOLLAR_FUNCTION = "CHR$"
 private const val CHAR_SUBPROGRAM_NAME = "CHAR"
 private const val KEY_SUBPROGRAM_NAME = "KEY"
+private const val JOYST_SUBPROGRAM_NAME = "JOYST"
 private const val CLEAR_SUBPROGRAM_NAME = "CLEAR"
 private const val COLOR_SUBPROGRAM_NAME = "COLOR"
 private const val HCHAR_SUBPROGRAM_NAME = "HCHAR"
@@ -2978,6 +3087,7 @@ private const val SCREEN_WRITE_COLUMN_ARGUMENT_NAME = "column"
 private const val SCREEN_WRITE_CHARACTER_CODE_ARGUMENT_NAME = "character-code"
 private const val SCREEN_WRITE_REPEAT_ARGUMENT_NAME = "repeat"
 private const val DEFAULT_CALL_KEY_SCAN_INPUT = "-1"
+private const val DEFAULT_CALL_JOYST_INPUT = "0,0"
 private const val DEFAULT_KEYBOARD_MODE = 5
 private const val UNKNOWN_KEYBOARD_STATUS_DISPLAY = "?"
 private const val ZERO_KEYBOARD_STATUS_DISPLAY = "0"
@@ -3042,6 +3152,7 @@ private val RELATIONAL_OPERATOR_TYPES = setOf(
     TiBasicTokenTypes.GE_OP,
 )
 private val VALID_CALL_KEY_MODES = 0..5
+private val VALID_JOYSTICK_UNITS = 1..4
 private val VALID_CALL_CHAR_CODES = 32..159
 private val VALID_CALL_COLOR_CHARACTER_SETS = 1..16
 private val VALID_CALL_COLOR_COLOR_CODES = 1..16
@@ -3053,6 +3164,22 @@ private val CALL_KEY_MODE_1_AND_2_CODES = 0..19
 private val CALL_KEY_MODE_3_CODES = (1..15) + (32..95)
 private val CALL_KEY_MODE_4_CODES = 1..143
 private val CALL_KEY_MODE_5_CODES = (1..15) + (32..159) + listOf(187)
+private val JOYSTICK_POSITIONS = listOf(
+    TiBasicDebugJoystickPosition(x = -4, y = 4, compactDisplay = "up-left", gridLabel = "NW", input = "-4,4"),
+    TiBasicDebugJoystickPosition(x = 0, y = 4, compactDisplay = "up", gridLabel = "N", input = "0,4"),
+    TiBasicDebugJoystickPosition(x = 4, y = 4, compactDisplay = "up-right", gridLabel = "NE", input = "4,4"),
+    TiBasicDebugJoystickPosition(x = -4, y = 0, compactDisplay = "left", gridLabel = "W", input = "-4,0"),
+    TiBasicDebugJoystickPosition(x = 0, y = 0, compactDisplay = "center", gridLabel = "C", input = "0,0"),
+    TiBasicDebugJoystickPosition(x = 4, y = 0, compactDisplay = "right", gridLabel = "E", input = "4,0"),
+    TiBasicDebugJoystickPosition(x = -4, y = -4, compactDisplay = "down-left", gridLabel = "SW", input = "-4,-4"),
+    TiBasicDebugJoystickPosition(x = 0, y = -4, compactDisplay = "down", gridLabel = "S", input = "0,-4"),
+    TiBasicDebugJoystickPosition(x = 4, y = -4, compactDisplay = "down-right", gridLabel = "SE", input = "4,-4"),
+)
+private val JOYSTICK_POSITIONS_BY_INPUT = JOYSTICK_POSITIONS.associateBy(TiBasicDebugJoystickPosition::input)
+private val DEFAULT_JOYSTICK_POSITION = JOYSTICK_POSITIONS.first { it.x == 0 && it.y == 0 }
+private const val JOYSTICK_AXIS_COMPONENT_COUNT = 2
+private const val JOYSTICK_X_COMPONENT_INDEX = 0
+private const val JOYSTICK_Y_COMPONENT_INDEX = 1
 
 private fun Int.isEven(): Boolean = this % 2 == 0
 
@@ -3209,7 +3336,26 @@ private fun mergeWarningMessages(vararg warnings: String?): String? =
         .ifEmpty { null }
 
 private fun defaultKeyboardScanInput(semantics: TiBasicDebugLineSemantics): String =
-    if (semantics is TiBasicDebugLineSemantics.CallKey) DEFAULT_CALL_KEY_SCAN_INPUT else EMPTY_STRING
+    when (semantics) {
+        is TiBasicDebugLineSemantics.CallKey -> DEFAULT_CALL_KEY_SCAN_INPUT
+        is TiBasicDebugLineSemantics.CallJoyst -> DEFAULT_CALL_JOYST_INPUT
+        else -> EMPTY_STRING
+    }
+
+private fun parseJoystickPositionInput(input: String): TiBasicDebugJoystickPosition? =
+    JOYSTICK_POSITIONS_BY_INPUT[input]
+        ?: input.split(',')
+            .takeIf { it.size == JOYSTICK_AXIS_COMPONENT_COUNT }
+            ?.map(String::trim)
+            ?.takeIf { parts -> parts.all(String::isNotEmpty) }
+            ?.let { parts ->
+                val x = parseTiBasicDecimalLiteral(parts[JOYSTICK_X_COMPONENT_INDEX])?.roundToWholeNumberIntOrNull()
+                val y = parseTiBasicDecimalLiteral(parts[JOYSTICK_Y_COMPONENT_INDEX])?.roundToWholeNumberIntOrNull()
+                joystickPositionAt(x, y)
+            }
+
+private fun joystickPositionAt(x: Int?, y: Int?): TiBasicDebugJoystickPosition? =
+    JOYSTICK_POSITIONS.firstOrNull { it.x == x && it.y == y }
 
 private fun isAllowedCallKeyCode(mode: Int, code: Int): Boolean =
     when (mode) {

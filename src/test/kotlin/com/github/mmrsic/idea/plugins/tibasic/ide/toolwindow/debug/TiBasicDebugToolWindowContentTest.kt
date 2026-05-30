@@ -141,6 +141,91 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         assertTrue(entries.any { it.startsWith("S = >") && it.endsWith("| 1") })
     }
 
+    fun `test debug tool window shows joystick unit and return variables for CALL JOYST`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 CALL JOYST(1,X,Y)")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(content.joystickPanel.isVisible)
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowJoystickUnitKey, 1),
+            content.joystickUnitLabel.text,
+        )
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowJoystickPositionKey, "center", 0, 0),
+            content.joystickPositionLabel.text,
+        )
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowJoystickXVariableKey, "X", 0),
+            content.joystickXLabel.text,
+        )
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowJoystickYVariableKey, "Y", 0),
+            content.joystickYLabel.text,
+        )
+        assertTrue(content.joystickButtonsByInput["0,0"]?.isSelected == true)
+    }
+
+    fun `test debug tool window applies joystick input on step`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 CALL JOYST(2,X,Y)
+            110 PRINT X
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        content.joystickButtonsByInput["4,-4"]!!.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertEquals(
+            TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowJoystickPositionKey, "down-right", 4, -4),
+            content.joystickPositionLabel.text,
+        )
+        content.stepButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertFalse(content.joystickPanel.isVisible)
+        val entries = (0 until content.numericVariablesModel.size).map(content.numericVariablesModel::get)
+        assertTrue(entries.any { it.startsWith("X = >") && it.endsWith("| 4") })
+        assertTrue(entries.any { it.startsWith("Y = >") && it.endsWith("| -4") })
+    }
+
+    fun `test debug tool window does not reserve footer input area without keyboard or joystick request`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 PRINT \"HELLO\"")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertNull(content.keyboardPanel.parent)
+        assertNull(content.joystickPanel.parent)
+    }
+
+    fun `test debug tool window shows only joystick input panel when CALL JOYST is pending`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile("100 CALL JOYST(1,X,Y)")
+        project.getService(TiBasicDebugSessionService::class.java)
+            .startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        val inputPanels = content.joystickPanel.parent
+
+        assertNotNull(inputPanels)
+        assertTrue(inputPanels!!.isVisible)
+        assertEquals(listOf(content.joystickPanel), inputPanels.components.toList())
+        assertNull(content.keyboardPanel.parent)
+    }
+
     fun `test debug tool window lists known string variables in TI-Basic format`() {
         val content = TiBasicDebugToolWindowContent(project)
         Disposer.register(testRootDisposable, content)
