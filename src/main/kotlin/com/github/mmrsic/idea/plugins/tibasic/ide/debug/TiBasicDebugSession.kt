@@ -489,6 +489,12 @@ internal data class TiBasicDebugProgramSnapshot(
                 node.elementType in TiBasicTokenTypes.PRINT_SEPARATORS ->
                     TiBasicDebugPrintItem.Separator(node.elementType)
 
+                node.elementType == TiBasicNodeTypes.TAB_FUNCTION ->
+                    node.nonWhitespaceChildren
+                        .firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
+                        ?.let(::createNumericAssignmentFromExpression)
+                        ?.let(TiBasicDebugPrintItem::Tab)
+
                 node.elementType == TiBasicNodeTypes.EXPRESSION ->
                     createStringAssignmentFromExpression(node)?.let(TiBasicDebugPrintItem::StringValue)
                         ?: createNumericAssignmentFromExpression(node)?.let(TiBasicDebugPrintItem::NumericValue)
@@ -1689,6 +1695,21 @@ internal data class TiBasicDebugSession(
                     trailingSeparator = null
                 }
 
+                is TiBasicDebugPrintItem.Tab -> {
+                    val evaluation = currentSession.evaluateNumericAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
+                    currentSession = currentSession.mergeEvaluations(evaluation)
+                    val rounded = evaluation.value.value.roundToWholeNumberIntOrNull() ?: return currentSession.badValue(evaluation.value.usualDisplay)
+                    var t = rounded
+                    if (t < 1) t = 1
+                    t = ((t - 1) % PRINT_AREA_WIDTH) + 1
+                    val targetColumn = t + 2
+                    var normalized = currentSession.screenContents.normalizePrintCursorForWrite()
+                    if (normalized.printCursorColumn > targetColumn) normalized = normalized.lineFeed()
+                    normalized = normalized.copy(printCursorColumn = targetColumn)
+                    currentSession = currentSession.copy(screenContents = normalized)
+                    trailingSeparator = null
+                }
+
                 is TiBasicDebugPrintItem.Separator -> {
                     currentSession = currentSession.applyPrintSeparator(item.tokenType)
                     trailingSeparator = item.tokenType
@@ -1979,7 +2000,17 @@ internal data class TiBasicDebugSession(
         when (tokenType) {
             TiBasicTokenTypes.COLON -> copy(screenContents = screenContents.lineFeed())
             TiBasicTokenTypes.SEMICOLON -> this
-            TiBasicTokenTypes.COMMA -> copy(screenContents = screenContents.advanceToNextPrintZone())
+            TiBasicTokenTypes.COMMA -> {
+                // Treat comma as TAB(15): column = normalized(15) + 2 => 17
+                var normalized = screenContents.normalizePrintCursorForWrite()
+                val t0 = 15
+                var t = if (t0 < 1) 1 else t0
+                t = ((t - 1) % PRINT_AREA_WIDTH) + 1
+                val targetColumn = t + 2
+                if (normalized.printCursorColumn > targetColumn) normalized = normalized.lineFeed()
+                normalized = normalized.copy(printCursorColumn = targetColumn)
+                copy(screenContents = normalized)
+            }
             else -> this
         }
 
@@ -2458,6 +2489,7 @@ internal sealed interface TiBasicDebugPrintItem {
     data class StringValue(val assignment: TiBasicDebugStringAssignment) : TiBasicDebugPrintItem
     data class NumericValue(val assignment: TiBasicDebugNumericAssignment) : TiBasicDebugPrintItem
     data class Separator(val tokenType: IElementType) : TiBasicDebugPrintItem
+    data class Tab(val assignment: TiBasicDebugNumericAssignment) : TiBasicDebugPrintItem
 }
 
 internal sealed interface TiBasicDebugCondition {
@@ -2986,7 +3018,7 @@ private const val WORD_MASK = 0xFFFF
 private val RANDOM_SEED_MODULUS = BigInteger.valueOf(WORD_MASK.toLong() + 1)
 private val PRINT_SCIENTIFIC_UPPER_BOUND = BigDecimal.TEN.pow(PRINT_NORMAL_SIGNIFICANT_DIGITS)
 private val PRINT_SCIENTIFIC_LOWER_BOUND = BigDecimal.ONE.movePointLeft(PRINT_NORMAL_SIGNIFICANT_DIGITS)
-private val PRINTABLE_ASCII_RANGE = 32..126
+private val PRINTABLE_ASCII_RANGE = 32..159
 private val DEBUG_MATH_CONTEXT = MathContext.DECIMAL64
 private val IF_LINE_REGEX = Regex("""^\s*\d+\s+IF\b""", RegexOption.IGNORE_CASE)
 private val FOR_LINE_REGEX = Regex("""^\s*\d+\s+FOR\b""", RegexOption.IGNORE_CASE)
