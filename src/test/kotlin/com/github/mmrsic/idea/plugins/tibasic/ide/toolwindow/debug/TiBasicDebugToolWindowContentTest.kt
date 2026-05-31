@@ -4,11 +4,15 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugMetadata
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugProgramSnapshot
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionService
-import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.tiBasicCharacterPattern
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.ui.components.JBTextField
 import java.awt.image.BufferedImage
+import java.math.BigDecimal
+import javax.swing.JButton
+import javax.swing.JPanel
+import com.intellij.testFramework.PlatformTestUtil
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.tiBasicCharacterPattern
 
 class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
 
@@ -903,5 +907,63 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         scrollPane.viewport.setSize(width, height)
         scrollPane.viewport.doLayout()
         scrollPane.viewport.extentSize = scrollPane.viewport.size
+    }
+    fun `test debug tool window shows input panel when INPUT is pending`() {
+        val file = configureFile("100 INPUT A,B$")
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        val snapshot = TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document)
+        val content = TiBasicDebugToolWindowContent(project)
+        
+        sessionService.startSession(snapshot)
+        
+        assertTrue(content.inputPanel.isVisible)
+    }
+
+    fun `test debug tool window applies input on step`() {
+        val file = configureFile("100 INPUT A")
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        val snapshot = TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document)
+        val content = TiBasicDebugToolWindowContent(project)
+        
+        sessionService.startSession(snapshot)
+        
+        // Find the text field
+        val panel = content.inputPanel.components.filterIsInstance<JPanel>().first()
+        val field = panel.components.filterIsInstance<JBTextField>().first()
+        field.text = "42"
+        
+        // Trigger Apply/Step via button
+        val applyButton = content.inputPanel.components.filterIsInstance<JButton>().first()
+        applyButton.doClick()
+        
+        assertEquals(BigDecimal("42"), sessionService.currentSession()?.numericVariables?.get("A")?.value)
+    }
+
+    fun `test debug tool window apply and step do not throw for visible input panel`() {
+        val file = configureFile(
+            """
+            100 INPUT A,B,C
+            110 END
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        val snapshot = TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document)
+        val content = TiBasicDebugToolWindowContent(project)
+
+        sessionService.startSession(snapshot)
+
+        val panel = content.inputPanel.components.filterIsInstance<JPanel>().first()
+        val fields = panel.components.filterIsInstance<JBTextField>()
+        fields.first().text = "1,2,3"
+
+        val applyButton = content.inputPanel.components.filterIsInstance<JButton>().first()
+        applyButton.doClick()
+        content.stepButton.doClick()
+
+        val session = sessionService.currentSession()
+        assertEquals(110, session?.currentProgramLine?.lineNumber)
+        assertEquals(BigDecimal("1"), session?.numericVariables?.get("A")?.value)
+        assertEquals(BigDecimal("2"), session?.numericVariables?.get("B")?.value)
+        assertEquals(BigDecimal("3"), session?.numericVariables?.get("C")?.value)
     }
 }

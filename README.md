@@ -150,6 +150,7 @@ The annotator inspects every file and highlights:
 | Warning  | Unequal number of `FOR` and `NEXT` statements — surplus occurrences flagged (FOR-NEXT-ERROR)                                          |
 | Error    | `NEXT` without a control variable (Incorrect statement)                                                                               |
 | Error    | `INPUT` without a variable list (Incorrect statement)                                                                                 |
+| Error    | `INPUT` with non-string prompt expression (String expression expected as INPUT prompt)                                                |
 | Error    | `INPUT` with a bad variable name (Bad variable name)                                                                                  |
 | Error    | `INPUT #…` missing `:` separator before variable list (Incorrect statement)                                                           |
 | Error    | `INPUT #…` missing variable list after `:` (Incorrect statement)                                                                      |

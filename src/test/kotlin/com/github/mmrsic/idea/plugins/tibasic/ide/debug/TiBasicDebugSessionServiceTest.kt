@@ -80,4 +80,20 @@ class TiBasicDebugSessionServiceTest : TiBasicTestBase() {
         assertEquals(110, sessionService.currentSession()?.currentProgramLine?.lineNumber)
         assertEquals(2.0, sessionService.currentSession()?.numericVariables?.get("I")?.value?.toDouble())
     }
+    fun `test updatePendingInputValues updates session and notifies listeners once`() {
+        val file = configureFile("100 INPUT A,B")
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        val snapshot = TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document)
+
+        var notificationCount = 0
+        sessionService.addListener({ _, _ -> notificationCount++ }, testRootDisposable)
+
+        sessionService.startSession(snapshot)
+
+        sessionService.updatePendingInputValues(mapOf("A" to "10", "B" to "20"))
+
+        assertEquals(2, notificationCount)
+        assertEquals("10", sessionService.currentSession()?.pendingInputValues?.get("A"))
+        assertEquals("20", sessionService.currentSession()?.pendingInputValues?.get("B"))
+    }
 }

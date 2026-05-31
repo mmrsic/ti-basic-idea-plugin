@@ -33,6 +33,7 @@ import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBa
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGosubStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicIfStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicInputStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicNextStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicPrintStatement
@@ -131,6 +132,7 @@ internal data class TiBasicDebugProgramSnapshot(
             is TiBasicForStatement -> createForSemantics(statement)
             is TiBasicNextStatement -> createNextSemantics(statement)
             is TiBasicPrintStatement -> createPrintSemantics(statement)
+            is TiBasicInputStatement -> createInputSemantics(statement)
             is TiBasicLetStatement -> createLetSemantics(statement)
             is TiBasicRandomizeStatement -> createRandomizeSemantics(statement)
             is TiBasicCallStatement -> createCallSemantics(statement)
@@ -466,6 +468,15 @@ internal data class TiBasicDebugProgramSnapshot(
                 .drop(1)
                 .mapNotNull(::createPrintItem)
             return TiBasicDebugLineSemantics.Print(items)
+        }
+
+        private fun createInputSemantics(statement: TiBasicInputStatement): TiBasicDebugLineSemantics {
+            val targets = statement.inputVariableAccesses().map { variableAccess ->
+                val variableName = variableAccess.name ?: return TiBasicDebugLineSemantics.IncorrectStatement
+                val type = if (variableName.endsWith(STRING_VARIABLE_SUFFIX)) TiBasicDebugInputType.String else TiBasicDebugInputType.Numeric
+                TiBasicDebugInputTarget(variableName, type)
+            }
+            return TiBasicDebugLineSemantics.Input(targets)
         }
 
         private fun createCondition(expressionNode: ASTNode): TiBasicDebugParseResult<TiBasicDebugCondition> {
@@ -831,6 +842,7 @@ internal data class TiBasicDebugSession(
     val lastSoundTone3Pitch: Int? = null,
     val randomSeed: Int = INITIAL_RANDOM_SEED,
     val screenContents: TiBasicDebugScreenContents = TiBasicDebugScreenContents(),
+    val pendingInputValues: Map<String, String> = emptyMap(),
 ) {
     val currentProgramLine: TiBasicDebugProgramLine?
         get() = currentProgramIndex?.let(snapshot.programLines::get)
@@ -849,6 +861,11 @@ internal data class TiBasicDebugSession(
 
     val keyboardRequest: TiBasicDebugKeyboardRequest?
         get() = keyboardRequestForInput(keyboardScanInput)
+
+    val inputRequest: TiBasicDebugInputRequest?
+        get() = (currentProgramLine?.semantics as? TiBasicDebugLineSemantics.Input)?.let {
+            TiBasicDebugInputRequest(it.targets)
+        }
 
     val joystickRequest: TiBasicDebugJoystickRequest?
         get() = joystickRequestForInput(keyboardScanInput)
@@ -1562,6 +1579,13 @@ internal data class TiBasicDebugSession(
                 )
             )
 
+            is TiBasicDebugLineSemantics.Input -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyInput(
+                    programLine.lineNumber,
+                    semantics,
+                )
+            )
+
             TiBasicDebugLineSemantics.CallClear -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber))
             is TiBasicDebugLineSemantics.CallChar -> TiBasicDebugStepResult(
                 sessionWithInitializedNumericVariables.applyCallChar(
@@ -1830,6 +1854,55 @@ internal data class TiBasicDebugSession(
             stringVariables = updatedStringVariables,
             lastKeyboardMode = resolvedMode,
         )
+    }
+
+    private fun applyInput(lineNumber: Int, semantics: TiBasicDebugLineSemantics.Input): TiBasicDebugSession {
+        val resolvedInputValues = resolvePendingInputValues(semantics)
+            ?: return copy(statusMessage = "Combined INPUT values must match target count")
+
+        var updatedNumericVariables = numericVariables
+        var updatedStringVariables = stringVariables
+
+        for (target in semantics.targets) {
+            val rawValue = resolvedInputValues[target.variableName]
+                ?: return copy(statusMessage = "Missing input for ${target.variableName}")
+
+            when (target.type) {
+                TiBasicDebugInputType.Numeric -> {
+                    val value = parseTiBasicDecimalLiteral(rawValue)
+                        ?: return copy(statusMessage = "Invalid numeric input for ${target.variableName}: $rawValue")
+                    updatedNumericVariables = updatedNumericVariables + (target.variableName to TiBasicDebugNumericValue.fromValue(value))
+                }
+                TiBasicDebugInputType.String -> {
+                    updatedStringVariables = updatedStringVariables + (target.variableName to TiBasicDebugStringValue.fromText(rawValue))
+                }
+            }
+        }
+
+        return copy(
+            numericVariables = updatedNumericVariables,
+            stringVariables = updatedStringVariables,
+            pendingInputValues = emptyMap(),
+            statusMessage = null,
+        ).continueAfter(lineNumber)
+    }
+
+    private fun resolvePendingInputValues(semantics: TiBasicDebugLineSemantics.Input): Map<String, String>? {
+        if (semantics.targets.size <= 1) return pendingInputValues
+        val firstTargetName = semantics.targets.first().variableName
+        val firstValue = pendingInputValues[firstTargetName]?.trim().orEmpty()
+        val trailingValues = semantics.targets.drop(1).map { target ->
+            pendingInputValues[target.variableName]?.trim().orEmpty()
+        }
+        val splitMode = firstValue.contains(',') && trailingValues.all(String::isEmpty)
+        if (!splitMode) return pendingInputValues
+        val splitValues = firstValue.split(',').map(String::trim)
+        if (splitValues.size != semantics.targets.size || splitValues.any(String::isEmpty)) {
+            return null
+        }
+        return semantics.targets
+            .mapIndexed { index, target -> target.variableName to splitValues[index] }
+            .toMap()
     }
 
     private fun applyCallJoyst(
@@ -2552,6 +2625,8 @@ internal sealed interface TiBasicDebugLineSemantics {
         val durationAssignment: TiBasicDebugNumericAssignment,
         val channels: List<TiBasicDebugSoundChannelAssignment>,
     ) : TiBasicDebugLineSemantics
+
+    data class Input(val targets: List<TiBasicDebugInputTarget>) : TiBasicDebugLineSemantics
 }
 
 private fun TiBasicDebugProgramLine.isCallScreenLine(): Boolean =
@@ -2779,6 +2854,15 @@ internal data class TiBasicDebugKeyboardRequest(
     val mode: Int
         get() = keyUnit
 }
+
+internal enum class TiBasicDebugInputType { Numeric, String }
+
+internal data class TiBasicDebugInputTarget(
+    val variableName: String,
+    val type: TiBasicDebugInputType,
+)
+
+internal data class TiBasicDebugInputRequest(val targets: List<TiBasicDebugInputTarget>)
 
 internal data class TiBasicDebugJoystickRequest(
     val keyUnit: Int,

@@ -2073,4 +2073,24 @@ class TiBasicAnnotatorTest : TiBasicTestBase() {
         configureFile("100 ON X GOSUB 200,<error descr=\"Bad line number\">,</error>\n200 RETURN")
         myFixture.checkHighlighting(true, false, false)
     }
+
+    fun `test INPUT with single variable no error`() {
+        configureFile("100 INPUT A")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test INPUT with prompt and variable no error`() {
+        configureFile("100 INPUT \"Enter:\" : A$")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
+    fun `test INPUT with non-string prompt gives string expression error`() {
+        configureFile("100 INPUT <error descr=\"String expression expected as INPUT prompt\">X</error> : A")
+        myFixture.checkHighlighting(true, false, false)
+    }
+
+    fun `test INPUT without variables gives incorrect statement error`() {
+        configureFile("100 <error descr=\"Incorrect statement\">INPUT</error>")
+        myFixture.checkHighlighting(true, false, false)
+    }
 }

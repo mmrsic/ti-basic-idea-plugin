@@ -53,6 +53,8 @@ class TiBasicDebugToolWindowContent(
     internal val keyboardInputLabel = JLabel(" ")
     internal val keyboardInputField = JBTextField()
     internal val keyboardStatusLabel = JLabel(" ")
+    internal val inputPanel = JPanel(BorderLayout())
+    private val inputFields = mutableMapOf<String, JBTextField>()
     internal val joystickPanel = JPanel(BorderLayout())
     internal val joystickUnitLabel = JLabel(" ")
     internal val joystickPositionLabel = JLabel(" ")
@@ -85,6 +87,9 @@ class TiBasicDebugToolWindowContent(
         stepButton.addActionListener {
             if (keyboardPanel.isVisible) {
                 sessionService.updateKeyboardScanInput(keyboardInputField.text)
+            }
+            if (inputPanel.isVisible) {
+                sessionService.updatePendingInputValues(currentInputFieldValues())
             }
             sessionService.step()
         }
@@ -202,6 +207,7 @@ class TiBasicDebugToolWindowContent(
         updateStringVariables(session)
         updateKeyboardRequest(session)
         updateJoystickRequest(session)
+        updateInputRequest(session)
         refreshInputPanels()
         updateArguments(session)
         layout.show(centerPanel, LIST_CARD)
@@ -370,6 +376,32 @@ class TiBasicDebugToolWindowContent(
         }
     }
 
+    private fun updateInputRequest(session: TiBasicDebugSession) {
+        val request = session.inputRequest
+        inputPanel.isVisible = request != null
+        if (request != null) {
+            inputPanel.removeAll()
+            inputFields.clear()
+            val panel = JPanel(GridLayout(0, 2))
+            for (target in request.targets) {
+                panel.add(JLabel(target.variableName))
+                val field = JBTextField(session.pendingInputValues[target.variableName] ?: "")
+                inputFields[target.variableName] = field
+                panel.add(field)
+            }
+            inputPanel.add(panel, BorderLayout.CENTER)
+            val applyButton = JButton("Apply")
+            applyButton.addActionListener {
+                sessionService.updatePendingInputValues(currentInputFieldValues())
+                sessionService.step()
+            }
+            inputPanel.add(applyButton, BorderLayout.SOUTH)
+        }
+    }
+
+    private fun currentInputFieldValues(): Map<String, String> =
+        inputFields.entries.associate { (name, field) -> name to field.text }
+
     private fun updateKeyboardRequest(session: TiBasicDebugSession) {
         val request = session.keyboardRequest
         keyboardPanel.isVisible = request != null
@@ -442,7 +474,9 @@ class TiBasicDebugToolWindowContent(
         if (joystickPanel.isVisible) {
             inputPanels.add(joystickPanel)
         }
-        inputPanels.isVisible = inputPanels.componentCount > 0
+        if (inputPanel.isVisible) {
+            inputPanels.add(inputPanel)
+        }
         inputPanels.revalidate()
         inputPanels.repaint()
     }

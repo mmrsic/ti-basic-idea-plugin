@@ -374,11 +374,22 @@ open class TiBasicSemanticAnnotator : Annotator {
             return
         }
         val colonNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.COLON }
-        val expressionNode = children.firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
-        if (colonNode != null && expressionNode != null) {
-            val promptExpr = expressionNode.psi as? TiBasicExpression
-            if (promptExpr != null && !isStringExpression(promptExpr)) {
-                holder.error("String expression expected as INPUT prompt", expressionNode.textRange)
+        val promptCandidate = if (colonNode != null) {
+            children.takeWhile { it != colonNode }.firstOrNull {
+                it.elementType == TiBasicNodeTypes.EXPRESSION || it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS
+            }
+        } else null
+        if (colonNode != null && promptCandidate != null) {
+            if (promptCandidate.elementType == TiBasicNodeTypes.EXPRESSION) {
+                val promptExpr = promptCandidate.psi as? TiBasicExpression
+                if (promptExpr != null && !isStringExpression(promptExpr)) {
+                    holder.error("String expression expected as INPUT prompt", promptCandidate.textRange)
+                }
+            } else if (promptCandidate.elementType == TiBasicNodeTypes.VARIABLE_ACCESS) {
+                val va = promptCandidate.psi as? TiBasicVariableAccess
+                if (va != null && va.node.firstChildType != TiBasicTokenTypes.STRING_VARIABLE) {
+                    holder.error("String expression expected as INPUT prompt", promptCandidate.textRange)
+                }
             }
         }
         annotateVariableList(

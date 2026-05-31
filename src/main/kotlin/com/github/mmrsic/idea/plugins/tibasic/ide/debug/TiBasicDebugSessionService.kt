@@ -47,7 +47,7 @@ class TiBasicDebugSessionService(private val project: Project) {
             session = stepResult.session
             stepResult.soundPlayback?.let { playback -> soundPlaybackHandler(project, playback) }
 
-            if (session.keyboardRequest != null || session.joystickRequest != null) break
+            if (session.keyboardRequest != null || session.joystickRequest != null || session.inputRequest != null) break
             if (session.status != TiBasicDebugSessionStatus.Paused) break
 
             iterations++
@@ -58,6 +58,19 @@ class TiBasicDebugSessionService(private val project: Project) {
 
     internal fun updateKeyboardScanInput(input: String) {
         val updatedSession = currentSession?.copy(keyboardScanInput = input) ?: return
+        currentSession = updatedSession
+        notifyListeners()
+    }
+
+    internal fun updatePendingInputValue(variableName: String, rawValue: String) {
+        updatePendingInputValues(mapOf(variableName to rawValue))
+    }
+
+    internal fun updatePendingInputValues(values: Map<String, String>) {
+        if (values.isEmpty()) return
+        val updatedSession = currentSession?.let {
+            it.copy(pendingInputValues = it.pendingInputValues + values)
+        } ?: return
         currentSession = updatedSession
         notifyListeners()
     }

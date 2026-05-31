@@ -83,7 +83,7 @@ inputStatement          = INPUT     [ whitespace ] [ stringExpression whitespace
                         | INPUT     whitespace? HASH whitespace? numericExpression
                           [ DOT REC whitespace? numericExpression ]
                           whitespace? COLON whitespace? fileInputVariablesList ;
-                          (* screen form: prompt is optional; if present it must be a string expression *)
+                          (* screen form: prompt is optional; if present it must be a string expression; non-string prompt annotated as error *)
                           (* file form: # is mandatory; file number is a numeric expression (1–255);
                              .REC recordNumber is optional; variable list may end with a trailing comma *)
 readStatement           = READ      [ whitespace ] variablesList ;

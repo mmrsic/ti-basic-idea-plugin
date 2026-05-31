@@ -1580,6 +1580,15 @@ class TiBasicParserTest : ParsingTestCase("", "tibasic", TiBasicParserDefinition
         assertNotNull(stmts[0].recordNumberExpr())
     }
 
+    fun testInputStatementWithPromptWithoutColonStillParses() {
+        // permissive: no colon after string prompt -> rolled back, still produces INPUT_STATEMENT (error reported by annotator)
+        val file = parseCode("100 INPUT \"p\" A$")
+        val lines = file.children.filterIsInstance<TiBasicLine>()
+        assertEquals(1, lines.size)
+        val stmts = lines[0].children.filterIsInstance<TiBasicInputStatement>()
+        assertEquals(1, stmts.size)
+    }
+
     fun testFilePrintStatementMinimal() {
         val file = parseCode("100 PRINT #1:")
         val lines = file.children.filterIsInstance<TiBasicLine>()
