@@ -895,6 +895,13 @@ internal data class TiBasicDebugSession(
             input = effectiveInput,
         )
     }
+    
+    internal fun nextWouldContinueLoop(): Boolean? {
+        val currentLine = currentProgramLine ?: return null
+        val semantics = currentLine.semantics as? TiBasicDebugLineSemantics.Next ?: return null
+        val matchingForContext = matchingForContext(currentLine.lineNumber, semantics.controlVariableName) ?: return null
+        return nextPreview(semantics.controlVariableName, matchingForContext)?.continuesLoop
+    }
 
     private fun argumentDisplaysFor(programLine: TiBasicDebugProgramLine): List<String> =
         when {

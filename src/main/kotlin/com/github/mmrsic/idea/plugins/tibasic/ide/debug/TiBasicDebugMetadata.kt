@@ -13,6 +13,7 @@ internal object TiBasicDebugMetadata {
     const val configurationEditorFileLabelKey = "debug.configuration.editor.file"
     const val toolWindowEmptyKey = "debug.tool.window.empty"
     const val toolWindowStepKey = "debug.tool.window.step"
+    const val toolWindowSkipKey = "debug.tool.window.skip"
     const val toolWindowStopKey = "debug.tool.window.stop"
     const val toolWindowArgumentsTitleKey = "debug.tool.window.arguments.title"
     const val toolWindowArgumentsEmptyKey = "debug.tool.window.arguments.empty"

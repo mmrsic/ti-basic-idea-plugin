@@ -237,7 +237,7 @@ V1 should keep the ownership boundaries small and explicit:
 |--------------------------------|------------------------------------------------------------------------------------------------------------------------|
 | `tibasic.ide.debug.run`        | Hooks the standard IntelliJ Debug entry points to the active TI-Basic file and creates the debug session start request |
 | `tibasic.ide.debug`            | Project-level session coordination, frozen snapshot/value objects, inspect evaluation, and stepping runtime            |
-| `tibasic.ide.toolwindow.debug` | Dedicated debugger tool-window content that renders the frozen listing and exposes Step/Stop controls                  |
+| `tibasic.ide.toolwindow.debug` | Dedicated debugger tool-window content that renders the frozen listing and exposes Step/Skip/Stop controls             |
 
 The standard IntelliJ Debug action is therefore the **entry mechanism**, not the long-term UI
 host. V1 does not need XDebugger-specific concepts such as stack frames, variable views, or
@@ -267,7 +267,7 @@ V1 needs a two-phase session model because terminal states do not close immediat
 | `PendingStop` | The current line has just produced a terminal outcome (`END`, `STOP`, natural end, or runtime error message) and the next Step closes the session |
 | `Stopped`     | Session has ended and the tool window shows the finished state until a new session starts                                                         |
 
-The initial session state is `Paused` on the smallest line number. Every **Step** executes the
+The initial session state is `Paused` on the smallest line number. Every **Step** or **Skip** executes the
 currently marked line and either:
 
 1. moves the PC to the next paused line,
@@ -378,7 +378,7 @@ Recommended structure:
 - a dedicated string-variable pane shows all known scalar string variables in TI-Basic internal storage format (
   `length byte + character bytes`), rendering printable ASCII bytes `32..126` directly as characters
 - the current PC is expressed as exactly one highlighted row
-- toolbar actions expose **Step** and **Stop**
+- toolbar actions expose **Step**, **Skip**, and **Stop**
 - an inline status area shows pending runtime messages such as `Can't do that`, `Bad Line Number`,
   or `Incorrect Statement`
 

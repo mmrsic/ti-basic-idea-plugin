@@ -1,6 +1,7 @@
 package com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.debug
 
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugMetadata
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugLineSemantics
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugJoystickPosition
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugJoystickRequest
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugScreenContents
@@ -42,6 +43,7 @@ class TiBasicDebugToolWindowContent(
     internal val statusLabel = JLabel(" ")
     internal val messageLabel = JLabel(" ")
     internal val stepButton = JButton(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowStepKey))
+    internal val skipButton = JButton(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowSkipKey))
     internal val stopButton = JButton(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowStopKey))
     internal val argumentsPanel = JPanel(BorderLayout())
     internal val argumentsTextArea = JTextArea()
@@ -86,6 +88,7 @@ class TiBasicDebugToolWindowContent(
             }
             sessionService.step()
         }
+        skipButton.addActionListener { sessionService.skip() }
         stopButton.addActionListener { sessionService.stop() }
         keyboardInputField.addActionListener {
             sessionService.updateKeyboardScanInput(keyboardInputField.text)
@@ -139,6 +142,7 @@ class TiBasicDebugToolWindowContent(
             toolbar.add(statusLabel)
             toolbar.addSeparator()
             toolbar.add(stepButton)
+            toolbar.add(skipButton)
             toolbar.add(stopButton)
         }
 
@@ -148,6 +152,7 @@ class TiBasicDebugToolWindowContent(
             statusLabel.text = " "
             messageLabel.text = " "
             stepButton.isEnabled = false
+            skipButton.isEnabled = false
             stopButton.isEnabled = false
             currentSourceLineIndex = null
             listModel.clear()
@@ -185,6 +190,8 @@ class TiBasicDebugToolWindowContent(
         )
         characterSetPreviewComponent.state = TiBasicDebugCharacterSetPreviewState.fromScreenContents(session.screenContents)
         stepButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
+        skipButton.isEnabled = session.status == TiBasicDebugSessionStatus.Paused &&
+                session.currentProgramLine?.semantics is TiBasicDebugLineSemantics.Next
         stopButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         val listingRows = buildDebugListingRows(session.snapshot.sourceLines)
         if (listModel.size != listingRows.size || listingRows.indices.any { listModel.get(it) != listingRows[it] }) {

@@ -34,6 +34,28 @@ class TiBasicDebugSessionService(private val project: Project) {
         notifyListeners()
     }
 
+    internal fun skip() {
+        var session = currentSession ?: return
+        if (session.status != TiBasicDebugSessionStatus.Paused) return
+        if (session.currentProgramLine?.semantics !is TiBasicDebugLineSemantics.Next) return
+
+        var iterations = 0
+        while (iterations < SKIP_ITERATION_CAP) {
+            if (session.nextWouldContinueLoop() == false) break
+
+            val stepResult = session.stepWithEffects()
+            session = stepResult.session
+            stepResult.soundPlayback?.let { playback -> soundPlaybackHandler(project, playback) }
+
+            if (session.keyboardRequest != null || session.joystickRequest != null) break
+            if (session.status != TiBasicDebugSessionStatus.Paused) break
+
+            iterations++
+        }
+        currentSession = session
+        notifyListeners()
+    }
+
     internal fun updateKeyboardScanInput(input: String) {
         val updatedSession = currentSession?.copy(keyboardScanInput = input) ?: return
         currentSession = updatedSession
@@ -54,3 +76,5 @@ class TiBasicDebugSessionService(private val project: Project) {
 internal fun interface TiBasicDebugSessionListener : EventListener {
     fun sessionChanged(project: Project, session: TiBasicDebugSession?)
 }
+
+private const val SKIP_ITERATION_CAP = 1000
