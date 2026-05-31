@@ -475,6 +475,49 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals("C", screenText(session, 24, 3, 1))
     }
 
+    fun `test PRINT , is the same as PRINT TAB(15)`() {
+        var session = startSession("100 PRINT ,\"A\"")
+
+        session = session.step()
+
+        assertEquals('A'.code, session.screenContents.characterCodes[23][16])
+    }
+
+    fun `test PRINT TAB moves to specified column`() {
+        var session = startSession("100 PRINT TAB(10);\"A\"")
+
+        session = session.step()
+
+        // Column 10 means 10-1+3 = 12th position (index 11) in the last row
+        assertEquals('A'.code, session.screenContents.characterCodes[23][11])
+    }
+
+    fun `test PRINT TAB with value less than one treats it as one`() {
+        var session = startSession("100 PRINT TAB(-5);\"A\"")
+
+        session = session.step()
+
+        assertEquals('A'.code, session.screenContents.characterCodes[23][2])
+    }
+
+    fun `test PRINT TAB with value greater than twenty eight uses modulo`() {
+        var session = startSession("100 PRINT TAB(33);\"A\"")
+
+        session = session.step()
+
+        // 33 -> ((33-1) % 28) + 1 = 5. Index (5-1)+2 = 6 (index 6).
+        assertEquals('A'.code, session.screenContents.characterCodes[23][6])
+    }
+
+    fun `test PRINT multiple TAB calls in one line`() {
+        var session = startSession("100 PRINT TAB(5);\"A\";TAB(15);\"B\"")
+
+        session = session.step()
+
+        assertEquals('A'.code, session.screenContents.characterCodes[23][6])
+        assertEquals('B'.code, session.screenContents.characterCodes[23][16])
+    }
+
     fun `test PRINT numeric value adds TI-Basic padding spaces`() {
         var session = startSession("100 PRINT 12")
 
