@@ -770,7 +770,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
     // --- String expression ---
 
     private fun parseStringExpr(builder: PsiBuilder) {
-        parseStringOperand(builder)
+        parseStringConcatOperand(builder)
         while (true) {
             val cp = builder.mark()
             skipIntraLineWhitespace(builder)
@@ -779,11 +779,11 @@ class TiBasicParser : PsiParser, LightPsiParser {
             }
             builder.advanceLexer()
             skipIntraLineWhitespace(builder)
-            if (!isStringOperand(builder)) {
+            if (!isStringConcatOperand(builder)) {
                 cp.rollbackTo(); break
             }
             cp.drop()
-            parseStringOperand(builder)
+            parseStringConcatOperand(builder)
         }
     }
 
@@ -792,6 +792,13 @@ class TiBasicParser : PsiParser, LightPsiParser {
             STRING_VARIABLE -> parseVariableAccess(builder)
             STRING_FUNCTION_KEYWORD -> parseFunctionCall(builder)
             else -> builder.advanceLexer() // STRING_LITERAL
+        }
+    }
+
+    private fun parseStringConcatOperand(builder: PsiBuilder) {
+        when {
+            isStringOperand(builder) -> parseStringOperand(builder)
+            builder.tokenType == NUMERIC_VARIABLE -> parseVariableAccess(builder)
         }
     }
 
@@ -993,6 +1000,9 @@ class TiBasicParser : PsiParser, LightPsiParser {
         builder.tokenType == STRING_LITERAL || builder.tokenType == STRING_VARIABLE ||
                 builder.tokenType == STRING_FUNCTION_KEYWORD
 
+    private fun isStringConcatOperand(builder: PsiBuilder): Boolean =
+        isStringOperand(builder) || builder.tokenType in STRING_CONCAT_MISMATCH_OPERAND_TYPES
+
     private fun isNumericPrimaryStart(builder: PsiBuilder): Boolean =
         builder.tokenType in setOf(
             NUMERIC_LITERAL,
@@ -1021,3 +1031,7 @@ class TiBasicParser : PsiParser, LightPsiParser {
     private fun isLineEnd(builder: PsiBuilder): Boolean =
         builder.eof() || builder.tokenType == LINE_NUMBER || builder.tokenType == NO_LINE_NUMBER_TEXT
 }
+
+private val STRING_CONCAT_MISMATCH_OPERAND_TYPES = setOf(
+    NUMERIC_VARIABLE,
+)

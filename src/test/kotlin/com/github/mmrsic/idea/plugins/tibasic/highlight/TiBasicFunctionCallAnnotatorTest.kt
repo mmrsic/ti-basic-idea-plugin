@@ -359,6 +359,11 @@ class TiBasicFunctionCallAnnotatorTest : TiBasicTestBase() {
         myFixture.checkHighlighting(true, false, true)
     }
 
+    fun `test CHR$ concatenated with numeric variable highlights only mismatch operand`() {
+        configureFile("1640 s$=chr$(130)&\" X=\"&<error descr=\"String-number mismatch\">X1</error>")
+        myFixture.checkHighlighting(true, false, true)
+    }
+
     // --- SEG$ ---
 
     fun `test SEG$ with correct arguments no error`() {

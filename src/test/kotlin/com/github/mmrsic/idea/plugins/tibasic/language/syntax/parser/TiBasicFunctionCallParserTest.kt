@@ -1,6 +1,9 @@
 package com.github.mmrsic.idea.plugins.tibasic.language.syntax.parser
 
+import com.github.mmrsic.idea.plugins.tibasic.common.ext.firstChildType
+import com.github.mmrsic.idea.plugins.tibasic.common.ext.nonWhitespaceChildren
 import com.github.mmrsic.idea.plugins.tibasic.ide.language.TiBasicParserDefinition
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.TiBasicFile
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.expression.TiBasicFunctionCall
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
@@ -73,6 +76,27 @@ class TiBasicFunctionCallParserTest : ParsingTestCase("", "tibasic", TiBasicPars
             .filterIsInstance<TiBasicFunctionCall>()
         assertEquals(1, funcCall.size)
         assertEquals("CHR$", funcCall[0].functionName())
+    }
+
+    fun `test CHR$ concatenation keeps numeric mismatch operand inside expression`() {
+        val file = parseCode("1640 s$=chr$(130)&\" X=\"&X1")
+        val letStmt = file.children.filterIsInstance<TiBasicLine>()[0]
+            .children.filterIsInstance<TiBasicLetStatement>()[0]
+        val expression = letStmt.assignedExpression()
+        assertNotNull(expression)
+        val children = expression!!.node.nonWhitespaceChildren
+
+        assertEquals(
+            listOf(
+                TiBasicNodeTypes.FUNCTION_CALL,
+                TiBasicTokenTypes.CONCAT_OP,
+                TiBasicTokenTypes.STRING_LITERAL,
+                TiBasicTokenTypes.CONCAT_OP,
+                TiBasicNodeTypes.VARIABLE_ACCESS,
+            ),
+            children.map { it.elementType },
+        )
+        assertEquals(TiBasicTokenTypes.NUMERIC_VARIABLE, children.last().firstChildType)
     }
 
     fun `test EOF with numeric literal argument parses as function call`() {

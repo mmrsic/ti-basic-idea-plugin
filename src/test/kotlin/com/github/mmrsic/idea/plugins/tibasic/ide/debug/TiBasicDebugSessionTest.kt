@@ -1213,6 +1213,15 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals("${27.toChar()}110", session.stringVariables["D$"]?.text)
     }
 
+    fun `test string LET with CHR dollar concat and numeric variable reports string number mismatch`() {
+        var session = startSession("1640 s$=chr$(130)&\" X=\"&X1")
+
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.PendingStop, session.status)
+        assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.stringNumberMismatchKey), session.statusMessage)
+    }
+
     fun `test string LET supports STR dollar`() {
         var session = startSession(
             """
