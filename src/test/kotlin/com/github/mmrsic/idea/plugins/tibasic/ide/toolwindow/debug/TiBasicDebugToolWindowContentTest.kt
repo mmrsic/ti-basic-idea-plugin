@@ -4,6 +4,7 @@ import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugMetadata
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugProgramSnapshot
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionService
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugLineSemantics
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
@@ -90,6 +91,24 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
 
         assertEquals(TiBasicDebugMetadata.message(TiBasicDebugMetadata.badLineNumberKey), content.messageLabel.text)
         assertTrue(content.statusLabel.text.contains(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowStatusPendingStopKey)))
+    }
+
+    fun `test debug tool window enables skip button on GOSUB line`() {
+        val content = TiBasicDebugToolWindowContent(project)
+        Disposer.register(testRootDisposable, content)
+        val file = configureFile(
+            """
+            100 GOSUB 300
+            110 PRINT "DONE"
+            300 RETURN
+            """.trimIndent(),
+        )
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        sessionService.startSession(TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document))
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+        assertTrue(sessionService.currentSession()?.currentProgramLine?.semantics is TiBasicDebugLineSemantics.Gosub)
+        assertTrue(content.skipButton.isEnabled)
     }
 
     fun `test debug tool window shows keyboard unit and variable names for CALL KEY zero`() {

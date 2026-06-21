@@ -8,6 +8,7 @@ import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugScreenConten
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSession
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionService
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionStatus
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.canSkip
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBList
@@ -195,8 +196,7 @@ class TiBasicDebugToolWindowContent(
         )
         characterSetPreviewComponent.state = TiBasicDebugCharacterSetPreviewState.fromScreenContents(session.screenContents)
         stepButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
-        skipButton.isEnabled = session.status == TiBasicDebugSessionStatus.Paused &&
-                session.currentProgramLine?.semantics is TiBasicDebugLineSemantics.Next
+        skipButton.isEnabled = session.canSkip()
         stopButton.isEnabled = session.status != TiBasicDebugSessionStatus.Stopped
         val listingRows = buildDebugListingRows(session.snapshot.sourceLines)
         if (listModel.size != listingRows.size || listingRows.indices.any { listModel.get(it) != listingRows[it] }) {

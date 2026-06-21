@@ -36,21 +36,40 @@ class TiBasicDebugSessionService(private val project: Project) {
 
     internal fun skip() {
         var session = currentSession ?: return
-        if (session.status != TiBasicDebugSessionStatus.Paused) return
-        if (session.currentProgramLine?.semantics !is TiBasicDebugLineSemantics.Next) return
+        if (!session.canSkip()) return
 
-        var iterations = 0
-        while (iterations < SKIP_ITERATION_CAP) {
-            if (session.nextWouldContinueLoop() == false) break
+        when (session.currentProgramLine?.semantics) {
+            is TiBasicDebugLineSemantics.Next -> {
+                var iterations = 0
+                while (iterations < SKIP_ITERATION_CAP) {
+                    if (session.nextWouldContinueLoop() == false) break
 
-            val stepResult = session.stepWithEffects()
-            session = stepResult.session
-            stepResult.soundPlayback?.let { playback -> soundPlaybackHandler(project, playback) }
+                    val stepResult = session.stepWithEffects()
+                    session = stepResult.session
+                    stepResult.soundPlayback?.let { playback -> soundPlaybackHandler(project, playback) }
 
-            if (session.keyboardRequest != null || session.joystickRequest != null || session.inputRequest != null) break
-            if (session.status != TiBasicDebugSessionStatus.Paused) break
+                    if (session.hasBlockingDebugRequest() || session.status != TiBasicDebugSessionStatus.Paused) break
 
-            iterations++
+                    iterations++
+                }
+            }
+
+            is TiBasicDebugLineSemantics.Gosub -> {
+                val originalDepth = session.gosubOriginLineNumbers.size
+                var iterations = 0
+                while (iterations < SKIP_ITERATION_CAP) {
+                    val stepResult = session.stepWithEffects()
+                    session = stepResult.session
+                    stepResult.soundPlayback?.let { playback -> soundPlaybackHandler(project, playback) }
+
+                    if (session.hasBlockingDebugRequest() || session.status != TiBasicDebugSessionStatus.Paused) break
+                    if (session.gosubOriginLineNumbers.size <= originalDepth) break
+
+                    iterations++
+                }
+            }
+
+            else -> return
         }
         currentSession = session
         notifyListeners()
@@ -91,3 +110,11 @@ internal fun interface TiBasicDebugSessionListener : EventListener {
 }
 
 private const val SKIP_ITERATION_CAP = 1000
+
+internal fun TiBasicDebugSession.canSkip(): Boolean =
+    status == TiBasicDebugSessionStatus.Paused &&
+            (currentProgramLine?.semantics is TiBasicDebugLineSemantics.Next ||
+                    currentProgramLine?.semantics is TiBasicDebugLineSemantics.Gosub)
+
+private fun TiBasicDebugSession.hasBlockingDebugRequest(): Boolean =
+    keyboardRequest != null || joystickRequest != null || inputRequest != null
