@@ -761,6 +761,23 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         assertEquals(300, session.currentProgramLine?.lineNumber)
     }
 
+    fun `test IF with sum of parenthesized comparisons jumps to THEN line`() {
+        var session = startSession(
+            """
+            100 LET K=74
+            110 IF (K=74)+(K=106) THEN 300 ELSE 200
+            200 PRINT "NO"
+            300 PRINT "YES"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals(TiBasicDebugSessionStatus.Paused, session.status)
+        assertEquals(300, session.currentProgramLine?.lineNumber)
+    }
+
     fun `test IF current arguments display shows evaluated numeric subexpressions in evaluation order`() {
         var session = startSession(
             """
@@ -776,6 +793,30 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
             listOf(
                 "2 - 1 -> 1",
                 "1 -> true",
+            ),
+            session.currentArgumentDisplays,
+        )
+    }
+
+    fun `test IF current arguments display shows parenthesized comparison sum evaluation`() {
+        var session = startSession(
+            """
+            100 LET K=74
+            110 IF (K=74)+(K=106) THEN 300
+            300 PRINT "YES"
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals(
+            listOf(
+                "74 = 74 -> true",
+                "true -> -1",
+                "74 = 106 -> false",
+                "false -> 0",
+                "-1 + 0 -> -1",
+                "-1 -> true",
             ),
             session.currentArgumentDisplays,
         )

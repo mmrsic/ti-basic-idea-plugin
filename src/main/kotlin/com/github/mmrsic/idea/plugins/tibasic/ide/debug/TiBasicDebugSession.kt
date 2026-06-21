@@ -482,47 +482,50 @@ internal data class TiBasicDebugProgramSnapshot(
         private fun createCondition(expressionNode: ASTNode): TiBasicDebugParseResult<TiBasicDebugCondition> {
             val children = expressionNode.nonWhitespaceChildren
             if (children.isEmpty()) return TiBasicDebugParseResult.Invalid
-            firstTopLevelBinaryOperatorIndex(children, RELATIONAL_OPERATOR_TYPES)?.let { operatorIndex ->
-                val operatorType = children[operatorIndex].elementType
-                val leftNodes = children.subList(0, operatorIndex)
-                val rightNodes = children.subList(operatorIndex + 1, children.size)
-                val leftNumeric = createNumericAssignmentFromNodes(leftNodes)
-                val rightNumeric = createNumericAssignmentFromNodes(rightNodes)
-                if (leftNumeric != null && rightNumeric != null) {
-                    return TiBasicDebugParseResult.Valid(
-                        TiBasicDebugCondition.NumericComparison(
-                            left = leftNumeric,
-                            operatorType = operatorType,
-                            right = rightNumeric,
-                        ),
-                    )
-                }
-                val leftString = createStringAssignmentFromNodes(leftNodes)
-                val rightString = createStringAssignmentFromNodes(rightNodes)
-                if (leftString != null && rightString != null) {
-                    return TiBasicDebugParseResult.Valid(
-                        TiBasicDebugCondition.StringComparison(
-                            left = leftString,
-                            operatorType = operatorType,
-                            right = rightString,
-                        ),
-                    )
-                }
-                return if (
-                    hasNumericContextMismatch(leftNodes) ||
-                    hasNumericContextMismatch(rightNodes) ||
-                    hasStringContextMismatch(leftNodes) ||
-                    hasStringContextMismatch(rightNodes)
-                ) {
-                    TiBasicDebugParseResult.StringNumberMismatch
-                } else {
-                    TiBasicDebugParseResult.Invalid
-                }
-            }
+            createComparisonCondition(children)?.let { return it }
             return when (val result = createRequiredNumericAssignmentFromNodes(children)) {
                 is TiBasicDebugParseResult.Valid -> TiBasicDebugParseResult.Valid(TiBasicDebugCondition.NumericValue(result.value))
                 TiBasicDebugParseResult.StringNumberMismatch -> TiBasicDebugParseResult.StringNumberMismatch
                 TiBasicDebugParseResult.Invalid -> TiBasicDebugParseResult.Invalid
+            }
+        }
+
+        private fun createComparisonCondition(nodes: List<ASTNode>): TiBasicDebugParseResult<TiBasicDebugCondition>? {
+            val operatorIndex = firstTopLevelBinaryOperatorIndex(nodes, RELATIONAL_OPERATOR_TYPES) ?: return null
+            val operatorType = nodes[operatorIndex].elementType
+            val leftNodes = nodes.subList(0, operatorIndex)
+            val rightNodes = nodes.subList(operatorIndex + 1, nodes.size)
+            val leftNumeric = createNumericAssignmentFromNodes(leftNodes)
+            val rightNumeric = createNumericAssignmentFromNodes(rightNodes)
+            if (leftNumeric != null && rightNumeric != null) {
+                return TiBasicDebugParseResult.Valid(
+                    TiBasicDebugCondition.NumericComparison(
+                        left = leftNumeric,
+                        operatorType = operatorType,
+                        right = rightNumeric,
+                    ),
+                )
+            }
+            val leftString = createStringAssignmentFromNodes(leftNodes)
+            val rightString = createStringAssignmentFromNodes(rightNodes)
+            if (leftString != null && rightString != null) {
+                return TiBasicDebugParseResult.Valid(
+                    TiBasicDebugCondition.StringComparison(
+                        left = leftString,
+                        operatorType = operatorType,
+                        right = rightString,
+                    ),
+                )
+            }
+            return if (
+                hasNumericContextMismatch(leftNodes) ||
+                hasNumericContextMismatch(rightNodes) ||
+                hasStringContextMismatch(leftNodes) ||
+                hasStringContextMismatch(rightNodes)
+            ) {
+                TiBasicDebugParseResult.StringNumberMismatch
+            } else {
+                TiBasicDebugParseResult.Invalid
             }
         }
 
@@ -675,6 +678,10 @@ internal data class TiBasicDebugProgramSnapshot(
                 val left = createNumericAssignmentFromNodes(nodes.subList(0, operatorIndex)) ?: return null
                 val right = createNumericAssignmentFromNodes(nodes.subList(operatorIndex + 1, nodes.size)) ?: return null
                 return TiBasicDebugNumericAssignment.Binary(left, nodes[operatorIndex].elementType, right)
+            }
+            val comparisonCondition = (createComparisonCondition(nodes) as? TiBasicDebugParseResult.Valid)?.value
+            if (comparisonCondition != null) {
+                return TiBasicDebugNumericAssignment.ConditionValue(comparisonCondition)
             }
             return createSignedNumericAssignment(nodes)
         }
@@ -1398,6 +1405,18 @@ internal data class TiBasicDebugSession(
                                 expressionDisplay = "${leftTrace.valueDisplay} ${operatorDisplay(assignment.operatorType)} ${rightTrace.valueDisplay}",
                                 resultDisplay = evaluation.value.usualDisplay,
                             ),
+                    valueDisplay = evaluation.value.usualDisplay,
+                    evaluation = evaluation,
+                )
+            }
+
+            is TiBasicDebugNumericAssignment.ConditionValue -> {
+                val conditionTrace = conditionTrace(assignment.condition) ?: return null
+                TiBasicDebugNumericTrace(
+                    lines = conditionTrace.lines + tracedEvaluationLine(
+                        expressionDisplay = conditionResultDisplay(evaluation.value.value.compareTo(BigDecimal.ZERO) != 0),
+                        resultDisplay = evaluation.value.usualDisplay,
+                    ),
                     valueDisplay = evaluation.value.usualDisplay,
                     evaluation = evaluation,
                 )
@@ -2411,6 +2430,18 @@ internal data class TiBasicDebugSession(
                     .mergeWith(left, right)
             }
 
+            is TiBasicDebugNumericAssignment.ConditionValue ->
+                evaluateCondition(assignment.condition)
+                    ?.let { conditionEvaluation ->
+                        TiBasicDebugNumericEvaluation(
+                            value = TiBasicDebugNumericValue.fromValue(conditionResultNumericValue(conditionEvaluation.value)),
+                            initializedNumericVariables = conditionEvaluation.initializedNumericVariables,
+                            initializedStringVariables = conditionEvaluation.initializedStringVariables,
+                            warningMessage = conditionEvaluation.warningMessage,
+                            resultingRandomSeed = conditionEvaluation.resultingRandomSeed,
+                        )
+                    }
+
             is TiBasicDebugNumericAssignment.StringLength ->
                 evaluateStringAssignment(assignment.source)
                     ?.let { stringEvaluation ->
@@ -2742,6 +2773,7 @@ internal sealed interface TiBasicDebugNumericAssignment {
         val operatorType: IElementType,
         val right: TiBasicDebugNumericAssignment,
     ) : TiBasicDebugNumericAssignment
+    data class ConditionValue(val condition: TiBasicDebugCondition) : TiBasicDebugNumericAssignment
 
     data class StringLength(val source: TiBasicDebugStringAssignment) : TiBasicDebugNumericAssignment
     data class AsciiCode(val source: TiBasicDebugStringAssignment) : TiBasicDebugNumericAssignment
@@ -2939,6 +2971,9 @@ private fun tracedEvaluationLine(
 
 private fun conditionResultDisplay(conditionResult: Boolean): String =
     if (conditionResult) TRUE_DISPLAY else FALSE_DISPLAY
+
+private fun conditionResultNumericValue(conditionResult: Boolean): BigDecimal =
+    if (conditionResult) TI_BASIC_TRUE_VALUE else BigDecimal.ZERO
 
 private fun stringLiteralDisplay(text: String): String =
     "\"${text.replace("\"", "\"\"")}\""
@@ -3153,6 +3188,7 @@ private const val INVALID_COLOR_CODE_DISPLAY = "<invalid color code>"
 private const val TRACE_DISPLAY_SEPARATOR = " -> "
 private const val TRUE_DISPLAY = "true"
 private const val FALSE_DISPLAY = "false"
+private val TI_BASIC_TRUE_VALUE = BigDecimal.ONE.negate()
 private const val POS_ARG_COUNT = 3
 private const val POS_SOURCE_ARG_INDEX = 0
 private const val POS_TARGET_ARG_INDEX = 1
