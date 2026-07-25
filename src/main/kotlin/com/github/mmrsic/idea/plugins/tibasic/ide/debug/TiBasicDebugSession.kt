@@ -390,7 +390,7 @@ internal data class TiBasicDebugProgramSnapshot(
                 return TiBasicDebugLineSemantics.IncorrectStatement
             }
             val targetVariable = statement.targetVariableAccess() ?: return TiBasicDebugLineSemantics.IncorrectStatement
-            if (targetVariable.hasSubscriptParens()) return TiBasicDebugLineSemantics.Sequential
+            if (targetVariable.hasSubscriptParens()) return createArrayLetSemantics(statement, targetVariable)
             val targetName = targetVariable.name ?: return TiBasicDebugLineSemantics.IncorrectStatement
             val expression = statement.assignedExpression() ?: return TiBasicDebugLineSemantics.IncorrectStatement
             return if (targetName.endsWith(STRING_VARIABLE_SUFFIX)) {
@@ -409,6 +409,37 @@ internal data class TiBasicDebugProgramSnapshot(
                 TiBasicDebugLineSemantics.LetNumeric(targetName, assignment)
             }
         }
+
+        private fun createArrayLetSemantics(
+            statement: TiBasicLetStatement,
+            targetVariable: TiBasicVariableAccess,
+        ): TiBasicDebugLineSemantics {
+            val arrayName = targetVariable.name ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val expression = statement.assignedExpression() ?: return TiBasicDebugLineSemantics.IncorrectStatement
+            val subscriptAssignments = createSubscriptAssignments(targetVariable)
+                ?: return TiBasicDebugLineSemantics.Sequential
+            return if (arrayName.endsWith(STRING_VARIABLE_SUFFIX)) {
+                val assignment = when (val result = createRequiredStringAssignment(expression.node)) {
+                    is TiBasicDebugParseResult.Valid -> result.value
+                    TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                    TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.Sequential
+                }
+                TiBasicDebugLineSemantics.LetStringArray(arrayName, subscriptAssignments, assignment)
+            } else {
+                val assignment = when (val result = createRequiredNumericAssignment(expression.node)) {
+                    is TiBasicDebugParseResult.Valid -> result.value
+                    TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                    TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+                }
+                TiBasicDebugLineSemantics.LetNumericArray(arrayName, subscriptAssignments, assignment)
+            }
+        }
+
+        private fun createSubscriptAssignments(variableAccess: TiBasicVariableAccess): List<TiBasicDebugNumericAssignment>? =
+            variableAccess.subscriptExpressions()
+                .map { subscriptExpression ->
+                    createNumericAssignment(subscriptExpression.node) ?: return null
+                }
 
         private fun createIfSemantics(statement: TiBasicIfStatement): TiBasicDebugLineSemantics {
             val conditionExpression = statement.conditionExpression() ?: return TiBasicDebugLineSemantics.IncorrectStatement
@@ -587,11 +618,16 @@ internal data class TiBasicDebugProgramSnapshot(
 
                 TiBasicNodeTypes.VARIABLE_ACCESS ->
                     (node.psi as? TiBasicVariableAccess)
-                        ?.takeIf { variableAccess ->
-                            variableAccess.name?.endsWith(STRING_VARIABLE_SUFFIX) == true && !variableAccess.hasSubscriptParens()
+                        ?.takeIf { variableAccess -> variableAccess.name?.endsWith(STRING_VARIABLE_SUFFIX) == true }
+                        ?.let { variableAccess ->
+                            val variableName = variableAccess.name ?: return null
+                            if (variableAccess.hasSubscriptParens()) {
+                                val subscriptAssignments = createSubscriptAssignments(variableAccess) ?: return null
+                                TiBasicDebugStringAssignment.StringArrayElementReference(variableName, subscriptAssignments)
+                            } else {
+                                TiBasicDebugStringAssignment.StringVariableReference(variableName)
+                            }
                         }
-                        ?.name
-                        ?.let(TiBasicDebugStringAssignment::StringVariableReference)
 
                 TiBasicNodeTypes.FUNCTION_CALL -> createStringFunctionAssignment(node)
                 TiBasicNodeTypes.EXPRESSION -> createStringAssignmentFromExpression(node)
@@ -710,11 +746,16 @@ internal data class TiBasicDebugProgramSnapshot(
 
                     TiBasicNodeTypes.VARIABLE_ACCESS ->
                         (node.psi as? TiBasicVariableAccess)
-                            ?.takeIf { variableAccess ->
-                                variableAccess.name?.endsWith(STRING_VARIABLE_SUFFIX) == false && !variableAccess.hasSubscriptParens()
+                            ?.takeIf { variableAccess -> variableAccess.name?.endsWith(STRING_VARIABLE_SUFFIX) == false }
+                            ?.let { variableAccess ->
+                                val variableName = variableAccess.name ?: return null
+                                if (variableAccess.hasSubscriptParens()) {
+                                    val subscriptAssignments = createSubscriptAssignments(variableAccess) ?: return null
+                                    TiBasicDebugNumericAssignment.NumericArrayElementReference(variableName, subscriptAssignments)
+                                } else {
+                                    TiBasicDebugNumericAssignment.VariableReference(variableName)
+                                }
                             }
-                            ?.name
-                            ?.let(TiBasicDebugNumericAssignment::VariableReference)
 
                     TiBasicNodeTypes.FUNCTION_CALL -> createNumericFunctionAssignment(node.psi as? TiBasicFunctionCall)
                     else -> null
@@ -843,6 +884,8 @@ internal data class TiBasicDebugSession(
     val gosubOriginLineNumbers: List<Int> = emptyList(),
     val numericVariables: Map<String, TiBasicDebugNumericValue> = emptyMap(),
     val stringVariables: Map<String, TiBasicDebugStringValue> = emptyMap(),
+    val numericArrayVariables: Map<String, Map<List<Int>, TiBasicDebugNumericValue>> = emptyMap(),
+    val stringArrayVariables: Map<String, Map<List<Int>, TiBasicDebugStringValue>> = emptyMap(),
     val statusMessage: String? = null,
     val keyboardScanInput: String = EMPTY_STRING,
     val lastKeyboardMode: Int? = null,
@@ -1308,6 +1351,7 @@ internal data class TiBasicDebugSession(
         return when (assignment) {
             is TiBasicDebugStringAssignment.StringLiteral,
             is TiBasicDebugStringAssignment.StringVariableReference,
+            is TiBasicDebugStringAssignment.StringArrayElementReference,
                 -> TiBasicDebugStringTrace(
                 lines = emptyList(),
                 valueDisplay = stringLiteralDisplay(evaluation.value.text),
@@ -1377,6 +1421,7 @@ internal data class TiBasicDebugSession(
         return when (assignment) {
             is TiBasicDebugNumericAssignment.Literal,
             is TiBasicDebugNumericAssignment.VariableReference,
+            is TiBasicDebugNumericAssignment.NumericArrayElementReference,
                 -> TiBasicDebugNumericTrace(
                 lines = emptyList(),
                 valueDisplay = evaluation.value.usualDisplay,
@@ -1570,6 +1615,20 @@ internal data class TiBasicDebugSession(
                 )
             )
 
+            is TiBasicDebugLineSemantics.LetNumericArray -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyNumericArrayLet(
+                    programLine.lineNumber,
+                    semantics,
+                )
+            )
+
+            is TiBasicDebugLineSemantics.LetStringArray -> TiBasicDebugStepResult(
+                sessionWithInitializedNumericVariables.applyStringArrayLet(
+                    programLine.lineNumber,
+                    semantics,
+                )
+            )
+
             is TiBasicDebugLineSemantics.Randomize -> TiBasicDebugStepResult(
                 sessionWithInitializedNumericVariables.applyRandomize(
                     programLine.lineNumber,
@@ -1709,6 +1768,52 @@ internal data class TiBasicDebugSession(
         val sessionAfterEvaluation = mergeEvaluations(evaluation)
         return sessionAfterEvaluation.continueAfter(currentLineNumber, evaluation.warningMessage).copy(
             numericVariables = sessionAfterEvaluation.numericVariables + (semantics.targetVariableName to evaluation.value),
+        )
+    }
+
+    private fun applyNumericArrayLet(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.LetNumericArray,
+    ): TiBasicDebugSession {
+        val subscriptEvaluation = evaluateArraySubscripts(semantics.subscriptAssignments) ?: return continueAfter(currentLineNumber)
+        val sessionAfterSubscripts = copy(
+            numericVariables = numericVariables + subscriptEvaluation.initializedNumericVariables,
+            stringVariables = stringVariables + subscriptEvaluation.initializedStringVariables,
+            statusMessage = subscriptEvaluation.warningMessage ?: statusMessage,
+            randomSeed = subscriptEvaluation.resultingRandomSeed,
+        )
+        val valueEvaluation = sessionAfterSubscripts.evaluateNumericAssignment(semantics.valueAssignment) ?: return continueAfter(currentLineNumber)
+        val sessionAfterValue = sessionAfterSubscripts.mergeEvaluations(valueEvaluation)
+        val updatedElements = (sessionAfterValue.numericArrayVariables[semantics.arrayName] ?: emptyMap()) +
+                (subscriptEvaluation.subscripts to valueEvaluation.value)
+        return sessionAfterValue.continueAfter(
+            currentLineNumber,
+            mergeWarningMessages(subscriptEvaluation.warningMessage, valueEvaluation.warningMessage),
+        ).copy(
+            numericArrayVariables = sessionAfterValue.numericArrayVariables + (semantics.arrayName to updatedElements),
+        )
+    }
+
+    private fun applyStringArrayLet(
+        currentLineNumber: Int,
+        semantics: TiBasicDebugLineSemantics.LetStringArray,
+    ): TiBasicDebugSession {
+        val subscriptEvaluation = evaluateArraySubscripts(semantics.subscriptAssignments) ?: return continueAfter(currentLineNumber)
+        val sessionAfterSubscripts = copy(
+            numericVariables = numericVariables + subscriptEvaluation.initializedNumericVariables,
+            stringVariables = stringVariables + subscriptEvaluation.initializedStringVariables,
+            statusMessage = subscriptEvaluation.warningMessage ?: statusMessage,
+            randomSeed = subscriptEvaluation.resultingRandomSeed,
+        )
+        val valueEvaluation = sessionAfterSubscripts.evaluateStringAssignment(semantics.valueAssignment) ?: return continueAfter(currentLineNumber)
+        val sessionAfterValue = sessionAfterSubscripts.mergeEvaluations(valueEvaluation)
+        val updatedElements = (sessionAfterValue.stringArrayVariables[semantics.arrayName] ?: emptyMap()) +
+                (subscriptEvaluation.subscripts to valueEvaluation.value)
+        return sessionAfterValue.continueAfter(
+            currentLineNumber,
+            mergeWarningMessages(subscriptEvaluation.warningMessage, valueEvaluation.warningMessage),
+        ).copy(
+            stringArrayVariables = sessionAfterValue.stringArrayVariables + (semantics.arrayName to updatedElements),
         )
     }
 
@@ -2314,6 +2419,32 @@ internal data class TiBasicDebugSession(
     ): TiBasicDebugValidatedInt =
         evaluateValidatedIntArgument(argumentName, assignment, allowedValues)
 
+    private fun evaluateArraySubscripts(
+        subscriptAssignments: List<TiBasicDebugNumericAssignment>,
+    ): TiBasicDebugSubscriptEvaluation? {
+        val subscripts = mutableListOf<Int>()
+        var initializedNumericVariables = emptyMap<String, TiBasicDebugNumericValue>()
+        var initializedStringVariables = emptyMap<String, TiBasicDebugStringValue>()
+        var warningMessage: String? = null
+        var currentRandomSeed = randomSeed
+        subscriptAssignments.forEach { subscriptAssignment ->
+            val evaluation = withRandomSeed(currentRandomSeed).evaluateNumericAssignment(subscriptAssignment) ?: return null
+            val roundedSubscript = evaluation.value.value.roundToWholeNumberIntOrNull() ?: return null
+            subscripts += roundedSubscript
+            initializedNumericVariables += evaluation.initializedNumericVariables
+            initializedStringVariables += evaluation.initializedStringVariables
+            warningMessage = mergeWarningMessages(warningMessage, evaluation.warningMessage)
+            currentRandomSeed = evaluation.resultingRandomSeed
+        }
+        return TiBasicDebugSubscriptEvaluation(
+            subscripts = subscripts,
+            initializedNumericVariables = initializedNumericVariables,
+            initializedStringVariables = initializedStringVariables,
+            warningMessage = warningMessage,
+            resultingRandomSeed = currentRandomSeed,
+        )
+    }
+
     private fun evaluateStringAssignment(assignment: TiBasicDebugStringAssignment): TiBasicDebugStringEvaluation? =
         (when (assignment) {
             is TiBasicDebugStringAssignment.StringLiteral -> TiBasicDebugStringEvaluation.fromLiteral(assignment.text, randomSeed)
@@ -2329,6 +2460,20 @@ internal data class TiBasicDebugSession(
                         resultingRandomSeed = randomSeed,
                     )
                 }
+            }
+
+            is TiBasicDebugStringAssignment.StringArrayElementReference -> {
+                val subscriptEvaluation = evaluateArraySubscripts(assignment.subscriptAssignments) ?: return null
+                val existingValue = stringArrayVariables[assignment.arrayName]?.get(subscriptEvaluation.subscripts)
+                    ?: TiBasicDebugStringValue.fromText(EMPTY_STRING)
+                TiBasicDebugStringEvaluation.fromExistingValue(
+                    existingValue,
+                    subscriptEvaluation.resultingRandomSeed,
+                ).copy(
+                    initializedNumericVariables = subscriptEvaluation.initializedNumericVariables,
+                    initializedStringVariables = subscriptEvaluation.initializedStringVariables,
+                    warningMessage = subscriptEvaluation.warningMessage,
+                )
             }
 
             is TiBasicDebugStringAssignment.CharacterCode ->
@@ -2391,6 +2536,19 @@ internal data class TiBasicDebugSession(
                         resultingRandomSeed = randomSeed,
                     )
                 }
+            }
+
+            is TiBasicDebugNumericAssignment.NumericArrayElementReference -> {
+                val subscriptEvaluation = evaluateArraySubscripts(assignment.subscriptAssignments) ?: return null
+                val existingValue = numericArrayVariables[assignment.arrayName]?.get(subscriptEvaluation.subscripts)
+                    ?: TiBasicDebugNumericValue.fromValue(BigDecimal.ZERO)
+                TiBasicDebugNumericEvaluation(
+                    value = existingValue,
+                    warningMessage = subscriptEvaluation.warningMessage,
+                    initializedNumericVariables = subscriptEvaluation.initializedNumericVariables,
+                    initializedStringVariables = subscriptEvaluation.initializedStringVariables,
+                    resultingRandomSeed = subscriptEvaluation.resultingRandomSeed,
+                )
             }
 
             is TiBasicDebugNumericAssignment.Unary ->
@@ -2592,6 +2750,18 @@ internal sealed interface TiBasicDebugLineSemantics {
         val assignment: TiBasicDebugNumericAssignment,
     ) : TiBasicDebugLineSemantics
 
+    data class LetNumericArray(
+        val arrayName: String,
+        val subscriptAssignments: List<TiBasicDebugNumericAssignment>,
+        val valueAssignment: TiBasicDebugNumericAssignment,
+    ) : TiBasicDebugLineSemantics
+
+    data class LetStringArray(
+        val arrayName: String,
+        val subscriptAssignments: List<TiBasicDebugNumericAssignment>,
+        val valueAssignment: TiBasicDebugStringAssignment,
+    ) : TiBasicDebugLineSemantics
+
     data class Randomize(
         val seedAssignment: TiBasicDebugNumericAssignment?,
     ) : TiBasicDebugLineSemantics
@@ -2750,6 +2920,11 @@ internal sealed interface TiBasicJumpTarget {
 internal sealed interface TiBasicDebugStringAssignment {
     data class StringLiteral(val text: String) : TiBasicDebugStringAssignment
     data class StringVariableReference(val variableName: String) : TiBasicDebugStringAssignment
+    data class StringArrayElementReference(
+        val arrayName: String,
+        val subscriptAssignments: List<TiBasicDebugNumericAssignment>,
+    ) : TiBasicDebugStringAssignment
+
     data class CharacterCode(val code: TiBasicDebugNumericAssignment) : TiBasicDebugStringAssignment
     data class StringRepresentation(val value: TiBasicDebugNumericAssignment) : TiBasicDebugStringAssignment
     data class Segment(
@@ -2767,6 +2942,11 @@ internal sealed interface TiBasicDebugStringAssignment {
 internal sealed interface TiBasicDebugNumericAssignment {
     data class Literal(val value: BigDecimal) : TiBasicDebugNumericAssignment
     data class VariableReference(val variableName: String) : TiBasicDebugNumericAssignment
+    data class NumericArrayElementReference(
+        val arrayName: String,
+        val subscriptAssignments: List<TiBasicDebugNumericAssignment>,
+    ) : TiBasicDebugNumericAssignment
+
     data class Unary(val operatorType: IElementType, val operand: TiBasicDebugNumericAssignment) : TiBasicDebugNumericAssignment
     data class Binary(
         val left: TiBasicDebugNumericAssignment,
@@ -2872,6 +3052,14 @@ internal data class TiBasicDebugNumericEvaluation(
     val warningMessage: String? = null,
     val initializedNumericVariables: Map<String, TiBasicDebugNumericValue> = emptyMap(),
     val initializedStringVariables: Map<String, TiBasicDebugStringValue> = emptyMap(),
+    val resultingRandomSeed: Int = DEFAULT_RANDOM_SEED,
+)
+
+internal data class TiBasicDebugSubscriptEvaluation(
+    val subscripts: List<Int>,
+    val initializedNumericVariables: Map<String, TiBasicDebugNumericValue> = emptyMap(),
+    val initializedStringVariables: Map<String, TiBasicDebugStringValue> = emptyMap(),
+    val warningMessage: String? = null,
     val resultingRandomSeed: Int = DEFAULT_RANDOM_SEED,
 )
 

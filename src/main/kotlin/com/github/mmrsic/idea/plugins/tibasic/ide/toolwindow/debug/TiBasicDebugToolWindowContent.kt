@@ -74,6 +74,8 @@ class TiBasicDebugToolWindowContent(
     internal val numericVariablesList = JBList(numericVariablesModel)
     internal val stringVariablesModel = DefaultListModel<String>()
     internal val stringVariablesList = JBList(stringVariablesModel)
+    internal val arrayVariablesModel = DefaultListModel<String>()
+    internal val arrayVariablesList = JBList(arrayVariablesModel)
 
     private val layout = CardLayout()
     private val centerPanel = JPanel(layout)
@@ -108,6 +110,7 @@ class TiBasicDebugToolWindowContent(
         listing.font = Font(Font.MONOSPACED, Font.PLAIN, listing.font.size)
         numericVariablesList.font = Font(Font.MONOSPACED, Font.PLAIN, numericVariablesList.font.size)
         stringVariablesList.font = Font(Font.MONOSPACED, Font.PLAIN, stringVariablesList.font.size)
+        arrayVariablesList.font = Font(Font.MONOSPACED, Font.PLAIN, arrayVariablesList.font.size)
         listing.cellRenderer = TiBasicDebugListingRenderer { currentSourceLineIndex }
         listingScrollPane.viewport.addComponentListener(object : ComponentAdapter() {
             override fun componentResized(event: ComponentEvent?) {
@@ -166,6 +169,8 @@ class TiBasicDebugToolWindowContent(
             numericVariablesModel.addElement(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowNoNumbersKey))
             stringVariablesModel.clear()
             stringVariablesModel.addElement(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowNoStringsKey))
+            arrayVariablesModel.clear()
+            arrayVariablesModel.addElement(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowNoArraysKey))
             keyboardPanel.isVisible = false
             keyboardUnitLabel.text = " "
             keyboardInputLabel.text = " "
@@ -205,6 +210,7 @@ class TiBasicDebugToolWindowContent(
         }
         updateNumericVariables(session)
         updateStringVariables(session)
+        updateArrayVariables(session)
         updateKeyboardRequest(session)
         updateJoystickRequest(session)
         updateInputRequest(session)
@@ -226,8 +232,14 @@ class TiBasicDebugToolWindowContent(
     }
 
     private fun createVariablesPanel(): JComponent =
-        JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createNumericVariablesPanel(), createStringVariablesPanel()).also { splitPane ->
-            splitPane.resizeWeight = VARIABLES_PANEL_WEIGHT
+        JSplitPane(
+            JSplitPane.VERTICAL_SPLIT,
+            JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createNumericVariablesPanel(), createStringVariablesPanel()).also { splitPane ->
+                splitPane.resizeWeight = VARIABLES_PANEL_WEIGHT
+            },
+            createArrayVariablesPanel(),
+        ).also { splitPane ->
+            splitPane.resizeWeight = SCALAR_VARIABLES_PANEL_WEIGHT
         }
 
     private fun createMainContentPanel(): JComponent =
@@ -284,6 +296,12 @@ class TiBasicDebugToolWindowContent(
         JPanel(BorderLayout()).also { panel ->
             panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowStringsTitleKey))
             panel.add(JBScrollPane(stringVariablesList), BorderLayout.CENTER)
+        }
+
+    private fun createArrayVariablesPanel(): JComponent =
+        JPanel(BorderLayout()).also { panel ->
+            panel.border = TitledBorder(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowArraysTitleKey))
+            panel.add(JBScrollPane(arrayVariablesList), BorderLayout.CENTER)
         }
 
     private fun createArgumentsPanel(): JComponent =
@@ -373,6 +391,33 @@ class TiBasicDebugToolWindowContent(
         if (numericVariablesModel.size != entries.size || entries.indices.any { numericVariablesModel.get(it) != entries[it] }) {
             numericVariablesModel.clear()
             entries.forEach(numericVariablesModel::addElement)
+        }
+    }
+
+    private fun updateArrayVariables(session: TiBasicDebugSession) {
+        val entries = buildList {
+            session.numericArrayVariables.entries
+                .sortedBy(Map.Entry<String, *>::key)
+                .forEach { (name, elements) ->
+                    elements.entries
+                        .sortedWith(compareBy { entry -> entry.key.joinToString(",") })
+                        .forEach { (subscripts, value) ->
+                            add("$name(${subscripts.joinToString(",")}) = ${value.internalDisplay} | ${value.usualDisplay}")
+                        }
+                }
+            session.stringArrayVariables.entries
+                .sortedBy(Map.Entry<String, *>::key)
+                .forEach { (name, elements) ->
+                    elements.entries
+                        .sortedWith(compareBy { entry -> entry.key.joinToString(",") })
+                        .forEach { (subscripts, value) ->
+                            add("$name(${subscripts.joinToString(",")}) = ${value.internalDisplay}")
+                        }
+                }
+        }.ifEmpty { listOf(TiBasicDebugMetadata.message(TiBasicDebugMetadata.toolWindowNoArraysKey)) }
+        if (arrayVariablesModel.size != entries.size || entries.indices.any { arrayVariablesModel.get(it) != entries[it] }) {
+            arrayVariablesModel.clear()
+            entries.forEach(arrayVariablesModel::addElement)
         }
     }
 
@@ -520,6 +565,7 @@ private const val LIST_CARD = "list"
 private const val MAIN_CONTENT_PANEL_WEIGHT = 0.55
 private const val SCREEN_CONTENT_GAP = 8
 private const val SCREEN_PANEL_WEIGHT = 0.42
+private const val SCALAR_VARIABLES_PANEL_WEIGHT = 0.6
 private const val VARIABLES_PANEL_WEIGHT = 0.5
 private const val KEYBOARD_PANEL_ROW_COUNT = 2
 private const val KEYBOARD_PANEL_ROW_GAP = 4

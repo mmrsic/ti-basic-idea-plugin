@@ -33,6 +33,8 @@ internal object TiBasicDebugMetadata {
     const val toolWindowNoNumbersKey = "debug.tool.window.numbers.empty"
     const val toolWindowStringsTitleKey = "debug.tool.window.strings.title"
     const val toolWindowNoStringsKey = "debug.tool.window.strings.empty"
+    const val toolWindowArraysTitleKey = "debug.tool.window.arrays.title"
+    const val toolWindowNoArraysKey = "debug.tool.window.arrays.empty"
     const val toolWindowStatusPausedKey = "debug.tool.window.status.paused"
     const val toolWindowStatusPendingStopKey = "debug.tool.window.status.pending.stop"
     const val toolWindowStatusStoppedKey = "debug.tool.window.status.stopped"

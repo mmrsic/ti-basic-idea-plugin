@@ -1719,6 +1719,119 @@ class TiBasicDebugSessionTest : TiBasicTestBase() {
         return snapshot.initialSession()
     }
 
+    fun `test numeric array LET stores element at subscript`() {
+        var session = startSession(
+            """
+            100 LET A(1)=42
+            110 PRINT A(1)
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals("42", session.numericArrayVariables["A"]?.get(listOf(1))?.usualDisplay)
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test numeric array LET with variable subscript`() {
+        var session = startSession(
+            """
+            100 LET I=2
+            110 LET A(I)=5
+            120 PRINT A(2)
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals("5", session.numericArrayVariables["A"]?.get(listOf(2))?.usualDisplay)
+        assertEquals(120, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test string array LET stores element at subscript`() {
+        var session = startSession(
+            """
+            100 LET B$(3)="HI"
+            110 PRINT B$(3)
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals("HI", session.stringArrayVariables["B$"]?.get(listOf(3))?.text)
+        assertEquals("02 H I", session.stringArrayVariables["B$"]?.get(listOf(3))?.internalDisplay)
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test numeric array LET updates same element on reassignment`() {
+        var session = startSession(
+            """
+            100 LET A(1)=10
+            110 LET A(1)=20
+            120 PRINT A(1)
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+
+        assertEquals("20", session.numericArrayVariables["A"]?.get(listOf(1))?.usualDisplay)
+        assertEquals(1, session.numericArrayVariables["A"]?.size)
+        assertEquals(120, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test numeric array LET with two-dimensional subscript`() {
+        var session = startSession(
+            """
+            100 LET A(2,3)=7
+            110 PRINT A(2,3)
+            """.trimIndent(),
+        )
+
+        session = session.step()
+
+        assertEquals("7", session.numericArrayVariables["A"]?.get(listOf(2, 3))?.usualDisplay)
+        assertEquals(110, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test PRINT evaluates string array element reference`() {
+        var session = startSession(
+            """
+            100 LET I=1
+            110 LET R$(I)="READY"
+            120 PRINT STR$(I);". ";R$(I)
+            130 END
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+        session = session.step()
+
+        assertEquals("1. READY", screenText(session, 24, 3, 8))
+        assertEquals(130, session.currentProgramLine?.lineNumber)
+    }
+
+    fun `test numeric expression evaluates array element reference`() {
+        var session = startSession(
+            """
+            100 LET I=2
+            110 LET A(I)=4
+            120 LET B=A(I)+3
+            130 END
+            """.trimIndent(),
+        )
+
+        session = session.step()
+        session = session.step()
+        session = session.step()
+
+        assertEquals("7", session.numericVariables["B"]?.usualDisplay)
+        assertEquals(130, session.currentProgramLine?.lineNumber)
+    }
+
+
     private fun screenText(session: TiBasicDebugSession, row: Int, column: Int, length: Int): String =
         (column - 1 until column - 1 + length)
             .map { index -> session.screenContents.characterCodes[row - 1][index].toChar() }
