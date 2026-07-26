@@ -87,10 +87,6 @@ internal data class TiBasicDebugProgramSnapshot(
             )
         }
 
-    fun nextHigherProgramIndex(afterLineNumber: Int): Int? =
-        programLines.indexOfFirst { it.lineNumber > afterLineNumber }
-            .takeIf { it >= 0 }
-
     fun nextHigherNonRemProgramIndex(afterLineNumber: Int): Int? =
         programLines.indexOfFirst { line ->
             line.lineNumber > afterLineNumber && line.semantics != TiBasicDebugLineSemantics.Rem
@@ -502,12 +498,27 @@ internal data class TiBasicDebugProgramSnapshot(
         }
 
         private fun createInputSemantics(statement: TiBasicInputStatement): TiBasicDebugLineSemantics {
+            val promptAssignment = statement.screenPromptNode()
+                ?.let { promptNode ->
+                    when (promptNode.elementType) {
+                        TiBasicNodeTypes.EXPRESSION -> when (val result = createRequiredStringAssignment(promptNode)) {
+                            is TiBasicDebugParseResult.Valid -> result.value
+                            TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                            TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+                        }
+
+                        TiBasicNodeTypes.VARIABLE_ACCESS -> createStringAssignment(promptNode)
+                            ?: return TiBasicDebugLineSemantics.StringNumberMismatch
+
+                        else -> null
+                    }
+                }
             val targets = statement.inputVariableAccesses().map { variableAccess ->
                 val variableName = variableAccess.name ?: return TiBasicDebugLineSemantics.IncorrectStatement
                 val type = if (variableName.endsWith(STRING_VARIABLE_SUFFIX)) TiBasicDebugInputType.String else TiBasicDebugInputType.Numeric
                 TiBasicDebugInputTarget(variableName, type)
             }
-            return TiBasicDebugLineSemantics.Input(targets)
+            return TiBasicDebugLineSemantics.Input(targets, promptAssignment)
         }
 
         private fun createCondition(expressionNode: ASTNode): TiBasicDebugParseResult<TiBasicDebugCondition> {
@@ -561,17 +572,17 @@ internal data class TiBasicDebugProgramSnapshot(
         }
 
         private fun createPrintItem(node: ASTNode): TiBasicDebugPrintItem? =
-            when {
-                node.elementType in TiBasicTokenTypes.PRINT_SEPARATORS ->
+            when (node.elementType) {
+                in TiBasicTokenTypes.PRINT_SEPARATORS ->
                     TiBasicDebugPrintItem.Separator(node.elementType)
 
-                node.elementType == TiBasicNodeTypes.TAB_FUNCTION ->
+                TiBasicNodeTypes.TAB_FUNCTION ->
                     node.nonWhitespaceChildren
                         .firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION }
                         ?.let(::createNumericAssignmentFromExpression)
                         ?.let(TiBasicDebugPrintItem::Tab)
 
-                node.elementType == TiBasicNodeTypes.EXPRESSION ->
+                TiBasicNodeTypes.EXPRESSION ->
                     createStringAssignmentFromExpression(node)?.let(TiBasicDebugPrintItem::StringValue)
                         ?: createNumericAssignmentFromExpression(node)?.let(TiBasicDebugPrintItem::NumericValue)
 
@@ -877,6 +888,21 @@ internal enum class TiBasicDebugSessionStatus(val bundleKey: String) {
     Stopped(TiBasicDebugMetadata.toolWindowStatusStoppedKey),
 }
 
+internal enum class TiBasicPrintContinuationMode {
+    None,
+    Semicolon,
+    Comma,
+    BlankLine,
+}
+
+internal data class TiBasicDebugPrintWriteResult(
+    val session: TiBasicDebugSession,
+    val movedToNextLine: Boolean = false,
+    val spannedMultipleLines: Boolean = false,
+    val omittedTrailingBlank: Boolean = false,
+    val usedPositiveScientificNotation: Boolean = false,
+)
+
 internal data class TiBasicDebugSession(
     val snapshot: TiBasicDebugProgramSnapshot,
     val status: TiBasicDebugSessionStatus,
@@ -962,7 +988,7 @@ internal data class TiBasicDebugSession(
             input = effectiveInput,
         )
     }
-    
+
     internal fun nextWouldContinueLoop(): Boolean? {
         val currentLine = currentProgramLine ?: return null
         val semantics = currentLine.semantics as? TiBasicDebugLineSemantics.Next ?: return null
@@ -1283,10 +1309,7 @@ internal data class TiBasicDebugSession(
         snapshot.programLines
             .asSequence()
             .filter { programLine -> programLine.lineNumber < nextLineNumber }
-            .filter { programLine ->
-                (programLine.semantics as? TiBasicDebugLineSemantics.For)?.controlVariableName == controlVariableName
-            }
-            .lastOrNull()
+            .lastOrNull { programLine -> (programLine.semantics as? TiBasicDebugLineSemantics.For)?.controlVariableName == controlVariableName }
             ?.let { forProgramLine ->
                 TiBasicDebugForContext(
                     semantics = forProgramLine.semantics as TiBasicDebugLineSemantics.For,
@@ -1552,25 +1575,34 @@ internal data class TiBasicDebugSession(
         TiBasicDebugSessionStatus.Paused -> stepPaused()
         TiBasicDebugSessionStatus.PendingStop ->
             TiBasicDebugStepResult(
-                copy(status = TiBasicDebugSessionStatus.Stopped, currentProgramIndex = null, keyboardScanInput = EMPTY_STRING),
+                copy(
+                    status = TiBasicDebugSessionStatus.Stopped,
+                    currentProgramIndex = null,
+                    keyboardScanInput = EMPTY_STRING,
+                ),
             )
 
         TiBasicDebugSessionStatus.Stopped -> TiBasicDebugStepResult(this)
     }
 
     fun stop(): TiBasicDebugSession =
-        copy(status = TiBasicDebugSessionStatus.Stopped, currentProgramIndex = null, keyboardScanInput = EMPTY_STRING)
+        copy(
+            status = TiBasicDebugSessionStatus.Stopped,
+            currentProgramIndex = null,
+            keyboardScanInput = EMPTY_STRING,
+        )
 
     private fun stepPaused(): TiBasicDebugStepResult {
         val programLine = currentProgramLine ?: return stop()
             .let(::TiBasicDebugStepResult)
         val sessionWithInitializedNumericVariables = initializeReferencedNumericVariables(programLine.referencedNumericVariableNames)
+        val sessionWithClearedPrintContinuation = sessionWithInitializedNumericVariables.withPrintContinuationMode(TiBasicPrintContinuationMode.None)
         return when (val semantics = programLine.semantics) {
-            TiBasicDebugLineSemantics.Sequential -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber))
-            TiBasicDebugLineSemantics.Rem -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.continueAfter(programLine.lineNumber))
-            is TiBasicDebugLineSemantics.Goto -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.jumpTo(programLine, semantics.target))
+            TiBasicDebugLineSemantics.Sequential -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.continueAfter(programLine.lineNumber))
+            TiBasicDebugLineSemantics.Rem -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.continueAfter(programLine.lineNumber))
+            is TiBasicDebugLineSemantics.Goto -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.jumpTo(programLine, semantics.target))
             is TiBasicDebugLineSemantics.Gosub -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.jumpTo(
+                sessionWithClearedPrintContinuation.jumpTo(
                     programLine,
                     semantics.target,
                     rememberOrigin = true
@@ -1578,59 +1610,59 @@ internal data class TiBasicDebugSession(
             )
 
             is TiBasicDebugLineSemantics.If -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyIf(
+                sessionWithClearedPrintContinuation.applyIf(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
             is TiBasicDebugLineSemantics.For -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyFor(
+                sessionWithClearedPrintContinuation.applyFor(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
             is TiBasicDebugLineSemantics.Next -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyNext(
+                sessionWithClearedPrintContinuation.applyNext(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
-            is TiBasicDebugLineSemantics.Return -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.returnFrom(semantics.isStandaloneKeyword))
-            is TiBasicDebugLineSemantics.End -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
-            is TiBasicDebugLineSemantics.Stop -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.pendingStopIf(semantics.isStandaloneKeyword))
+            is TiBasicDebugLineSemantics.Return -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.returnFrom(semantics.isStandaloneKeyword))
+            is TiBasicDebugLineSemantics.End -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.pendingStopIf(semantics.isStandaloneKeyword))
+            is TiBasicDebugLineSemantics.Stop -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.pendingStopIf(semantics.isStandaloneKeyword))
             is TiBasicDebugLineSemantics.LetString -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyStringLet(
+                sessionWithClearedPrintContinuation.applyStringLet(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
             is TiBasicDebugLineSemantics.LetNumeric -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyNumericLet(
+                sessionWithClearedPrintContinuation.applyNumericLet(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
             is TiBasicDebugLineSemantics.LetNumericArray -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyNumericArrayLet(
+                sessionWithClearedPrintContinuation.applyNumericArrayLet(
                     programLine.lineNumber,
                     semantics,
                 )
             )
 
             is TiBasicDebugLineSemantics.LetStringArray -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyStringArrayLet(
+                sessionWithClearedPrintContinuation.applyStringArrayLet(
                     programLine.lineNumber,
                     semantics,
                 )
             )
 
             is TiBasicDebugLineSemantics.Randomize -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyRandomize(
+                sessionWithClearedPrintContinuation.applyRandomize(
                     programLine.lineNumber,
                     semantics
                 )
@@ -1644,58 +1676,58 @@ internal data class TiBasicDebugSession(
             )
 
             is TiBasicDebugLineSemantics.CallKey -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyCallKey(
+                sessionWithClearedPrintContinuation.applyCallKey(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
             is TiBasicDebugLineSemantics.CallJoyst -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyCallJoyst(
+                sessionWithClearedPrintContinuation.applyCallJoyst(
                     programLine.lineNumber,
                     semantics,
                 )
             )
 
             is TiBasicDebugLineSemantics.Input -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyInput(
+                sessionWithClearedPrintContinuation.applyInput(
                     programLine.lineNumber,
                     semantics,
                 )
             )
 
-            TiBasicDebugLineSemantics.CallClear -> TiBasicDebugStepResult(sessionWithInitializedNumericVariables.applyCallClear(programLine.lineNumber))
+            TiBasicDebugLineSemantics.CallClear -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.applyCallClear(programLine.lineNumber))
             is TiBasicDebugLineSemantics.CallChar -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyCallChar(
+                sessionWithClearedPrintContinuation.applyCallChar(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
             is TiBasicDebugLineSemantics.CallColor -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyCallColor(
+                sessionWithClearedPrintContinuation.applyCallColor(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
             is TiBasicDebugLineSemantics.CallScreen -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyCallScreen(
+                sessionWithClearedPrintContinuation.applyCallScreen(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
             is TiBasicDebugLineSemantics.CallScreenWrite -> TiBasicDebugStepResult(
-                sessionWithInitializedNumericVariables.applyCallScreenWrite(
+                sessionWithClearedPrintContinuation.applyCallScreenWrite(
                     programLine.lineNumber,
                     semantics
                 )
             )
 
-            is TiBasicDebugLineSemantics.CallSound -> sessionWithInitializedNumericVariables.applyCallSound(programLine.lineNumber, semantics)
-            TiBasicDebugLineSemantics.StringNumberMismatch -> TiBasicDebugStepResult(stringNumberMismatch())
-            TiBasicDebugLineSemantics.IncorrectStatement -> TiBasicDebugStepResult(incorrectStatement())
+            is TiBasicDebugLineSemantics.CallSound -> sessionWithClearedPrintContinuation.applyCallSound(programLine.lineNumber, semantics)
+            TiBasicDebugLineSemantics.StringNumberMismatch -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.stringNumberMismatch())
+            TiBasicDebugLineSemantics.IncorrectStatement -> TiBasicDebugStepResult(sessionWithClearedPrintContinuation.incorrectStatement())
         }
     }
 
@@ -1891,30 +1923,44 @@ internal data class TiBasicDebugSession(
     ): TiBasicDebugSession {
         var currentSession = this
         var trailingSeparator: IElementType? = null
+        var itemMovedToNextLine = false
+        var itemSpannedMultipleLines = false
+        var omittedTrailingNumericBlank = false
+        var usedPositiveScientificPrint = false
         semantics.items.forEach { item ->
             when (item) {
                 is TiBasicDebugPrintItem.StringValue -> {
                     val evaluation =
                         currentSession.evaluateStringAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
-                    currentSession = currentSession
+                    val writeResult = currentSession
                         .mergeEvaluations(evaluation)
                         .writePrintText(evaluation.value.text)
+                    currentSession = writeResult.session
+                    itemMovedToNextLine = itemMovedToNextLine || writeResult.movedToNextLine
+                    itemSpannedMultipleLines = itemSpannedMultipleLines || writeResult.spannedMultipleLines
                     trailingSeparator = null
                 }
 
                 is TiBasicDebugPrintItem.NumericValue -> {
                     val evaluation =
                         currentSession.evaluateNumericAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
-                    currentSession = currentSession
+                    val writeResult = currentSession
                         .mergeEvaluations(evaluation)
                         .writePrintNumericValue(evaluation.value)
+                    currentSession = writeResult.session
+                    itemMovedToNextLine = itemMovedToNextLine || writeResult.movedToNextLine
+                    itemSpannedMultipleLines = itemSpannedMultipleLines || writeResult.spannedMultipleLines
+                    omittedTrailingNumericBlank = omittedTrailingNumericBlank || writeResult.omittedTrailingBlank
+                    usedPositiveScientificPrint = usedPositiveScientificPrint || writeResult.usedPositiveScientificNotation
                     trailingSeparator = null
                 }
 
                 is TiBasicDebugPrintItem.Tab -> {
-                    val evaluation = currentSession.evaluateNumericAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
+                    val evaluation =
+                        currentSession.evaluateNumericAssignment(item.assignment) ?: return currentSession.continueAfter(currentLineNumber)
                     currentSession = currentSession.mergeEvaluations(evaluation)
-                    val rounded = evaluation.value.value.roundToWholeNumberIntOrNull() ?: return currentSession.badValue(evaluation.value.usualDisplay)
+                    val rounded =
+                        evaluation.value.value.roundToWholeNumberIntOrNull() ?: return currentSession.badValue(evaluation.value.usualDisplay)
                     var t = rounded
                     if (t < 1) t = 1
                     t = ((t - 1) % PRINT_AREA_WIDTH) + 1
@@ -1927,15 +1973,21 @@ internal data class TiBasicDebugSession(
                 }
 
                 is TiBasicDebugPrintItem.Separator -> {
-                    currentSession = currentSession.applyPrintSeparator(item.tokenType)
+                    currentSession = currentSession.applyPrintSeparator(item.tokenType, trailingSeparator)
                     trailingSeparator = item.tokenType
                 }
             }
         }
-        if (trailingSeparator !in TiBasicTokenTypes.PRINT_SEPARATORS) {
-            currentSession = currentSession.applyPrintSeparator(TiBasicTokenTypes.COLON)
+        if (semantics.items.lastOrNull() !is TiBasicDebugPrintItem.Separator) {
+            currentSession = currentSession.applyPrintSeparator(TiBasicTokenTypes.COLON, trailingSeparator)
         }
-        return currentSession.continueAfter(currentLineNumber)
+        val nextContinuationMode = when {
+            semantics.items.isEmpty() -> TiBasicPrintContinuationMode.BlankLine
+            trailingSeparator == TiBasicTokenTypes.SEMICOLON -> TiBasicPrintContinuationMode.Semicolon
+            trailingSeparator == TiBasicTokenTypes.COMMA -> TiBasicPrintContinuationMode.Comma
+            else -> TiBasicPrintContinuationMode.None
+        }
+        return currentSession.withPrintContinuationMode(nextContinuationMode).continueAfter(currentLineNumber)
     }
 
     private fun applyCallKey(
@@ -1981,35 +2033,62 @@ internal data class TiBasicDebugSession(
     }
 
     private fun applyInput(lineNumber: Int, semantics: TiBasicDebugLineSemantics.Input): TiBasicDebugSession {
-        val resolvedInputValues = resolvePendingInputValues(semantics)
-            ?: return copy(statusMessage = "Combined INPUT values must match target count")
-
-        var updatedNumericVariables = numericVariables
-        var updatedStringVariables = stringVariables
-
+        var currentSession = ensureInputPromptShown(lineNumber, semantics)
+        if (!currentSession.hasAnyPendingInputValue(semantics)) {
+            return currentSession.copy(statusMessage = null)
+        }
+        val resolvedInputValues = currentSession.resolvePendingInputValues(semantics)
+            ?: return currentSession.copy(statusMessage = "Combined INPUT values must match target count")
+        val orderedInputValues = mutableListOf<String>()
         for (target in semantics.targets) {
-            val rawValue = resolvedInputValues[target.variableName]
-                ?: return copy(statusMessage = "Missing input for ${target.variableName}")
+            orderedInputValues += resolvedInputValues[target.variableName]
+                ?: return currentSession.copy(statusMessage = "Missing input for ${target.variableName}")
+        }
+        val inputText = orderedInputValues.joinToString(",")
+        currentSession = currentSession.writePrintText(inputText).session
+        currentSession = currentSession.copy(screenContents = currentSession.screenContents.lineFeed())
 
-            when (target.type) {
+        var updatedNumericVariables = currentSession.numericVariables
+        var updatedStringVariables = currentSession.stringVariables
+
+        for ((variableName, type) in semantics.targets) {
+            val rawValue = resolvedInputValues[variableName]
+                ?: return currentSession.copy(statusMessage = "Missing input for $variableName")
+
+            when (type) {
                 TiBasicDebugInputType.Numeric -> {
                     val value = parseTiBasicDecimalLiteral(rawValue)
-                        ?: return copy(statusMessage = "Invalid numeric input for ${target.variableName}: $rawValue")
-                    updatedNumericVariables = updatedNumericVariables + (target.variableName to TiBasicDebugNumericValue.fromValue(value))
+                        ?: return currentSession.copy(statusMessage = "Invalid numeric input for $variableName: $rawValue")
+                    updatedNumericVariables = updatedNumericVariables + (variableName to TiBasicDebugNumericValue.fromValue(value))
                 }
+
                 TiBasicDebugInputType.String -> {
-                    updatedStringVariables = updatedStringVariables + (target.variableName to TiBasicDebugStringValue.fromText(rawValue))
+                    updatedStringVariables = updatedStringVariables + (variableName to TiBasicDebugStringValue.fromText(rawValue))
                 }
             }
         }
 
-        return copy(
+        return currentSession.copy(
             numericVariables = updatedNumericVariables,
             stringVariables = updatedStringVariables,
             pendingInputValues = emptyMap(),
             statusMessage = null,
         ).continueAfter(lineNumber)
     }
+
+    private fun ensureInputPromptShown(lineNumber: Int, semantics: TiBasicDebugLineSemantics.Input): TiBasicDebugSession {
+        if (pendingInputValues[INPUT_PROMPT_SHOWN_PENDING_INPUT_KEY] == lineNumber.toString()) return this
+        val promptedSession = semantics.promptAssignment?.let { promptAssignment ->
+            val evaluation = evaluateStringAssignment(promptAssignment) ?: return incorrectStatement()
+            mergeEvaluations(evaluation).writePrintText(evaluation.value.text).session
+        } ?: this
+        return promptedSession.copy(
+            pendingInputValues = promptedSession.pendingInputValues + (INPUT_PROMPT_SHOWN_PENDING_INPUT_KEY to lineNumber.toString()),
+        )
+    }
+
+    private fun hasAnyPendingInputValue(semantics: TiBasicDebugLineSemantics.Input): Boolean =
+        semantics.targets.any { target -> pendingInputValues.containsKey(target.variableName) }
 
     private fun resolvePendingInputValues(semantics: TiBasicDebugLineSemantics.Input): Map<String, String>? {
         if (semantics.targets.size <= 1) return pendingInputValues
@@ -2028,6 +2107,14 @@ internal data class TiBasicDebugSession(
             .mapIndexed { index, target -> target.variableName to splitValues[index] }
             .toMap()
     }
+
+    private fun withPrintContinuationMode(mode: TiBasicPrintContinuationMode): TiBasicDebugSession =
+        copy(
+            pendingInputValues = when (mode) {
+                TiBasicPrintContinuationMode.None -> pendingInputValues - PRINT_CONTINUATION_PENDING_INPUT_KEY
+                else -> pendingInputValues + (PRINT_CONTINUATION_PENDING_INPUT_KEY to mode.name)
+            },
+        )
 
     private fun applyCallJoyst(
         currentLineNumber: Int,
@@ -2282,33 +2369,47 @@ internal data class TiBasicDebugSession(
             randomSeed = evaluation.resultingRandomSeed,
         )
 
-    private fun applyPrintSeparator(tokenType: IElementType): TiBasicDebugSession =
+    private fun applyPrintSeparator(tokenType: IElementType, previousTokenType: IElementType? = null): TiBasicDebugSession =
         when (tokenType) {
             TiBasicTokenTypes.COLON -> copy(screenContents = screenContents.lineFeed())
-            TiBasicTokenTypes.SEMICOLON -> this
             TiBasicTokenTypes.COMMA -> {
-                // Treat comma as TAB(15): column = normalized(15) + 2 => 17
                 var normalized = screenContents.normalizePrintCursorForWrite()
-                val t0 = 15
-                var t = if (t0 < 1) 1 else t0
-                t = ((t - 1) % PRINT_AREA_WIDTH) + 1
-                val targetColumn = t + 2
-                if (normalized.printCursorColumn > targetColumn) normalized = normalized.lineFeed()
-                normalized = normalized.copy(printCursorColumn = targetColumn)
+                normalized =
+                    if (normalized.printCursorColumn < PRINT_ZONE_TWO_START_COLUMN) {
+                        normalized.copy(printCursorColumn = PRINT_ZONE_TWO_START_COLUMN)
+                    } else {
+                        normalized.lineFeed()
+                    }
                 copy(screenContents = normalized)
             }
+
+            TiBasicTokenTypes.SEMICOLON ->
+                if (previousTokenType == TiBasicTokenTypes.COMMA && screenContents.printCursorColumn == INITIAL_PRINT_CURSOR_COLUMN) {
+                    copy(screenContents = screenContents.lineFeed())
+                } else {
+                    this
+                }
+
             else -> this
         }
 
-    private fun writePrintText(text: String): TiBasicDebugSession {
-        val adjustedContents = screenContents.prepareForPrintText(text)
-        return copy(screenContents = adjustedContents).writePrintTextCharacters(text)
+    private fun writePrintText(text: String): TiBasicDebugPrintWriteResult {
+        val normalizedContents = screenContents.normalizePrintCursorForWrite()
+        val movedToNextLine =
+            (text.length > PRINT_AREA_WIDTH && normalizedContents.printCursorColumn != INITIAL_PRINT_CURSOR_COLUMN) ||
+                    (text.length <= PRINT_AREA_WIDTH && text.length > normalizedContents.remainingPrintColumns())
+        val adjustedContents = normalizedContents.prepareForPrintText(text)
+        return TiBasicDebugPrintWriteResult(
+            session = copy(screenContents = adjustedContents).writePrintTextCharacters(text),
+            movedToNextLine = movedToNextLine,
+            spannedMultipleLines = text.length > adjustedContents.remainingPrintColumns(),
+        )
     }
 
     private fun writePrintTextCharacters(text: String): TiBasicDebugSession =
         text.fold(this) { session, character -> session.writePrintCharacter(character) }
 
-    private fun writePrintNumericValue(value: TiBasicDebugNumericValue): TiBasicDebugSession {
+    private fun writePrintNumericValue(value: TiBasicDebugNumericValue): TiBasicDebugPrintWriteResult {
         val printText = value.printText()
         val normalizedContents = screenContents.normalizePrintCursorForWrite()
         val remainingColumns = normalizedContents.remainingPrintColumns()
@@ -2323,7 +2424,16 @@ internal data class TiBasicDebugSession(
         } else {
             normalizedContents
         }
-        return copy(screenContents = adjustedContents).writePrintTextCharacters(textToWrite)
+        val printDisplay = value.printDisplay()
+        return TiBasicDebugPrintWriteResult(
+            session = copy(screenContents = adjustedContents).writePrintTextCharacters(textToWrite),
+            movedToNextLine = textToWrite.length > remainingColumns,
+            spannedMultipleLines = textToWrite.length > adjustedContents.remainingPrintColumns(),
+            omittedTrailingBlank = textToWrite != printText,
+            usedPositiveScientificNotation = SCIENTIFIC_EXPONENT_SEPARATOR in printDisplay &&
+                    !printDisplay.contains("$SCIENTIFIC_EXPONENT_SEPARATOR-") &&
+                    !printDisplay.contains(".0$SCIENTIFIC_EXPONENT_SEPARATOR"),
+        )
     }
 
     private fun writePrintCharacter(character: Char): TiBasicDebugSession {
@@ -2423,8 +2533,8 @@ internal data class TiBasicDebugSession(
         subscriptAssignments: List<TiBasicDebugNumericAssignment>,
     ): TiBasicDebugSubscriptEvaluation? {
         val subscripts = mutableListOf<Int>()
-        var initializedNumericVariables = emptyMap<String, TiBasicDebugNumericValue>()
-        var initializedStringVariables = emptyMap<String, TiBasicDebugStringValue>()
+        val initializedNumericVariables = mutableMapOf<String, TiBasicDebugNumericValue>()
+        val initializedStringVariables = mutableMapOf<String, TiBasicDebugStringValue>()
         var warningMessage: String? = null
         var currentRandomSeed = randomSeed
         subscriptAssignments.forEach { subscriptAssignment ->
@@ -2827,7 +2937,10 @@ internal sealed interface TiBasicDebugLineSemantics {
         val channels: List<TiBasicDebugSoundChannelAssignment>,
     ) : TiBasicDebugLineSemantics
 
-    data class Input(val targets: List<TiBasicDebugInputTarget>) : TiBasicDebugLineSemantics
+    data class Input(
+        val targets: List<TiBasicDebugInputTarget>,
+        val promptAssignment: TiBasicDebugStringAssignment? = null,
+    ) : TiBasicDebugLineSemantics
 }
 
 private fun TiBasicDebugProgramLine.isCallScreenLine(): Boolean =
@@ -2953,6 +3066,7 @@ internal sealed interface TiBasicDebugNumericAssignment {
         val operatorType: IElementType,
         val right: TiBasicDebugNumericAssignment,
     ) : TiBasicDebugNumericAssignment
+
     data class ConditionValue(val condition: TiBasicDebugCondition) : TiBasicDebugNumericAssignment
 
     data class StringLength(val source: TiBasicDebugStringAssignment) : TiBasicDebugNumericAssignment
@@ -3288,16 +3402,18 @@ private fun TiBasicDebugNumericEvaluation.mergeWith(
     )
 
 private fun TiBasicLetStatement.isMalformedForDebugger(): Boolean {
-    if (targetVariableAccess() == null || assignedExpression() == null) return true
-    return node.allChildren.any { child ->
-        child.elementType !in setOf(
-            TiBasicTokenTypes.LET_KEYWORD,
-            TiBasicNodeTypes.VARIABLE_ACCESS,
-            TiBasicTokenTypes.EQ_OP,
-            TiBasicNodeTypes.EXPRESSION,
-            TokenType.WHITE_SPACE,
-        )
-    }
+    return targetVariableAccess() == null
+            || assignedExpression() == null
+            || node.allChildren
+        .any { child ->
+            child.elementType !in setOf(
+                TiBasicTokenTypes.LET_KEYWORD,
+                TiBasicNodeTypes.VARIABLE_ACCESS,
+                TiBasicTokenTypes.EQ_OP,
+                TiBasicNodeTypes.EXPRESSION,
+                TokenType.WHITE_SPACE
+            )
+        }
 }
 
 private const val FIRST_PROGRAM_INDEX = 0
@@ -3413,7 +3529,7 @@ private const val NO_KEY_CODE = -1
 private const val REUSE_LAST_KEYBOARD_MODE = 0
 private const val PRINT_AREA_WIDTH = 28
 private const val PRINT_ZONE_WIDTH = 14
-private const val PRINT_ZONE_2_COLUMN = INITIAL_PRINT_CURSOR_COLUMN + PRINT_ZONE_WIDTH
+private const val PRINT_ZONE_TWO_START_COLUMN = INITIAL_PRINT_CURSOR_COLUMN + PRINT_ZONE_WIDTH
 private const val PRINT_AREA_END_COLUMN = 30
 private const val PRINT_NORMAL_SIGNIFICANT_DIGITS = 10
 private const val PRINT_SCIENTIFIC_SIGNIFICANT_DIGITS = 6
@@ -3445,6 +3561,8 @@ private val PRINT_SCIENTIFIC_UPPER_BOUND = BigDecimal.TEN.pow(PRINT_NORMAL_SIGNI
 private val PRINT_SCIENTIFIC_LOWER_BOUND = BigDecimal.ONE.movePointLeft(PRINT_NORMAL_SIGNIFICANT_DIGITS)
 private val PRINTABLE_ASCII_RANGE = 32..159
 private val DEBUG_MATH_CONTEXT = MathContext.DECIMAL64
+private const val PRINT_CONTINUATION_PENDING_INPUT_KEY = "__printContinuation"
+private const val INPUT_PROMPT_SHOWN_PENDING_INPUT_KEY = "__inputPromptShown"
 private val IF_LINE_REGEX = Regex("""^\s*\d+\s+IF\b""", RegexOption.IGNORE_CASE)
 private val FOR_LINE_REGEX = Regex("""^\s*\d+\s+FOR\b""", RegexOption.IGNORE_CASE)
 private val NEXT_LINE_REGEX = Regex("""^\s*\d+\s+NEXT\b""", RegexOption.IGNORE_CASE)
@@ -3471,14 +3589,14 @@ private val VALID_JOYSTICK_UNITS = 1..4
 private val VALID_CALL_CHAR_CODES = 32..159
 private val VALID_CALL_COLOR_CHARACTER_SETS = 1..16
 private val VALID_CALL_COLOR_COLOR_CODES = 1..16
-private val VALID_DEBUG_CALL_CHAR_PATTERN_DIGITS = ('0'..'9') + ('A'..'F')
+private val VALID_DEBUG_CALL_CHAR_PATTERN_DIGITS = ('0'..'9') + ('A'..'F').toList()
 private val VALID_SCREEN_WRITE_ROWS = 1..TI_BASIC_SCREEN_ROWS
 private val VALID_SCREEN_WRITE_COLUMNS = 1..TI_BASIC_SCREEN_COLUMNS
 private val VALID_SCREEN_WRITE_REPEATS = 0..Int.MAX_VALUE
 private val CALL_KEY_MODE_1_AND_2_CODES = 0..19
-private val CALL_KEY_MODE_3_CODES = (1..15) + (32..95)
+private val CALL_KEY_MODE_3_CODES = (1..15) + (32..95).toList()
 private val CALL_KEY_MODE_4_CODES = 1..143
-private val CALL_KEY_MODE_5_CODES = (1..15) + (32..159) + listOf(187)
+private val CALL_KEY_MODE_5_CODES = (1..15) + (32..159).toList() + 187
 private val JOYSTICK_POSITIONS = listOf(
     TiBasicDebugJoystickPosition(x = -4, y = 4, compactDisplay = "up-left", gridLabel = "NW", input = "-4,4"),
     TiBasicDebugJoystickPosition(x = 0, y = 4, compactDisplay = "up", gridLabel = "N", input = "0,4"),
@@ -3535,8 +3653,7 @@ private fun hasStringContextMismatch(nodes: List<ASTNode>): Boolean {
         return hasStringContextMismatch(nodes.subList(0, operatorIndex)) ||
                 hasStringContextMismatch(nodes.subList(operatorIndex + 1, nodes.size))
     }
-    if (createNumericAssignmentFromNodesForMismatch(nodes) != null) return true
-    return when {
+    return createNumericAssignmentFromNodesForMismatch(nodes) != null || when {
         nodes.size == SINGLE_OPERAND_CHILD_COUNT -> isNumericLikeNode(nodes.single())
         else -> nodes.any(::isNumericLikeNode)
     }
@@ -3856,16 +3973,6 @@ private fun TiBasicDebugScreenContents.prepareForPrintText(text: String): TiBasi
 private fun TiBasicDebugScreenContents.remainingPrintColumns(): Int =
     (PRINT_AREA_END_COLUMN - printCursorColumn + 1).coerceAtLeast(0)
 
-private fun TiBasicDebugScreenContents.advanceToNextPrintZone(): TiBasicDebugScreenContents =
-    normalizePrintCursorForWrite()
-        .let { normalized ->
-            if (normalized.printCursorColumn < PRINT_ZONE_2_COLUMN) {
-                normalized.copy(printCursorColumn = PRINT_ZONE_2_COLUMN)
-            } else {
-                normalized.lineFeed().normalizePrintCursorForWrite()
-            }
-        }
-
 private fun TiBasicDebugScreenContents.advancePrintCursor(): TiBasicDebugScreenContents =
     if (printCursorColumn < PRINT_AREA_END_COLUMN) {
         copy(printCursorColumn = printCursorColumn + 1)
@@ -3874,16 +3981,13 @@ private fun TiBasicDebugScreenContents.advancePrintCursor(): TiBasicDebugScreenC
     }
 
 private fun TiBasicDebugScreenContents.lineFeed(): TiBasicDebugScreenContents =
-    if (printCursorRow <= TI_BASIC_SCREEN_ROWS) {
+    if (printCursorRow < TI_BASIC_SCREEN_ROWS) {
         copy(
             printCursorRow = printCursorRow + 1,
             printCursorColumn = INITIAL_PRINT_CURSOR_COLUMN,
         )
     } else {
-        scrollPrintArea().copy(
-            printCursorRow = TI_BASIC_SCREEN_ROWS + 1,
-            printCursorColumn = INITIAL_PRINT_CURSOR_COLUMN,
-        )
+        scrollPrintArea()
     }
 
 private fun TiBasicDebugScreenContents.scrollPrintArea(): TiBasicDebugScreenContents =

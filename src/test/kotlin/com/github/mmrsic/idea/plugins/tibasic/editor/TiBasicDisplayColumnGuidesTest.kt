@@ -102,8 +102,8 @@ class TiBasicDisplayColumnGuidesTest : TiBasicTestBase() {
     fun `test global guides follow longest line across whole file`() {
         val file = configureFile(
             remLine(20) + "\n" +
-                remLine(54) + "\n" +
-                "120 END",
+                    remLine(54) + "\n" +
+                    "120 END",
         )
 
         assertEquals(

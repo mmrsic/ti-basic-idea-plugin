@@ -1,8 +1,8 @@
 package com.github.mmrsic.idea.plugins.tibasic.editor
 
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
 import com.intellij.lang.BracePair
 import junit.framework.TestCase
-import com.github.mmrsic.idea.plugins.tibasic.language.syntax.lexer.TiBasicTokenTypes
 
 class TiBasicBraceMatcherTest : TestCase() {
 

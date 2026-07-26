@@ -44,8 +44,8 @@ internal fun initialDebugCharacterSetColors(): Map<Int, TiBasicDebugCharacterSet
     }
 
 private const val INITIAL_RUN_PROMPT_ROW_INDEX = 22
-private const val INITIAL_RUN_PROMPT_COLUMN_INDEX = 2
-private const val INITIAL_RUN_PROMPT = "> run"
+private const val INITIAL_RUN_PROMPT_COLUMN_INDEX = 0
+private const val INITIAL_RUN_PROMPT = " >run"
 internal const val INITIAL_PRINT_CURSOR_ROW = TI_BASIC_SCREEN_ROWS
 internal const val INITIAL_PRINT_CURSOR_COLUMN = 3
 internal val INITIAL_SCREEN_BACKGROUND = TiColor.LightGreen

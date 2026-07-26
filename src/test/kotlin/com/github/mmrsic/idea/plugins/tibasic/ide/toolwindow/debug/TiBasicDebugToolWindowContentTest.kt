@@ -1,19 +1,19 @@
 package com.github.mmrsic.idea.plugins.tibasic.ide.toolwindow.debug
 
 import com.github.mmrsic.idea.plugins.tibasic.TiBasicTestBase
+import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugLineSemantics
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugMetadata
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugProgramSnapshot
 import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugSessionService
-import com.github.mmrsic.idea.plugins.tibasic.ide.debug.TiBasicDebugLineSemantics
+import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.tiBasicCharacterPattern
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import java.awt.image.BufferedImage
 import java.math.BigDecimal
 import javax.swing.JButton
 import javax.swing.JPanel
-import com.intellij.testFramework.PlatformTestUtil
-import com.github.mmrsic.idea.plugins.tibasic.language.runtime.screen.tiBasicCharacterPattern
 
 class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
 
@@ -560,11 +560,11 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
 
         assertEquals(24, content.screenComponent.state.characterCodes.size)
         assertEquals(32, content.screenComponent.state.characterCodes.first().size)
-        assertEquals(listOf(62, 32, 114, 117, 110), content.screenComponent.state.characterCodes[22].subList(2, 7))
+        assertEquals(listOf(32, 62, 114, 117, 110, 32, 32), content.screenComponent.state.characterCodes[22].subList(0, 7))
         assertTrue(
             content.screenComponent.state.characterCodes.withIndex().all { (rowIndex, row) ->
                 row.withIndex().all { (columnIndex, code) ->
-                    val isRunPromptCell = rowIndex == 22 && columnIndex in 2..6
+                    val isRunPromptCell = rowIndex == 22 && columnIndex in 1..4
                     isRunPromptCell || code == 32
                 }
             },
@@ -794,12 +794,12 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         content.stepButton.doClick()
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals('H'.code, content.screenComponent.state.characterCodes[22][2])
-        assertEquals('I'.code, content.screenComponent.state.characterCodes[22][3])
-        assertEquals('N'.code, content.screenComponent.state.characterCodes[23][2])
-        assertEquals('E'.code, content.screenComponent.state.characterCodes[23][3])
-        assertEquals('X'.code, content.screenComponent.state.characterCodes[23][4])
-        assertEquals('T'.code, content.screenComponent.state.characterCodes[23][5])
+        assertEquals('H'.code, content.screenComponent.state.characterCodes[21][2])
+        assertEquals('I'.code, content.screenComponent.state.characterCodes[21][3])
+        assertEquals('N'.code, content.screenComponent.state.characterCodes[22][2])
+        assertEquals('E'.code, content.screenComponent.state.characterCodes[22][3])
+        assertEquals('X'.code, content.screenComponent.state.characterCodes[22][4])
+        assertEquals('T'.code, content.screenComponent.state.characterCodes[22][5])
     }
 
     fun `test debug tool window renders numeric PRINT output with TI-Basic spacing`() {
@@ -813,7 +813,7 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         content.stepButton.doClick()
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-        assertEquals(listOf(' '.code, '1'.code, '2'.code, ' '.code), content.screenComponent.state.characterCodes[23].subList(2, 6))
+        assertEquals(listOf(' '.code, '1'.code, '2'.code, ' '.code), content.screenComponent.state.characterCodes[22].subList(2, 6))
     }
 
     fun `test debug tool window keeps exactly twenty eight PRINT characters on the bottom row`() {
@@ -829,9 +829,9 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
 
         assertEquals(
             "1234567890123456789012345678".map(Char::code),
-            content.screenComponent.state.characterCodes[23].subList(2, 30),
+            content.screenComponent.state.characterCodes[22].subList(2, 30),
         )
-        assertEquals(listOf('>'.code, ' '.code, 'r'.code, 'u'.code, 'n'.code), content.screenComponent.state.characterCodes[22].subList(2, 7))
+        assertEquals(listOf(' '.code, '>'.code, 'r'.code, 'u'.code, 'n'.code), content.screenComponent.state.characterCodes[21].subList(0, 5))
     }
 
     fun `test debug tool window updates screen codes after CALL VCHAR step`() {
@@ -927,14 +927,15 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         scrollPane.viewport.doLayout()
         scrollPane.viewport.extentSize = scrollPane.viewport.size
     }
+
     fun `test debug tool window shows input panel when INPUT is pending`() {
         val file = configureFile("100 INPUT A,B$")
         val sessionService = project.getService(TiBasicDebugSessionService::class.java)
         val snapshot = TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document)
         val content = TiBasicDebugToolWindowContent(project)
-        
+
         sessionService.startSession(snapshot)
-        
+
         assertTrue(content.inputPanel.isVisible)
     }
 
@@ -943,18 +944,18 @@ class TiBasicDebugToolWindowContentTest : TiBasicTestBase() {
         val sessionService = project.getService(TiBasicDebugSessionService::class.java)
         val snapshot = TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document)
         val content = TiBasicDebugToolWindowContent(project)
-        
+
         sessionService.startSession(snapshot)
-        
+
         // Find the text field
         val panel = content.inputPanel.components.filterIsInstance<JPanel>().first()
         val field = panel.components.filterIsInstance<JBTextField>().first()
         field.text = "42"
-        
+
         // Trigger Apply/Step via button
         val applyButton = content.inputPanel.components.filterIsInstance<JButton>().first()
         applyButton.doClick()
-        
+
         assertEquals(BigDecimal("42"), sessionService.currentSession()?.numericVariables?.get("A")?.value)
     }
 

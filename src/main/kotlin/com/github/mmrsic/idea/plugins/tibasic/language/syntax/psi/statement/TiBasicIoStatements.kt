@@ -50,6 +50,14 @@ class TiBasicInputStatement(node: ASTNode) : TiBasicFileNumberStatement, TiBasic
         return node.childrenOfType(TiBasicNodeTypes.EXPRESSION).getOrNull(0)?.psi as? TiBasicExpression
     }
 
+    fun screenPromptNode(): ASTNode? {
+        if (isFileInput()) return null
+        val children = node.nonWhitespaceChildren
+        val colonNode = children.firstOrNull { it.elementType == TiBasicTokenTypes.COLON } ?: return null
+        return children.takeWhile { it != colonNode }
+            .firstOrNull { it.elementType == TiBasicNodeTypes.EXPRESSION || it.elementType == TiBasicNodeTypes.VARIABLE_ACCESS }
+    }
+
     fun inputVariableAccesses(): List<TiBasicVariableAccess> =
         node.childrenOfType(TiBasicNodeTypes.VARIABLE_ACCESS).map { it.psi as TiBasicVariableAccess }
 }
