@@ -86,9 +86,25 @@ class TiBasicGosubStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
 class TiBasicReturnStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 
-class TiBasicOnGotoStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+abstract class TiBasicOnBranchStatement(
+    node: ASTNode,
+    private val branchKeyword: IElementType,
+) : ASTWrapperPsiElement(node) {
+    fun selectorExpression(): TiBasicExpression? =
+        node.firstChildOfType(TiBasicNodeTypes.EXPRESSION)?.psi as? TiBasicExpression
 
-class TiBasicOnGosubStatement(node: ASTNode) : ASTWrapperPsiElement(node)
+    fun targetLineNumberNodes(): List<ASTNode> =
+        node.childrenAfter(branchKeyword)
+            .filter { it.elementType == TiBasicTokenTypes.NUMERIC_LITERAL }
+
+    fun targetLineNumbers(): List<Int> =
+        targetLineNumberNodes()
+            .mapNotNull { node -> node.text.toIntOrNull() }
+}
+
+class TiBasicOnGotoStatement(node: ASTNode) : TiBasicOnBranchStatement(node, TiBasicTokenTypes.GOTO_KEYWORD)
+
+class TiBasicOnGosubStatement(node: ASTNode) : TiBasicOnBranchStatement(node, TiBasicTokenTypes.GOSUB_KEYWORD)
 
 class TiBasicIfStatement(node: ASTNode) : ASTWrapperPsiElement(node)
 {

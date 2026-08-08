@@ -104,6 +104,30 @@ class TiBasicDebugSessionServiceTest : TiBasicTestBase() {
         assertEquals(1.0, sessionService.currentSession()?.numericVariables?.get("X")?.value?.toDouble())
     }
 
+    fun `test skip on ON GOSUB runs selected subroutine and stops after RETURN`() {
+        val code = """
+            100 ON 2 GOSUB 300,400
+            110 PRINT "DONE"
+            300 LET X=1
+            400 LET X=2
+            410 RETURN
+        """.trimIndent()
+        val file = configureFile(code)
+        val sessionService = project.getService(TiBasicDebugSessionService::class.java)
+        val snapshot = TiBasicDebugProgramSnapshot.create(file, myFixture.editor.document)
+
+        sessionService.startSession(snapshot)
+
+        assertEquals(100, sessionService.currentSession()?.currentProgramLine?.lineNumber)
+        assertTrue(sessionService.currentSession()?.currentProgramLine?.semantics is TiBasicDebugLineSemantics.OnGosub)
+
+        sessionService.skip()
+
+        assertEquals(110, sessionService.currentSession()?.currentProgramLine?.lineNumber)
+        assertTrue(sessionService.currentSession()?.gosubOriginLineNumbers?.isEmpty() == true)
+        assertEquals(2.0, sessionService.currentSession()?.numericVariables?.get("X")?.value?.toDouble())
+    }
+
     fun `test updatePendingInputValues updates session and notifies listeners once`() {
         val file = configureFile("100 INPUT A,B")
         val sessionService = project.getService(TiBasicDebugSessionService::class.java)

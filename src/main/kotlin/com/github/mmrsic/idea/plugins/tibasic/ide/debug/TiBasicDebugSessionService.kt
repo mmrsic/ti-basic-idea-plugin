@@ -55,18 +55,11 @@ class TiBasicDebugSessionService(private val project: Project) {
             }
 
             is TiBasicDebugLineSemantics.Gosub -> {
-                val originalDepth = session.gosubOriginLineNumbers.size
-                var iterations = 0
-                while (iterations < SKIP_ITERATION_CAP) {
-                    val stepResult = session.stepWithEffects()
-                    session = stepResult.session
-                    stepResult.soundPlayback?.let { playback -> soundPlaybackHandler(project, playback) }
+                session = skipSubroutine(session)
+            }
 
-                    if (session.hasBlockingDebugRequest() || session.status != TiBasicDebugSessionStatus.Paused) break
-                    if (session.gosubOriginLineNumbers.size <= originalDepth) break
-
-                    iterations++
-                }
+            is TiBasicDebugLineSemantics.OnGosub -> {
+                session = skipSubroutine(session)
             }
 
             else -> return
@@ -103,6 +96,23 @@ class TiBasicDebugSessionService(private val project: Project) {
     private fun notifyListeners() {
         eventDispatcher.multicaster.sessionChanged(project, currentSession)
     }
+
+    private fun skipSubroutine(initialSession: TiBasicDebugSession): TiBasicDebugSession {
+        val originalDepth = initialSession.gosubOriginLineNumbers.size
+        var session = initialSession
+        var iterations = 0
+        while (iterations < SKIP_ITERATION_CAP) {
+            val stepResult = session.stepWithEffects()
+            session = stepResult.session
+            stepResult.soundPlayback?.let { playback -> soundPlaybackHandler(project, playback) }
+
+            if (session.hasBlockingDebugRequest() || session.status != TiBasicDebugSessionStatus.Paused) break
+            if (session.gosubOriginLineNumbers.size <= originalDepth) break
+
+            iterations++
+        }
+        return session
+    }
 }
 
 internal fun interface TiBasicDebugSessionListener : EventListener {
@@ -114,7 +124,8 @@ private const val SKIP_ITERATION_CAP = 1000
 internal fun TiBasicDebugSession.canSkip(): Boolean =
     status == TiBasicDebugSessionStatus.Paused &&
             (currentProgramLine?.semantics is TiBasicDebugLineSemantics.Next ||
-                    currentProgramLine?.semantics is TiBasicDebugLineSemantics.Gosub)
+                    currentProgramLine?.semantics is TiBasicDebugLineSemantics.Gosub ||
+                    currentProgramLine?.semantics is TiBasicDebugLineSemantics.OnGosub)
 
 private fun TiBasicDebugSession.hasBlockingDebugRequest(): Boolean =
     keyboardRequest != null || joystickRequest != null || inputRequest != null

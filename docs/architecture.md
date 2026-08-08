@@ -215,8 +215,9 @@ Architecturally, the story fits the existing plugin well:
 
 The main architectural constraint is that the debugger must **not** reuse annotator output as
 its execution contract. The current annotator deliberately reports some situations as warnings
-that are terminal in debugger V1, for example undefined `GOTO`/`GOSUB` targets and trailing
-content after `RETURN`, `END`, or `STOP`. The debugger therefore needs its own runtime
+that are terminal in debugger V1, for example undefined `GOTO`/`GOSUB` targets, `ON` branches
+whose selected target line is missing, and trailing content after `RETURN`, `END`, or `STOP`.
+The debugger therefore needs its own runtime
 validation rules for the supported statements.
 
 ### Entry flow and ownership
@@ -282,6 +283,8 @@ V1 step behavior is intentionally narrow and must not infer unsupported TI-Basic
 |-----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `GOTO` with one valid existing target line                                                                      | Jump to target line and pause there                                                                                                                                                                                                                                                                                                                                                                          |
 | `GOSUB` with one valid existing target line                                                                     | Push the current line number as return origin, jump to target line, and pause there                                                                                                                                                                                                                                                                                                                          |
+| `ON expr GOTO line1,...,lineN` with debugger-supported numeric selector expression                              | Evaluate the selector, round it TI-Basic-style, choose the `n`th target line for selector value `n`, then reuse the normal `GOTO` jump path; rounded selector values below `1` or above `N` raise `Bad Value in <current line>` and enter `PendingStop`, while a selected but missing target line raises `Bad Line Number in <current line>` and enters `PendingStop`                                        |
+| `ON expr GOSUB line1,...,lineN` with debugger-supported numeric selector expression                             | Evaluate and round the selector exactly like `ON ... GOTO`, then reuse the normal `GOSUB` jump path so the current line number is pushed as the return origin before pausing on the selected target line; out-of-range selector values raise `Bad Value in <current line>`, and selected but missing target lines raise `Bad Line Number in <current line>` and enter `PendingStop`                          |
 | `IF expr THEN thenLine [ELSE elseLine]` with debugger-supported numeric or string comparison semantics          | Evaluate the condition against the current debugger state; if the resulting expression is non-zero, jump to `thenLine`, otherwise jump to `elseLine` or continue at the next higher line when `ELSE` is omitted                                                                                                                                                                                              |
 | `CALL COLOR(set,fg,bg)` with debugger-supported numeric expressions                                             | Evaluate and round all three arguments against the current debugger state, update one of the 16 debugger character sets (`32..159`) with the resolved TI colors, keep transparent colors transparent so they render against the active `CALL SCREEN` background, and raise `Bad Value: character set=<n>`, `foreground color=<n>`, or `background color=<n>` when a rounded value falls outside `1..16`      |
 | string `LET` with debugger-supported string expressions (`"TEXT"`, `A$`, concatenation, `CHR$`, `SEG$`, `STR$`) | Update the known string-variable map and continue to the next higher line; unknown RHS string references are initialized as `""`, and every intermediate string result is truncated to 255 characters before further reuse, with a debugger warning                                                                                                                                                          |
@@ -308,6 +311,8 @@ The debugger should validate only the statements that V1 actively interprets:
 
 - `GOTO`
 - `GOSUB`
+- `ON ... GOTO`
+- `ON ... GOSUB`
 - `IF`
 - `CALL COLOR`
 - simple scalar string `LET`
@@ -325,6 +330,9 @@ This implies a dedicated runtime validator that works from the snapshot/PSI shap
 from editor highlighting. In particular:
 
 - undefined `GOTO`/`GOSUB` targets are **fatal in the debugger** even though the annotator only warns
+- `ON` branches reuse the same jump implementation as direct `GOTO`/`GOSUB`, but distinguish between
+  an out-of-range rounded selector (**`Bad Value in <source line>`**) and a selected target line that
+  is syntactically valid but missing from the program (**`Bad Line Number in <source line>`**)
 - `IF` conditions are evaluated against the current debug state; non-zero means `THEN`, zero means `ELSE`,
   and a missing `ELSE` falls through to the next higher line
 - debugger-supported `CALL COLOR` manages all 16 character sets in debugger memory, starts them as

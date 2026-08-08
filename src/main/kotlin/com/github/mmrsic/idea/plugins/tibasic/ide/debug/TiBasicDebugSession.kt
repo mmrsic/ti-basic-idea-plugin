@@ -36,6 +36,9 @@ import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBa
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicInputStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicLetStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicNextStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicOnBranchStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicOnGosubStatement
+import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicOnGotoStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicPrintStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRandomizeStatement
 import com.github.mmrsic.idea.plugins.tibasic.language.syntax.psi.statement.TiBasicRemStatement
@@ -120,6 +123,8 @@ internal data class TiBasicDebugProgramSnapshot(
             is TiBasicUnknownStatement -> TiBasicDebugLineSemantics.IncorrectStatement
             is TiBasicGotoStatement -> TiBasicDebugLineSemantics.Goto(createJumpTarget(statement.node, TiBasicTokenTypes.GOTO_KEYWORD))
             is TiBasicGosubStatement -> TiBasicDebugLineSemantics.Gosub(createJumpTarget(statement.node, TiBasicTokenTypes.GOSUB_KEYWORD))
+            is TiBasicOnGotoStatement -> createOnBranchSemantics(statement, TiBasicDebugLineSemantics::OnGoto)
+            is TiBasicOnGosubStatement -> createOnBranchSemantics(statement, TiBasicDebugLineSemantics::OnGosub)
             is TiBasicReturnStatement -> TiBasicDebugLineSemantics.Return(isStandaloneKeyword(statement.node, TiBasicTokenTypes.RETURN_KEYWORD))
             is TiBasicEndStatement -> TiBasicDebugLineSemantics.End(isStandaloneKeyword(statement.node, TiBasicTokenTypes.END_KEYWORD))
             is TiBasicStopStatement -> TiBasicDebugLineSemantics.Stop(isStandaloneKeyword(statement.node, TiBasicTokenTypes.STOP_KEYWORD))
@@ -151,6 +156,23 @@ internal data class TiBasicDebugProgramSnapshot(
                     }
                 }
             return TiBasicDebugLineSemantics.Randomize(seedAssignment)
+        }
+
+        private fun createOnBranchSemantics(
+                statement: TiBasicOnBranchStatement,
+                createSemantics: (TiBasicDebugOnBranch) -> TiBasicDebugLineSemantics,
+        ): TiBasicDebugLineSemantics {
+                val selectorExpression = statement.selectorExpression() ?: return TiBasicDebugLineSemantics.IncorrectStatement
+                val selectorAssignment = when (val result = createRequiredNumericAssignment(selectorExpression.node)) {
+                    is TiBasicDebugParseResult.Valid -> result.value
+                    TiBasicDebugParseResult.StringNumberMismatch -> return TiBasicDebugLineSemantics.StringNumberMismatch
+                    TiBasicDebugParseResult.Invalid -> return TiBasicDebugLineSemantics.IncorrectStatement
+                }
+                val targetLineNumbers = statement.targetLineNumbers()
+                if (targetLineNumbers.isEmpty()) {
+                    return TiBasicDebugLineSemantics.IncorrectStatement
+                }
+                return createSemantics(TiBasicDebugOnBranch(selectorAssignment, targetLineNumbers))
         }
 
         private fun createCallSemantics(statement: TiBasicCallStatement): TiBasicDebugLineSemantics {
@@ -1608,6 +1630,12 @@ internal data class TiBasicDebugSession(
                     rememberOrigin = true
                 )
             )
+            is TiBasicDebugLineSemantics.OnGoto -> TiBasicDebugStepResult(
+                sessionWithClearedPrintContinuation.applyOnBranch(programLine, semantics.branch)
+            )
+            is TiBasicDebugLineSemantics.OnGosub -> TiBasicDebugStepResult(
+                sessionWithClearedPrintContinuation.applyOnBranch(programLine, semantics.branch, rememberOrigin = true)
+            )
 
             is TiBasicDebugLineSemantics.If -> TiBasicDebugStepResult(
                 sessionWithClearedPrintContinuation.applyIf(
@@ -1756,6 +1784,25 @@ internal data class TiBasicDebugSession(
             keyboardScanInput = defaultKeyboardScanInput(snapshot.programLines[programIndex].semantics),
         )
 
+    private fun applyOnBranch(
+        currentProgramLine: TiBasicDebugProgramLine,
+        branch: TiBasicDebugOnBranch,
+        rememberOrigin: Boolean = false,
+    ): TiBasicDebugSession {
+        val selectorEvaluation = evaluateNumericAssignment(branch.selectorAssignment) ?: return incorrectStatement()
+        val sessionAfterEvaluation = mergeEvaluations(selectorEvaluation)
+        val selectedTargetIndex = selectorEvaluation.value.value.roundToWholeNumberIntOrNull()
+            ?: return sessionAfterEvaluation.badValueIn(currentProgramLine.lineNumber)
+        if (selectedTargetIndex !in 1..branch.targetLineNumbers.size) {
+            return sessionAfterEvaluation.badValueIn(currentProgramLine.lineNumber)
+        }
+        return sessionAfterEvaluation.jumpToLineNumber(
+            targetLineNumber = branch.targetLineNumbers[selectedTargetIndex - 1],
+            originLineNumber = currentProgramLine.lineNumber.takeIf { rememberOrigin },
+            missingTargetSession = { badLineNumberIn(currentProgramLine.lineNumber) },
+        )
+    }
+
     private fun jumpTo(
         currentProgramLine: TiBasicDebugProgramLine,
         target: TiBasicJumpTarget,
@@ -1763,22 +1810,10 @@ internal data class TiBasicDebugSession(
     ): TiBasicDebugSession =
         when (target) {
             TiBasicJumpTarget.IncorrectStatement -> incorrectStatement()
-            is TiBasicJumpTarget.SyntaxValid -> {
-                val targetLineNumber = target.lineNumberText.toIntOrNull()
-                val targetIndex = targetLineNumber
-                    ?.takeIf { it in VALID_LINE_NUMBER_RANGE }
-                    ?.let(snapshot.lineNumberToProgramIndex::get)
-                if (targetIndex == null) {
-                    badLineNumber()
-                } else {
-                    copy(
-                        currentProgramIndex = targetIndex,
-                        gosubOriginLineNumbers = if (rememberOrigin) gosubOriginLineNumbers + currentProgramLine.lineNumber else gosubOriginLineNumbers,
-                        statusMessage = null,
-                        keyboardScanInput = defaultKeyboardScanInput(snapshot.programLines[targetIndex].semantics),
-                    )
-                }
-            }
+            is TiBasicJumpTarget.SyntaxValid -> jumpToLineNumber(
+                targetLineNumber = target.lineNumberText.toIntOrNull(),
+                originLineNumber = currentProgramLine.lineNumber.takeIf { rememberOrigin },
+            )
         }
 
     private fun applyStringLet(
@@ -2791,14 +2826,17 @@ internal data class TiBasicDebugSession(
         }
     }
 
-    private fun jumpToLineNumber(targetLineNumber: Int): TiBasicDebugSession =
-        if (targetLineNumber !in VALID_LINE_NUMBER_RANGE) {
-            badLineNumber()
-        } else {
-            snapshot.lineNumberToProgramIndex[targetLineNumber]
-                ?.let { targetIndex -> moveTo(targetIndex) }
-                ?: badLineNumber()
-        }
+    private fun jumpToLineNumber(
+        targetLineNumber: Int?,
+        originLineNumber: Int? = null,
+        missingTargetSession: TiBasicDebugSession.() -> TiBasicDebugSession = { badLineNumber() },
+    ): TiBasicDebugSession {
+        val resolvedTargetLineNumber = targetLineNumber?.takeIf { it in VALID_LINE_NUMBER_RANGE } ?: return missingTargetSession()
+        val targetIndex = snapshot.lineNumberToProgramIndex[resolvedTargetLineNumber] ?: return missingTargetSession()
+        return moveTo(targetIndex).copy(
+            gosubOriginLineNumbers = originLineNumber?.let { gosubOriginLineNumbers + it } ?: gosubOriginLineNumbers,
+        )
+    }
 
     private fun pendingStopIf(isStandaloneKeyword: Boolean): TiBasicDebugSession =
         if (isStandaloneKeyword) {
@@ -2814,10 +2852,24 @@ internal data class TiBasicDebugSession(
             keyboardScanInput = EMPTY_STRING,
         )
 
+    private fun badLineNumberIn(lineNumber: Int): TiBasicDebugSession =
+        copy(
+            status = TiBasicDebugSessionStatus.PendingStop,
+            statusMessage = TiBasicDebugMetadata.message(TiBasicDebugMetadata.badLineNumberInKey, lineNumber),
+            keyboardScanInput = EMPTY_STRING,
+        )
+
     private fun badValue(value: Any): TiBasicDebugSession =
         copy(
             status = TiBasicDebugSessionStatus.PendingStop,
             statusMessage = TiBasicDebugMetadata.message(TiBasicDebugMetadata.badValueKey, value),
+            keyboardScanInput = EMPTY_STRING,
+        )
+
+    private fun badValueIn(lineNumber: Int): TiBasicDebugSession =
+        copy(
+            status = TiBasicDebugSessionStatus.PendingStop,
+            statusMessage = TiBasicDebugMetadata.message(TiBasicDebugMetadata.badValueInKey, lineNumber),
             keyboardScanInput = EMPTY_STRING,
         )
 
@@ -2847,6 +2899,8 @@ internal sealed interface TiBasicDebugLineSemantics {
     data object IncorrectStatement : TiBasicDebugLineSemantics
     data class Goto(val target: TiBasicJumpTarget) : TiBasicDebugLineSemantics
     data class Gosub(val target: TiBasicJumpTarget) : TiBasicDebugLineSemantics
+    data class OnGoto(val branch: TiBasicDebugOnBranch) : TiBasicDebugLineSemantics
+    data class OnGosub(val branch: TiBasicDebugOnBranch) : TiBasicDebugLineSemantics
     data class Return(val isStandaloneKeyword: Boolean) : TiBasicDebugLineSemantics
     data class End(val isStandaloneKeyword: Boolean) : TiBasicDebugLineSemantics
     data class Stop(val isStandaloneKeyword: Boolean) : TiBasicDebugLineSemantics
@@ -3018,6 +3072,11 @@ internal sealed interface TiBasicDebugParseResult<out T> {
 internal data class TiBasicDebugValidatedInt(
     val session: TiBasicDebugSession,
     val value: Int,
+)
+
+internal data class TiBasicDebugOnBranch(
+    val selectorAssignment: TiBasicDebugNumericAssignment,
+    val targetLineNumbers: List<Int>,
 )
 
 internal data class TiBasicRandDigit(
